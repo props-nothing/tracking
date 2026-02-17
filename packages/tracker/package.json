@@ -1,0 +1,21 @@
+{
+  "name": "@tracking/tracker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight tracking script (< 3 KB gzipped)",
+  "main": "dist/t.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "rollup -c rollup.config.mjs && mkdir -p ../../apps/web/public && cp dist/t.js ../../apps/web/public/t.js",
+    "dev": "rollup -c rollup.config.mjs --watch",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "rollup": "^4.0.0",
+    "@rollup/plugin-typescript": "^12.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "typescript": "^5.9.0",
+    "tslib": "^2.8.0"
+  }
+}

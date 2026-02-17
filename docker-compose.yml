@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  # ============================================================
+  # Next.js App
+  # ============================================================
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local
+    depends_on:
+      - supabase-db
+      - redis
+    restart: unless-stopped
+
+  # ============================================================
+  # PostgreSQL (Supabase-compatible)
+  # ============================================================
+  supabase-db:
+    image: supabase/postgres:15.6.1.146
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_PASSWORD: your-super-secret-password
+      POSTGRES_DB: postgres
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d/migrations
+    restart: unless-stopped
+
+  # ============================================================
+  # Supabase Studio (optional, for local development)
+  # ============================================================
+  supabase-studio:
+    image: supabase/studio:20240101-ce42139
+    ports:
+      - "54323:3000"
+    environment:
+      STUDIO_PG_META_URL: http://supabase-meta:8080
+      SUPABASE_URL: http://supabase-kong:8000
+      SUPABASE_REST_URL: http://supabase-kong:8000/rest/v1/
+    depends_on:
+      - supabase-db
+    restart: unless-stopped
+
+  # ============================================================
+  # Redis (rate limiting via Upstash protocol or direct)
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  supabase-db-data:
+  redis-data:

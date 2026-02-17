@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/refresh-views",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/rotate-salt",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/send-reports",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/check-alerts",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
