@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
 
   const from = request.nextUrl.searchParams.get('from');
   const to = request.nextUrl.searchParams.get('to');
+  const period = request.nextUrl.searchParams.get('period');
 
   let query = supabase
     .from('annotations')
@@ -24,7 +25,32 @@ export async function GET(request: NextRequest) {
     .eq('site_id', siteId)
     .order('date', { ascending: false });
 
-  if (from) query = query.gte('date', from);
+  if (from) {
+    query = query.gte('date', from);
+  } else if (period) {
+    const now = new Date();
+    let fromDate: Date;
+    switch (period) {
+      case 'today':
+        fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'yesterday':
+        fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        break;
+      case 'last_7_days':
+        fromDate = new Date(now.getTime() - 7 * 86400000);
+        break;
+      case 'last_90_days':
+        fromDate = new Date(now.getTime() - 90 * 86400000);
+        break;
+      case 'last_365_days':
+        fromDate = new Date(now.getTime() - 365 * 86400000);
+        break;
+      default: // last_30_days
+        fromDate = new Date(now.getTime() - 30 * 86400000);
+    }
+    query = query.gte('date', fromDate.toISOString().split('T')[0]);
+  }
   if (to) query = query.lte('date', to);
 
   const { data, error } = await query;
@@ -33,7 +59,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({ annotations: data || [] });
 }
 
 export async function POST(request: NextRequest) {

@@ -25,7 +25,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json(data);
+  // Map DB column names to frontend field names
+  const alerts = (data || []).map((a: Record<string, unknown>) => ({
+    ...a,
+    type: a.alert_type,
+    threshold: typeof a.threshold === 'object' && a.threshold !== null ? (a.threshold as Record<string, unknown>).value ?? 0 : a.threshold,
+    notify_email: Array.isArray(a.notify_email) ? (a.notify_email as string[])[0] || '' : a.notify_email || '',
+    notify_slack_url: a.notify_slack_webhook || null,
+    enabled: a.enabled ?? true,
+  }));
+
+  return NextResponse.json({ alerts });
 }
 
 export async function POST(request: NextRequest) {
@@ -43,10 +53,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid data', details: parsed.error.flatten() }, { status: 400 });
   }
 
+  const { type, threshold, notify_email, notify_slack_url, ...rest } = parsed.data;
+
   const { data, error } = await supabase
     .from('alerts')
     .insert({
-      ...parsed.data,
+      ...rest,
+      alert_type: type,
+      threshold: { value: threshold },
+      notify_email: [notify_email],
+      notify_slack_webhook: notify_slack_url || null,
+      enabled: true,
       created_by: user.id,
     })
     .select()

@@ -25,7 +25,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json(data);
+  const reports = (data || []).map((r: Record<string, unknown>) => ({
+    ...r,
+    name: r.title || r.name,
+    password_protected: !!r.password_hash,
+  }));
+
+  return NextResponse.json({ reports });
 }
 
 export async function POST(request: NextRequest) {
@@ -43,10 +49,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid data', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { password, ...reportData } = parsed.data;
+  const { password, name, ...reportData } = parsed.data;
 
   const insertData: Record<string, unknown> = {
     ...reportData,
+    title: name,
     created_by: user.id,
   };
 

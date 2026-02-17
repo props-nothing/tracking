@@ -119,7 +119,7 @@ export function DashboardShell({ userEmail, children }: DashboardShellProps) {
                           : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                       }`}
                     >
-                      <span className="text-base">{item.icon}</span>
+                      
                       {item.label}
                     </Link>
                   );

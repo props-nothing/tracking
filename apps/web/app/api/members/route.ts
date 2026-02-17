@@ -20,14 +20,14 @@ export async function GET(request: NextRequest) {
     .from('sites')
     .select('user_id')
     .eq('id', siteId)
-    .single();
+    .maybeSingle();
 
   const { data: membership } = await supabase
     .from('site_members')
     .select('role')
     .eq('site_id', siteId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (siteOwner?.user_id !== user.id && !membership) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json({ members: data || [] });
 }
 
 export async function POST(request: NextRequest) {
@@ -97,9 +97,9 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const memberId = request.nextUrl.searchParams.get('id');
+  const memberId = request.nextUrl.searchParams.get('member_id') || request.nextUrl.searchParams.get('id');
   if (!memberId) {
-    return NextResponse.json({ error: 'id required' }, { status: 400 });
+    return NextResponse.json({ error: 'member_id required' }, { status: 400 });
   }
 
   // Verify the member belongs to a site owned by the current user
@@ -107,14 +107,14 @@ export async function DELETE(request: NextRequest) {
     .from('site_members')
     .select('site_id')
     .eq('id', memberId)
-    .single();
+    .maybeSingle();
 
   if (member) {
     const { data: site } = await supabase
       .from('sites')
       .select('user_id')
       .eq('id', member.site_id)
-      .single();
+      .maybeSingle();
 
     if (site?.user_id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

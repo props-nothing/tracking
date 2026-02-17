@@ -42,7 +42,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json(data);
+  const keys = (data || []).map((k: Record<string, unknown>) => ({
+    ...k,
+    prefix: k.key_prefix,
+    scopes: k.permissions || [],
+  }));
+
+  return NextResponse.json({ keys });
 }
 
 export async function POST(request: NextRequest) {
@@ -72,7 +78,7 @@ export async function POST(request: NextRequest) {
       name: parsed.data.name,
       key_hash: keyHash,
       key_prefix: keyPrefix,
-      permissions: parsed.data.permissions,
+      permissions: parsed.data.scopes,
     })
     .select()
     .single();

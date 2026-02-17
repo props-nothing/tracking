@@ -103,7 +103,7 @@ export const funnelSchema = z.object({
 
 export const sharedReportSchema = z.object({
   site_id: z.string().uuid(),
-  title: z.string().min(1).max(255),
+  name: z.string().min(1).max(255),
   description: z.string().max(1000).nullable().optional(),
   logo_url: z.string().url().nullable().optional(),
   brand_color: z.string().max(20).optional(),
@@ -125,13 +125,12 @@ export const sharedReportSchema = z.object({
 export const alertSchema = z.object({
   site_id: z.string().uuid(),
   name: z.string().min(1).max(255),
-  alert_type: z.enum([
+  type: z.enum([
     'traffic_drop', 'traffic_spike', 'goal_not_met', 'error_spike', 'uptime',
   ]),
-  threshold: z.record(z.string(), z.any()),
-  notify_email: z.array(z.string().email()).nullable().optional(),
-  notify_slack_webhook: z.string().url().nullable().optional(),
-  notify_webhook: z.string().url().nullable().optional(),
+  threshold: z.number(),
+  notify_email: z.string().email(),
+  notify_slack_url: z.string().url().nullable().optional(),
 });
 
 export const annotationSchema = z.object({
@@ -150,5 +149,5 @@ export const memberInviteSchema = z.object({
 export const apiKeySchema = z.object({
   site_id: z.string().uuid(),
   name: z.string().min(1).max(255),
-  permissions: z.array(z.enum(['read', 'write'])).default(['read']),
+  scopes: z.array(z.string()).default(['read:stats']),
 });
