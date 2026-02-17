@@ -41,68 +41,126 @@ export async function GET(
     }
   }
 
-  // Calculate date range
+  // --- Date range: allow overrides via query params ---
   const now = new Date();
-  let fromDate: Date;
+  const qFrom = request.nextUrl.searchParams.get('from');
+  const qTo = request.nextUrl.searchParams.get('to');
+  const qRange = request.nextUrl.searchParams.get('range');
 
-  switch (report.date_range_mode) {
-    case 'last_7_days': fromDate = new Date(now.getTime() - 7 * 86400000); break;
-    case 'last_30_days': fromDate = new Date(now.getTime() - 30 * 86400000); break;
-    case 'last_90_days': fromDate = new Date(now.getTime() - 90 * 86400000); break;
-    case 'last_365_days': fromDate = new Date(now.getTime() - 365 * 86400000); break;
-    case 'this_month': fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
-    case 'last_month': fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); break;
-    case 'custom': fromDate = report.date_from ? new Date(report.date_from) : new Date(now.getTime() - 30 * 86400000); break;
-    default: fromDate = new Date(now.getTime() - 30 * 86400000);
+  let fromDate: Date;
+  let toDate: Date = qTo ? new Date(qTo + 'T23:59:59Z') : now;
+
+  if (qFrom) {
+    fromDate = new Date(qFrom + 'T00:00:00Z');
+  } else if (qRange) {
+    switch (qRange) {
+      case 'today': fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
+      case 'last_7_days': fromDate = new Date(now.getTime() - 7 * 86400000); break;
+      case 'last_30_days': fromDate = new Date(now.getTime() - 30 * 86400000); break;
+      case 'last_90_days': fromDate = new Date(now.getTime() - 90 * 86400000); break;
+      case 'last_365_days': fromDate = new Date(now.getTime() - 365 * 86400000); break;
+      case 'this_month': fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
+      case 'last_month': fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); toDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); break;
+      default: fromDate = new Date(now.getTime() - 30 * 86400000);
+    }
+  } else {
+    // Use report default
+    switch (report.date_range_mode) {
+      case 'last_7_days': fromDate = new Date(now.getTime() - 7 * 86400000); break;
+      case 'last_30_days': fromDate = new Date(now.getTime() - 30 * 86400000); break;
+      case 'last_90_days': fromDate = new Date(now.getTime() - 90 * 86400000); break;
+      case 'last_365_days': fromDate = new Date(now.getTime() - 365 * 86400000); break;
+      case 'this_month': fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
+      case 'last_month': fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); break;
+      case 'custom': fromDate = report.date_from ? new Date(report.date_from) : new Date(now.getTime() - 30 * 86400000); break;
+      default: fromDate = new Date(now.getTime() - 30 * 86400000);
+    }
   }
 
-  // Fetch events
-  const { data: events } = await supabase
+  // --- Filters via query params ---
+  const filterPage = request.nextUrl.searchParams.get('page');
+  const filterReferrer = request.nextUrl.searchParams.get('referrer');
+  const filterCountry = request.nextUrl.searchParams.get('country');
+  const filterDevice = request.nextUrl.searchParams.get('device');
+  const filterBrowser = request.nextUrl.searchParams.get('browser');
+  const filterOs = request.nextUrl.searchParams.get('os');
+  const filterUtmSource = request.nextUrl.searchParams.get('utm_source');
+  const filterUtmMedium = request.nextUrl.searchParams.get('utm_medium');
+  const filterUtmCampaign = request.nextUrl.searchParams.get('utm_campaign');
+
+  // Fetch events — include UTM + page_title + is_entry/is_exit
+  let query = supabase
     .from('events')
-    .select('event_type, visitor_hash, session_id, path, referrer_hostname, country_code, browser, os, device_type, engaged_time_ms, is_bounce, timestamp, revenue')
+    .select('event_type, visitor_hash, session_id, path, page_title, referrer_hostname, country_code, country_name, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, timestamp, revenue, utm_source, utm_medium, utm_campaign')
     .eq('site_id', report.site_id)
     .gte('timestamp', fromDate.toISOString())
-    .lte('timestamp', now.toISOString());
+    .lte('timestamp', toDate.toISOString());
 
-  if (!events || events.length === 0) {
-    return NextResponse.json({
-      site_name: (report as any).sites?.name,
-      site_domain: (report as any).sites?.domain,
-      report_name: report.title,
-      description: report.description,
-      logo_url: report.logo_url,
-      brand_color: report.brand_color,
-      metrics: { visitors: 0, pageviews: 0, sessions: 0, bounce_rate: 0, views_per_session: 0, avg_duration: 0 },
-      timeseries: [],
-      top_pages: [],
-      top_referrers: [],
-      browsers: [],
-      countries: [],
-    });
-  }
+  if (filterPage) query = query.eq('path', filterPage);
+  if (filterReferrer) query = query.eq('referrer_hostname', filterReferrer);
+  if (filterCountry) query = query.eq('country_code', filterCountry);
+  if (filterDevice) query = query.eq('device_type', filterDevice);
+  if (filterBrowser) query = query.eq('browser', filterBrowser);
+  if (filterOs) query = query.eq('os', filterOs);
+  if (filterUtmSource) query = query.eq('utm_source', filterUtmSource);
+  if (filterUtmMedium) query = query.eq('utm_medium', filterUtmMedium);
+  if (filterUtmCampaign) query = query.eq('utm_campaign', filterUtmCampaign);
 
-  const pageviews = events.filter((e) => e.event_type === 'pageview').length;
-  const uniqueVisitors = new Set(events.map((e) => e.visitor_hash)).size;
-  const sessions = new Set(events.map((e) => e.session_id)).size;
-  const bounces = events.filter((e) => e.is_bounce && e.event_type === 'pageview').length;
-  const bounceRate = sessions > 0 ? Math.round((bounces / sessions) * 100) : 0;
-  const viewsPerSession = sessions > 0 ? Math.round((pageviews / sessions) * 10) / 10 : 0;
+  const { data: events } = await query;
 
-  const hiddenMetrics = new Set(report.hidden_metrics || []);
-  const visibleSections = new Set(report.visible_sections || []);
-
-  // Calculate avg duration from engaged_time_ms
-  const totalEngaged = events.reduce((sum, e) => sum + (e.engaged_time_ms || 0), 0);
-  const avgDuration = sessions > 0 ? Math.round(totalEngaged / sessions / 1000) : 0;
-
-  const result: Record<string, unknown> = {
-    // Flat fields expected by the report page
+  const emptyResult = {
     site_name: (report as any).sites?.name,
     site_domain: (report as any).sites?.domain,
     report_name: report.title,
     description: report.description,
     logo_url: report.logo_url,
     brand_color: report.brand_color,
+    date_from: fromDate.toISOString().slice(0, 10),
+    date_to: toDate.toISOString().slice(0, 10),
+    metrics: { visitors: 0, pageviews: 0, sessions: 0, bounce_rate: 0, views_per_session: 0, avg_duration: 0 },
+    timeseries: [],
+    top_pages: [],
+    top_referrers: [],
+    browsers: [],
+    operating_systems: [],
+    device_types: [],
+    countries: [],
+    entry_pages: [],
+    exit_pages: [],
+    utm_sources: [],
+    utm_mediums: [],
+    utm_campaigns: [],
+  };
+
+  if (!events || events.length === 0) {
+    return NextResponse.json(emptyResult);
+  }
+
+  // --- Aggregate core metrics ---
+  const pvEvents = events.filter((e) => e.event_type === 'pageview');
+  const pageviews = pvEvents.length;
+  const uniqueVisitors = new Set(events.map((e) => e.visitor_hash)).size;
+  const sessionSet = new Set(events.map((e) => e.session_id));
+  const sessions = sessionSet.size;
+  const bounces = pvEvents.filter((e) => e.is_bounce).length;
+  const bounceRate = sessions > 0 ? Math.round((bounces / sessions) * 100) : 0;
+  const viewsPerSession = sessions > 0 ? Math.round((pageviews / sessions) * 10) / 10 : 0;
+  const totalEngaged = events.reduce((sum, e) => sum + (e.engaged_time_ms || 0), 0);
+  const avgDuration = sessions > 0 ? Math.round(totalEngaged / sessions / 1000) : 0;
+
+  const hiddenMetrics = new Set(report.hidden_metrics || []);
+  const visibleSections = new Set(report.visible_sections || []);
+  const showSection = (key: string) => visibleSections.has(key) || visibleSections.size === 0;
+
+  const result: Record<string, unknown> = {
+    site_name: (report as any).sites?.name,
+    site_domain: (report as any).sites?.domain,
+    report_name: report.title,
+    description: report.description,
+    logo_url: report.logo_url,
+    brand_color: report.brand_color,
+    date_from: fromDate.toISOString().slice(0, 10),
+    date_to: toDate.toISOString().slice(0, 10),
     metrics: {
       ...(hiddenMetrics.has('pageviews') ? {} : { pageviews }),
       ...(hiddenMetrics.has('unique_visitors') ? {} : { visitors: uniqueVisitors }),
@@ -113,50 +171,71 @@ export async function GET(
     },
   };
 
-  // Add sections based on visibility settings
-  if (visibleSections.has('pages') || visibleSections.size === 0) {
-    const pageCounts: Record<string, number> = {};
-    events.filter((e) => e.event_type === 'pageview').forEach((e) => {
-      pageCounts[e.path] = (pageCounts[e.path] || 0) + 1;
+  // --- Helper for top-N aggregation ---
+  function topN<T>(items: T[], keyFn: (item: T) => string | null | undefined, limit = 10) {
+    const counts: Record<string, number> = {};
+    items.forEach((item) => {
+      const key = keyFn(item);
+      if (key) counts[key] = (counts[key] || 0) + 1;
     });
-    result.top_pages = Object.entries(pageCounts)
-      .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([path, views]) => ({ path, views }));
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit);
   }
 
-  if (visibleSections.has('referrers') || visibleSections.size === 0) {
-    const refCounts: Record<string, number> = {};
-    events.filter((e) => e.referrer_hostname).forEach((e) => {
-      refCounts[e.referrer_hostname!] = (refCounts[e.referrer_hostname!] || 0) + 1;
-    });
-    result.top_referrers = Object.entries(refCounts)
-      .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([source, visitors]) => ({ source, visitors }));
+  // --- Top Pages ---
+  if (showSection('pages')) {
+    result.top_pages = topN(pvEvents, (e) => e.path, 20).map(([path, views]) => ({ path, views }));
   }
 
-  if (visibleSections.has('countries') || visibleSections.size === 0) {
-    const countryCounts: Record<string, number> = {};
+  // --- Top Referrers ---
+  if (showSection('referrers')) {
+    result.top_referrers = topN(events, (e) => e.referrer_hostname, 20).map(([source, visitors]) => ({ source, visitors }));
+  }
+
+  // --- Countries ---
+  if (showSection('countries')) {
+    const countryCounts: Record<string, { code: string; name: string; count: number }> = {};
     events.filter((e) => e.country_code).forEach((e) => {
-      countryCounts[e.country_code!] = (countryCounts[e.country_code!] || 0) + 1;
+      if (!countryCounts[e.country_code!]) {
+        countryCounts[e.country_code!] = { code: e.country_code!, name: e.country_name || e.country_code!, count: 0 };
+      }
+      countryCounts[e.country_code!].count++;
     });
-    result.top_countries = Object.entries(countryCounts)
-      .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([name, visitors]) => ({ name, visitors }));
+    result.countries = Object.values(countryCounts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20)
+      .map((c) => ({ code: c.code, name: c.name, visitors: c.count }));
   }
 
-  // Browsers (used by pie chart on report page)
-  if (visibleSections.has('devices') || visibleSections.size === 0) {
-    const browserCounts: Record<string, number> = {};
-    events.filter((e) => e.browser).forEach((e) => {
-      browserCounts[e.browser!] = (browserCounts[e.browser!] || 0) + 1;
-    });
-    result.browsers = Object.entries(browserCounts)
-      .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([name, value]) => ({ name, value }));
+  // --- Browsers ---
+  if (showSection('devices')) {
+    result.browsers = topN(events, (e) => e.browser, 10).map(([name, value]) => ({ name, value }));
+
+    // --- Operating Systems ---
+    result.operating_systems = topN(events, (e) => e.os, 10).map(([name, value]) => ({ name, value }));
+
+    // --- Device Types ---
+    result.device_types = topN(events, (e) => e.device_type, 5).map(([name, value]) => ({ name, value }));
   }
 
-  // Timeseries (daily visitors + pageviews)
-  if (visibleSections.has('chart') || visibleSections.size === 0) {
+  // --- Entry Pages ---
+  if (showSection('pages')) {
+    result.entry_pages = topN(events.filter((e) => e.is_entry), (e) => e.path, 10).map(([path, views]) => ({ path, views }));
+
+    // --- Exit Pages ---
+    result.exit_pages = topN(events.filter((e) => e.is_exit), (e) => e.path, 10).map(([path, views]) => ({ path, views }));
+  }
+
+  // --- UTM ---
+  if (showSection('utm')) {
+    result.utm_sources = topN(events, (e) => e.utm_source, 10).map(([name, visitors]) => ({ name, visitors }));
+    result.utm_mediums = topN(events, (e) => e.utm_medium, 10).map(([name, visitors]) => ({ name, visitors }));
+    result.utm_campaigns = topN(events, (e) => e.utm_campaign, 10).map(([name, visitors]) => ({ name, visitors }));
+  }
+
+  // --- Timeseries ---
+  if (showSection('chart')) {
     const dayMap: Record<string, { visitors: Set<string>; pageviews: number }> = {};
     events.forEach((e) => {
       const day = new Date(e.timestamp).toISOString().slice(0, 10);
@@ -169,7 +248,7 @@ export async function GET(
       .map(([date, d]) => ({ date, visitors: d.visitors.size, pageviews: d.pageviews }));
   }
 
-  // Rename fields for embed format compatibility
+  // --- Embed format shortcut ---
   if (request.nextUrl.searchParams.get('format') === 'embed') {
     const m = result.metrics as Record<string, unknown>;
     return NextResponse.json({

@@ -111,7 +111,11 @@ export function DataTable({
               </tr>
             ) : (
               paged.map((row, i) => (
-                <tr key={i} className="border-b last:border-0 text-sm hover:bg-muted/50 transition-colors">
+                <tr
+                  key={i}
+                  className={`border-b last:border-0 text-sm hover:bg-muted/50 transition-colors ${row._onClick ? 'cursor-pointer' : ''}`}
+                  onClick={() => row._onClick?.()}
+                >
                   {columns.map((col) => (
                     <td
                       key={col.key}
