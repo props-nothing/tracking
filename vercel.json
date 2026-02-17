@@ -1,4 +1,8 @@
 {
+  "buildCommand": "pnpm build --filter web",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": "apps/web/.next",
   "crons": [
     {
       "path": "/api/cron/refresh-views",
