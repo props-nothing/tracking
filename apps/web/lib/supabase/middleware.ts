@@ -30,11 +30,12 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refreshing the auth token
-  const { data: { session } } = await supabase.auth.getSession();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: { user } } = await (supabase.auth as any).getUser();
 
   // Protect dashboard routes
   if (
-    !session &&
+    !user &&
     request.nextUrl.pathname.startsWith('/dashboard')
   ) {
     const url = request.nextUrl.clone();
