@@ -30,8 +30,9 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refreshing the auth token
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: { user } } = await (supabase.auth as any).getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   // Protect dashboard routes
   if (
