@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { sharedReportSchema } from '@/lib/validators';
 
 export async function GET(request: NextRequest) {
@@ -67,7 +67,9 @@ export async function POST(request: NextRequest) {
     insertData.password_hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const dbPost = await createServiceClient();
+  const { data, error } = await dbPost
     .from('shared_reports')
     .insert(insertData)
     .select()

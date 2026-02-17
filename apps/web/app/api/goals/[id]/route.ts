@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { goalSchema } from '@/lib/validators';
 
 export async function GET(
@@ -14,7 +14,8 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const { data, error } = await db
     .from('goals')
     .select('*')
     .eq('id', id)
@@ -25,7 +26,7 @@ export async function GET(
   }
 
   // Get conversion stats
-  const { data: conversions } = await supabase
+  const { data: conversions } = await db
     .from('goal_conversions')
     .select('*')
     .eq('goal_id', id)
@@ -54,7 +55,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid data', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const { data, error } = await db
     .from('goals')
     .update({ ...parsed.data, updated_at: new Date().toISOString() })
     .eq('id', id)
@@ -80,7 +82,8 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { error } = await supabase
+  const db = await createServiceClient();
+  const { error } = await db
     .from('goals')
     .delete()
     .eq('id', id);

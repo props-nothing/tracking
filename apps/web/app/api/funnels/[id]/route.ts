@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 
 export async function GET(
   _request: NextRequest,
@@ -13,7 +13,8 @@ export async function GET(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const { data, error } = await db
     .from('funnels')
     .select('*')
     .eq('id', id)
@@ -39,7 +40,8 @@ export async function PATCH(
   }
 
   const body = await request.json();
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const { data, error } = await db
     .from('funnels')
     .update(body)
     .eq('id', id)
@@ -65,7 +67,8 @@ export async function DELETE(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const { error } = await supabase
+  const db = await createServiceClient();
+  const { error } = await db
     .from('funnels')
     .delete()
     .eq('id', id);

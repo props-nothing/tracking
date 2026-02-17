@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { annotationSchema } from '@/lib/validators';
 
 export async function GET(request: NextRequest) {
@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
   const to = request.nextUrl.searchParams.get('to');
   const period = request.nextUrl.searchParams.get('period');
 
-  let query = supabase
+  const db = await createServiceClient();
+  let query = db
     .from('annotations')
     .select('*')
     .eq('site_id', siteId)
@@ -77,7 +78,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid data', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const { data, error } = await db
     .from('annotations')
     .insert({
       ...parsed.data,
@@ -106,7 +108,8 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'id required' }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const db = await createServiceClient();
+  const { error } = await db
     .from('annotations')
     .delete()
     .eq('id', annotationId)

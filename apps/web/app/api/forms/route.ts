@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -14,14 +14,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'site_id required' }, { status: 400 });
   }
 
+  const db = await createServiceClient();
+
   // Get form stats from materialized view
-  const { data: formStats } = await supabase
+  const { data: formStats } = await db
     .from('form_stats')
     .select('*')
     .eq('site_id', siteId);
 
   // Get recent form events for detailed analysis
-  const { data: recentForms } = await supabase
+  const { data: recentForms } = await db
     .from('events')
     .select('form_id, event_type, form_fields, form_last_field, form_time_to_submit_ms, timestamp')
     .eq('site_id', siteId)

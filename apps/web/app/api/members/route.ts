@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { memberInviteSchema } from '@/lib/validators';
 
 export async function GET(request: NextRequest) {
@@ -15,14 +15,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'site_id required' }, { status: 400 });
   }
 
+  const db = await createServiceClient();
+
   // Verify user is owner or member of this site
-  const { data: siteOwner } = await supabase
+  const { data: siteOwner } = await db
     .from('sites')
     .select('user_id')
     .eq('id', siteId)
     .maybeSingle();
 
-  const { data: membership } = await supabase
+  const { data: membership } = await db
     .from('site_members')
     .select('role')
     .eq('site_id', siteId)
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('site_members')
     .select('id, site_id, user_id, role, invited_at, accepted_at')
     .eq('site_id', siteId);
@@ -69,16 +71,16 @@ export async function POST(request: NextRequest) {
 
   // Look up user by email — note: in real implementation, you'd send an invite email
   // For now, attempt to add them directly if they have an account
-  const { data: existingUser } = await supabase.rpc('get_user_by_email', { email: parsed.data.email });
+  const db = await createServiceClient();
+  const { data: existingUser } = await db.rpc('get_user_by_email', { email: parsed.data.email });
 
   if (!existingUser) {
-    // In production, send invitation email
     return NextResponse.json({
       message: 'Invitation would be sent. User not yet registered.',
     }, { status: 202 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('site_members')
     .insert({
       site_id: parsed.data.site_id,
@@ -109,15 +111,17 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'member_id required' }, { status: 400 });
   }
 
+  const db = await createServiceClient();
+
   // Verify the member belongs to a site owned by the current user
-  const { data: member } = await supabase
+  const { data: member } = await db
     .from('site_members')
     .select('site_id')
     .eq('id', memberId)
     .maybeSingle();
 
   if (member) {
-    const { data: site } = await supabase
+    const { data: site } = await db
       .from('sites')
       .select('user_id')
       .eq('id', member.site_id)
@@ -128,7 +132,7 @@ export async function DELETE(request: NextRequest) {
     }
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from('site_members')
     .delete()
     .eq('id', memberId);

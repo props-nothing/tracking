@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { alertSchema } from '@/lib/validators';
 
 export async function GET(request: NextRequest) {
@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'site_id required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const { data, error } = await db
     .from('alerts')
     .select('*')
     .eq('site_id', siteId)
@@ -55,7 +56,8 @@ export async function POST(request: NextRequest) {
 
   const { type, threshold, notify_email, notify_slack_url, ...rest } = parsed.data;
 
-  const { data, error } = await supabase
+  const db = await createServiceClient();
+  const { data, error } = await db
     .from('alerts')
     .insert({
       ...rest,
@@ -89,7 +91,8 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: 'id required' }, { status: 400 });
   }
 
-  const { error } = await supabase
+  const db = await createServiceClient();
+  const { error } = await db
     .from('alerts')
     .delete()
     .eq('id', alertId)

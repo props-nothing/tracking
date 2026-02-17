@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 
 function getDateRange(period: string) {
   const now = new Date();
@@ -77,11 +77,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // Use service client for data queries (auth already verified above)
+  const db = await createServiceClient();
   const { fromStr, toStr } = getDateRange(period);
 
   // --- Ecommerce metric ---
   if (metric === 'ecommerce') {
-    const { data: events } = await supabase
+    const { data: events } = await db
       .from('events')
       .select('event_type, ecommerce_action, order_id, revenue, ecommerce_items, timestamp')
       .eq('site_id', siteId)
@@ -132,7 +134,7 @@ export async function GET(request: NextRequest) {
 
   // --- Errors metric ---
   if (metric === 'errors') {
-    const { data: events } = await supabase
+    const { data: events } = await db
       .from('events')
       .select('error_message, error_source, error_line, timestamp')
       .eq('site_id', siteId)
@@ -166,7 +168,7 @@ export async function GET(request: NextRequest) {
 
   // --- Events (custom) metric ---
   if (metric === 'events') {
-    const { data: events } = await supabase
+    const { data: events } = await db
       .from('events')
       .select('event_name, event_data, visitor_hash, path, timestamp')
       .eq('site_id', siteId)
@@ -207,7 +209,7 @@ export async function GET(request: NextRequest) {
   // --- Retention metric ---
   if (metric === 'retention') {
     // Build weekly cohorts from sessions
-    const { data: sessions } = await supabase
+    const { data: sessions } = await db
       .from('sessions')
       .select('visitor_hash, started_at')
       .eq('site_id', siteId)
@@ -264,7 +266,7 @@ export async function GET(request: NextRequest) {
   // --- Default: overview stats ---
   const selectFields = 'event_type, event_name, visitor_hash, session_id, path, referrer_hostname, country_code, city, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, utm_source, utm_medium, utm_campaign, time_on_page_ms, timestamp';
 
-  const { data: events } = await supabase
+  const { data: events } = await db
     .from('events')
     .select(selectFields)
     .eq('site_id', siteId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -32,8 +32,9 @@ export async function GET(request: NextRequest) {
 
   let data: Record<string, unknown>[];
 
+  const db = await createServiceClient();
   if (type === 'sessions') {
-    const { data: sessions } = await supabase
+    const { data: sessions } = await db
       .from('sessions')
       .select('*')
       .eq('site_id', siteId)
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
       .limit(10000);
     data = sessions || [];
   } else {
-    const { data: events } = await supabase
+    const { data: events } = await db
       .from('events')
       .select('*')
       .eq('site_id', siteId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { siteSchema } from '@/lib/validators';
 
 export async function GET() {
@@ -11,13 +11,14 @@ export async function GET() {
   }
 
   // Get sites owned by user + sites user is a member of
-  const { data: ownedSites } = await supabase
+  const db = await createServiceClient();
+  const { data: ownedSites } = await db
     .from('sites')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
-  const { data: memberSites } = await supabase
+  const { data: memberSites } = await db
     .from('site_members')
     .select('site_id, role, sites(*)')
     .eq('user_id', user.id);
@@ -48,7 +49,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabase
+  const db2 = await createServiceClient();
+  const { data, error } = await db2
     .from('sites')
     .insert({
       ...parsed.data,
