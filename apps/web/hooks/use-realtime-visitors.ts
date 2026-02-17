@@ -24,12 +24,10 @@ export function useRealtimeVisitors(siteId: string | null) {
         .from('active_visitors')
         .select('active_count, active_pages')
         .eq('site_id', siteId)
-        .single();
+        .maybeSingle();
 
-      if (data) {
-        setCount(data.active_count || 0);
-        setPages(data.active_pages || []);
-      }
+      setCount(data?.active_count || 0);
+      setPages(data?.active_pages || []);
       setLoading(false);
     };
 
