@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Only protect dashboard routes — check for Supabase auth cookie
   if (request.nextUrl.pathname.startsWith('/dashboard')) {
     // Supabase stores the session in cookies prefixed with sb-<ref>-auth-token
