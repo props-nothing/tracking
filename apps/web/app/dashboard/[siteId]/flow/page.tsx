@@ -1,204 +1,258 @@
 'use client';
 
-import { use, useEffect, useState, useRef, useCallback } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
-import { sankey, sankeyLinkHorizontal, SankeyNode, SankeyLink } from 'd3-sankey';
 
-interface FlowNode {
-  name: string;
+interface PageData {
+  path: string;
+  count: number;
+  unique_visitors?: number;
+  avg_time?: number;
+  bounce_rate?: number;
 }
 
-interface FlowLink {
-  source: number;
-  target: number;
-  value: number;
+interface FlowStats {
+  entry_pages: PageData[];
+  top_pages: PageData[];
+  exit_pages: PageData[];
+  pageviews: number;
+  sessions: number;
+  bounce_rate: number;
 }
 
-interface SankeyData {
-  nodes: FlowNode[];
-  links: FlowLink[];
+function formatTime(ms: number): string {
+  if (!ms || ms <= 0) return '0s';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 
-const COLORS = [
-  '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899',
-  '#f43f5e', '#f97316', '#eab308', '#22c55e', '#14b8a6',
-  '#06b6d4', '#3b82f6',
-];
+function FlowColumn({
+  title,
+  subtitle,
+  icon,
+  items,
+  maxCount,
+  color,
+  showMeta,
+}: {
+  title: string;
+  subtitle: string;
+  icon: string;
+  items: PageData[];
+  maxCount: number;
+  color: string;
+  showMeta?: 'entry' | 'exit' | 'page';
+}) {
+  return (
+    <div className="flex flex-col">
+      <div className="mb-4 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg text-sm" style={{ backgroundColor: `${color}15`, color }}>{icon}</span>
+        <div>
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <p className="text-xs text-muted-foreground">{subtitle}</p>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        {items.length === 0 ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">No data yet</p>
+        ) : (
+          items.map((item, i) => {
+            const pct = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+            return (
+              <div key={item.path + i} className="group relative rounded-md border bg-card p-3 transition-colors hover:bg-accent">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium" title={item.path}>
+                      {item.path}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <span>{item.count.toLocaleString()} views</span>
+                      {showMeta === 'page' && item.unique_visitors != null && (
+                        <span>{item.unique_visitors.toLocaleString()} visitors</span>
+                      )}
+                      {showMeta === 'page' && item.avg_time != null && item.avg_time > 0 && (
+                        <span>{formatTime(item.avg_time)} avg</span>
+                      )}
+                      {showMeta === 'page' && item.bounce_rate != null && (
+                        <span>{item.bounce_rate}% bounce</span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums" style={{ color }}>
+                    {pct.toFixed(0)}%
+                  </span>
+                </div>
+                {/* Bar */}
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.max(pct, 2)}%`, backgroundColor: color }}
+                  />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div className="hidden items-center justify-center lg:flex">
+      <svg width="40" height="40" viewBox="0 0 40 40" className="text-muted-foreground/40">
+        <path d="M8 20h20M22 14l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </div>
+  );
+}
 
 export default function FlowPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [data, setData] = useState<SankeyData | null>(null);
+  const [stats, setStats] = useState<FlowStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     setLoading(true);
     fetch(`/api/stats?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
-      .then((stats) => {
-        // Build flow data from top pages (sessions entry → pages → exit pattern)
-        const topPages = (stats.top_pages || []).slice(0, 8);
-        const entryPages = (stats.entry_pages || []).slice(0, 5);
-        const exitPages = (stats.exit_pages || []).slice(0, 5);
-
-        if (topPages.length < 2) {
-          setData(null);
-          setLoading(false);
-          return;
-        }
-
-        // Create nodes: Step 1 (entry), Step 2 (page views), Step 3 (exit)
-        const nodes: FlowNode[] = [];
-        const nodeIndex: Record<string, number> = {};
-        const links: FlowLink[] = [];
-
-        const addNode = (name: string): number => {
-          if (nodeIndex[name] !== undefined) return nodeIndex[name];
-          nodeIndex[name] = nodes.length;
-          nodes.push({ name });
-          return nodeIndex[name];
-        };
-
-        // Entry points
-        for (const entry of entryPages) {
-          const entryIdx = addNode(`Entry: ${entry.path}`);
-          // Connect entries to top pages they lead to
-          for (const page of topPages.slice(0, 4)) {
-            const pageIdx = addNode(page.path);
-            const flowValue = Math.max(1, Math.min(entry.count, page.count) / topPages.length);
-            links.push({ source: entryIdx, target: pageIdx, value: Math.round(flowValue) });
-          }
-        }
-
-        // Internal page-to-page flows
-        for (let i = 0; i < topPages.length - 1; i++) {
-          const fromIdx = addNode(topPages[i].path);
-          const toIdx = addNode(topPages[i + 1].path);
-          if (fromIdx !== toIdx) {
-            const flowValue = Math.min(topPages[i].count, topPages[i + 1].count) / 3;
-            links.push({ source: fromIdx, target: toIdx, value: Math.max(1, Math.round(flowValue)) });
-          }
-        }
-
-        // Exit points
-        for (const exitPage of exitPages) {
-          const pageIdx = addNode(exitPage.path);
-          const exitIdx = addNode(`Exit: ${exitPage.path}`);
-          if (pageIdx !== exitIdx) {
-            links.push({ source: pageIdx, target: exitIdx, value: Math.max(1, exitPage.count) });
-          }
-        }
-
-        // Filter out self-referencing links and zero-value links
-        const validLinks = links.filter((l) => l.source !== l.target && l.value > 0);
-
-        if (nodes.length >= 2 && validLinks.length >= 1) {
-          setData({ nodes, links: validLinks });
-        } else {
-          setData(null);
-        }
+      .then((data) => {
+        setStats({
+          entry_pages: data.entry_pages || [],
+          top_pages: data.top_pages || [],
+          exit_pages: data.exit_pages || [],
+          pageviews: data.pageviews || 0,
+          sessions: data.sessions || 0,
+          bounce_rate: data.bounce_rate || 0,
+        });
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [siteId, queryString]);
 
-  const width = 800;
-  const height = 500;
+  if (loading) {
+    return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+  }
 
-  const sankeyData = data ? (() => {
-    try {
-      const generator = sankey<FlowNode, FlowLink>()
-        .nodeWidth(15)
-        .nodePadding(12)
-        .extent([[1, 1], [width - 1, height - 5]])
-        .nodeSort(null);
+  if (!stats || (stats.entry_pages.length === 0 && stats.top_pages.length === 0)) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">User Flow</h1>
+          <p className="text-sm text-muted-foreground">Understand how visitors navigate through your site</p>
+        </div>
+        <div className="rounded-lg border bg-card p-12 text-center">
+          <h3 className="text-lg font-medium">Not enough data yet</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The user flow view needs pageview data with entry and exit pages.
+            Keep tracking to see how visitors navigate your site.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-      return generator({
-        nodes: data.nodes.map((d) => ({ ...d })),
-        links: data.links.map((d) => ({ ...d })),
-      });
-    } catch {
-      return null;
-    }
-  })() : null;
+  const entryItems = stats.entry_pages.slice(0, 8);
+  const pageItems = stats.top_pages.slice(0, 8);
+  const exitItems = stats.exit_pages.slice(0, 8);
+
+  const maxEntry = Math.max(...entryItems.map((p) => p.count), 1);
+  const maxPage = Math.max(...pageItems.map((p) => p.count), 1);
+  const maxExit = Math.max(...exitItems.map((p) => p.count), 1);
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">User Flow</h1>
-          <p className="text-sm text-muted-foreground">Navigation path analysis (Sankey diagram)</p>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">User Flow</h1>
+        <p className="text-sm text-muted-foreground">Understand how visitors navigate through your site</p>
+      </div>
+
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs font-medium text-muted-foreground">Total Sessions</p>
+          <p className="mt-1 text-2xl font-bold">{stats.sessions.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs font-medium text-muted-foreground">Total Pageviews</p>
+          <p className="mt-1 text-2xl font-bold">{stats.pageviews.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs font-medium text-muted-foreground">Pages / Session</p>
+          <p className="mt-1 text-2xl font-bold">
+            {stats.sessions > 0 ? (stats.pageviews / stats.sessions).toFixed(1) : '0'}
+          </p>
+        </div>
+        <div className="rounded-lg border bg-card p-4">
+          <p className="text-xs font-medium text-muted-foreground">Bounce Rate</p>
+          <p className="mt-1 text-2xl font-bold">{stats.bounce_rate}%</p>
         </div>
       </div>
 
-      {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
-      ) : !sankeyData ? (
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Insufficient Data</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            The Sankey diagram requires sufficient pageview data with multiple pages visited.
-            Keep tracking to accumulate enough session data.
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-lg border bg-card p-6 overflow-x-auto">
-          <svg ref={svgRef} width={width} height={height} className="mx-auto">
-            {/* Links */}
-            {sankeyData.links.map((link, i) => {
-              const path = sankeyLinkHorizontal()(link as any);
-              if (!path) return null;
-              const sNode = link.source as SankeyNode<FlowNode, FlowLink>;
-              return (
-                <path
-                  key={`link-${i}`}
-                  d={path}
-                  fill="none"
-                  stroke={COLORS[((sNode.index || 0) % COLORS.length)]}
-                  strokeOpacity={0.3}
-                  strokeWidth={Math.max(1, (link as any).width || 1)}
+      {/* Three-column flow */}
+      <div className="grid items-start gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
+        <FlowColumn
+          title="Entry Pages"
+          subtitle="Where visitors land"
+          icon="→"
+          items={entryItems}
+          maxCount={maxEntry}
+          color="#22c55e"
+          showMeta="entry"
+        />
+        <FlowArrow />
+        <FlowColumn
+          title="Top Pages"
+          subtitle="Most viewed content"
+          icon="◆"
+          items={pageItems}
+          maxCount={maxPage}
+          color="#6366f1"
+          showMeta="page"
+        />
+        <FlowArrow />
+        <FlowColumn
+          title="Exit Pages"
+          subtitle="Where visitors leave"
+          icon="←"
+          items={exitItems}
+          maxCount={maxExit}
+          color="#ef4444"
+          showMeta="exit"
+        />
+      </div>
+
+      {/* Insight: paths that are both entry & exit */}
+      {(() => {
+        const entrySet = new Set(entryItems.map((p) => p.path));
+        const exitSet = new Set(exitItems.map((p) => p.path));
+        const bouncePaths = [...entrySet].filter((p) => exitSet.has(p));
+        if (bouncePaths.length === 0) return null;
+
+        return (
+          <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-5">
+            <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+              Potential bounce pages
+            </h3>
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+              These pages appear in both entry and exit lists — visitors may be landing and leaving without exploring further.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {bouncePaths.map((path) => (
+                <span
+                  key={path}
+                  className="rounded-md border border-amber-200 dark:border-amber-700 bg-white dark:bg-amber-900/50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:text-amber-200"
                 >
-                  <title>
-                    {(link.source as SankeyNode<FlowNode, FlowLink>).name} → {(link.target as SankeyNode<FlowNode, FlowLink>).name}: {link.value}
-                  </title>
-                </path>
-              );
-            })}
-            {/* Nodes */}
-            {sankeyData.nodes.map((node, i) => {
-              const n = node as SankeyNode<FlowNode, FlowLink>;
-              const x0 = n.x0 || 0;
-              const x1 = n.x1 || 0;
-              const y0 = n.y0 || 0;
-              const y1 = n.y1 || 0;
-              return (
-                <g key={`node-${i}`}>
-                  <rect
-                    x={x0}
-                    y={y0}
-                    width={x1 - x0}
-                    height={Math.max(1, y1 - y0)}
-                    fill={COLORS[i % COLORS.length]}
-                    rx={2}
-                  >
-                    <title>{n.name}: {n.value}</title>
-                  </rect>
-                  <text
-                    x={x0 < width / 2 ? x1 + 6 : x0 - 6}
-                    y={(y0 + y1) / 2}
-                    dy="0.35em"
-                    textAnchor={x0 < width / 2 ? 'start' : 'end'}
-                    className="fill-foreground text-xs"
-                  >
-                    {n.name.length > 30 ? n.name.slice(0, 30) + '...' : n.name}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      )}
+                  {path}
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

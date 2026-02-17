@@ -41,9 +41,10 @@ export function PieChart({ data, height = 300 }: PieChartProps) {
           ))}
         </Pie>
         <Tooltip
-          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
+          contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: 8, fontSize: 12, color: 'var(--color-card-foreground)' }}
+          itemStyle={{ color: 'var(--color-foreground)' }}
         />
-        <Legend />
+        <Legend wrapperStyle={{ fontSize: '12px', color: 'var(--color-foreground)' }} />
       </RechartsPieChart>
     </ResponsiveContainer>
   );

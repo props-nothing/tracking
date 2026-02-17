@@ -1,6 +1,5 @@
 'use client';
 
-import { use } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 interface RevenueTimeSeriesProps {
@@ -21,31 +20,35 @@ export function RevenueTimeSeries({ data }: RevenueTimeSeriesProps) {
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
+            <stop offset="5%" stopColor="var(--color-chart-2)" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="var(--color-chart-2)" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
         <XAxis
           dataKey="date"
           tickFormatter={(v) => { const d = new Date(v); return `${d.getMonth() + 1}/${d.getDate()}`; }}
-          className="text-xs"
-          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+          fontSize={12}
+          tick={{ fill: 'var(--color-muted-foreground)' }}
+          stroke="var(--color-border)"
         />
-        <YAxis className="text-xs" tick={{ fill: 'hsl(var(--muted-foreground))' }} tickFormatter={(v) => `$${v}`} />
+        <YAxis fontSize={12} tick={{ fill: 'var(--color-muted-foreground)' }} stroke="var(--color-border)" tickFormatter={(v) => `$${v}`} />
         <Tooltip
           contentStyle={{
-            backgroundColor: 'hsl(var(--card))',
-            border: '1px solid hsl(var(--border))',
+            backgroundColor: 'var(--color-card)',
+            color: 'var(--color-card-foreground)',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             fontSize: '12px',
           }}
+          labelStyle={{ color: 'var(--color-foreground)' }}
           formatter={(value: number | undefined) => [`$${(value ?? 0).toFixed(2)}`, 'Revenue']}
         />
         <Area
           type="monotone"
           dataKey="revenue"
-          stroke="hsl(var(--chart-2))"
+          stroke="var(--color-chart-2)"
+          strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorRevenue)"
           name="Revenue"

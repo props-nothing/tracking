@@ -20,9 +20,9 @@ export function RetentionMatrix({ cohorts, periodLabel = 'Week' }: RetentionMatr
     if (pct >= 50) return 'bg-indigo-600 text-white';
     if (pct >= 30) return 'bg-indigo-500 text-white';
     if (pct >= 20) return 'bg-indigo-400 text-white';
-    if (pct >= 10) return 'bg-indigo-300';
-    if (pct > 0) return 'bg-indigo-200';
-    return 'bg-gray-100';
+    if (pct >= 10) return 'bg-indigo-300 dark:bg-indigo-700 dark:text-white';
+    if (pct > 0) return 'bg-indigo-200 dark:bg-indigo-800 dark:text-indigo-200';
+    return 'bg-muted text-muted-foreground';
   };
 
   return (
