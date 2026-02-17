@@ -1,21 +1,28 @@
-import { updateSession } from './lib/supabase/middleware';
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  // Only protect dashboard routes — check for Supabase auth cookie
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
+    // Supabase stores the session in cookies prefixed with sb-<ref>-auth-token
+    const hasAuthCookie = request.cookies
+      .getAll()
+      .some((c) => c.name.includes('-auth-token'));
+
+    if (!hasAuthCookie) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      return NextResponse.redirect(url);
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
-     * - api/collect (public ingest endpoint)
-     * - report (public shared reports)
-     * - embed (embeddable widgets)
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico, t.js
+     * Only match dashboard routes — no need to run middleware on public pages
      */
-    '/((?!api/collect|report|embed|_next/static|_next/image|favicon.ico|t.js).*)',
+    '/dashboard/:path*',
   ],
 };
