@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 
-function getDateRange(period: string) {
+function getDateRange(period: string, customFrom?: string | null, customTo?: string | null) {
   const now = new Date();
+
+  // Custom date range
+  if (period === 'custom' && customFrom) {
+    const from = new Date(customFrom);
+    const to = customTo ? new Date(customTo + 'T23:59:59.999Z') : now;
+    return { fromStr: from.toISOString(), toStr: to.toISOString() };
+  }
+
   let fromDate: Date;
   switch (period) {
     case 'today':
@@ -27,6 +35,40 @@ function getDateRange(period: string) {
       fromDate = new Date(now.getTime() - 30 * 86400000);
   }
   return { fromStr: fromDate.toISOString(), toStr: now.toISOString() };
+}
+
+// Parse filter params from search params
+interface QueryFilters {
+  page?: string;
+  country?: string;
+  browser?: string;
+  os?: string;
+  device?: string;
+  referrer?: string;
+}
+
+function parseFilters(searchParams: URLSearchParams): QueryFilters {
+  const f: QueryFilters = {};
+  for (const key of ['page', 'country', 'browser', 'os', 'device', 'referrer'] as const) {
+    const val = searchParams.get(key);
+    if (val) f[key] = val;
+  }
+  return f;
+}
+
+// Apply database-level filters to a Supabase query builder
+function applyDbFilters(query: any, filters: QueryFilters): any {
+  if (filters.country) query = query.eq('country_code', filters.country);
+  if (filters.browser) query = query.ilike('browser', `%${filters.browser}%`);
+  if (filters.os) query = query.ilike('os', `%${filters.os}%`);
+  if (filters.device) query = query.eq('device_type', filters.device);
+  if (filters.referrer) query = query.ilike('referrer_hostname', `%${filters.referrer}%`);
+  if (filters.page) {
+    // Support wildcard: /blog/* → ilike '/blog/%'
+    const pattern = filters.page.replace(/\*/g, '%');
+    query = query.ilike('path', pattern);
+  }
+  return query;
 }
 
 function countBy<T>(arr: T[], keyFn: (item: T) => string | null | undefined) {
@@ -79,17 +121,22 @@ export async function GET(request: NextRequest) {
 
   // Use service client for data queries (auth already verified above)
   const db = await createServiceClient();
-  const { fromStr, toStr } = getDateRange(period);
+  const customFrom = searchParams.get('from');
+  const customTo = searchParams.get('to');
+  const { fromStr, toStr } = getDateRange(period, customFrom, customTo);
+  const filters = parseFilters(searchParams);
 
   // --- Ecommerce metric ---
   if (metric === 'ecommerce') {
-    const { data: events } = await db
+    let ecomQuery = db
       .from('events')
       .select('event_type, ecommerce_action, order_id, revenue, ecommerce_items, timestamp')
       .eq('site_id', siteId)
       .eq('event_type', 'ecommerce')
       .gte('timestamp', fromStr)
       .lte('timestamp', toStr);
+    ecomQuery = applyDbFilters(ecomQuery, filters);
+    const { data: events } = await ecomQuery;
 
     const evts = events || [];
     const purchases = evts.filter((e) => e.ecommerce_action === 'purchase');
@@ -134,7 +181,7 @@ export async function GET(request: NextRequest) {
 
   // --- Errors metric ---
   if (metric === 'errors') {
-    const { data: events } = await db
+    let errQuery = db
       .from('events')
       .select('error_message, error_source, error_line, timestamp')
       .eq('site_id', siteId)
@@ -142,6 +189,8 @@ export async function GET(request: NextRequest) {
       .gte('timestamp', fromStr)
       .lte('timestamp', toStr)
       .order('timestamp', { ascending: false });
+    errQuery = applyDbFilters(errQuery, filters);
+    const { data: events } = await errQuery;
 
     const evts = events || [];
     const errorMap: Record<string, { error_message: string; error_source: string; error_line: number | null; count: number; last_seen: string }> = {};
@@ -168,7 +217,7 @@ export async function GET(request: NextRequest) {
 
   // --- Events (custom) metric ---
   if (metric === 'events') {
-    const { data: events } = await db
+    let evtQuery = db
       .from('events')
       .select('event_name, event_data, visitor_hash, path, timestamp')
       .eq('site_id', siteId)
@@ -176,6 +225,8 @@ export async function GET(request: NextRequest) {
       .gte('timestamp', fromStr)
       .lte('timestamp', toStr)
       .order('timestamp', { ascending: false });
+    evtQuery = applyDbFilters(evtQuery, filters);
+    const { data: events } = await evtQuery;
 
     const evts = events || [];
     const eventMap: Record<string, { count: number; visitors: Set<string> }> = {};
@@ -266,12 +317,14 @@ export async function GET(request: NextRequest) {
   // --- Default: overview stats ---
   const selectFields = 'event_type, event_name, visitor_hash, session_id, path, referrer_hostname, country_code, city, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, utm_source, utm_medium, utm_campaign, time_on_page_ms, timestamp';
 
-  const { data: events } = await db
+  let eventsQuery = db
     .from('events')
     .select(selectFields)
     .eq('site_id', siteId)
     .gte('timestamp', fromStr)
     .lte('timestamp', toStr);
+  eventsQuery = applyDbFilters(eventsQuery, filters);
+  const { data: events } = await eventsQuery;
 
   // Also fetch sessions for reliable exit_path and duration
   const { data: sessions } = await db

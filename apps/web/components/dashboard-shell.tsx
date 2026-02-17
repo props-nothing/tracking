@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { ActiveVisitorsBadge } from '@/components/active-visitors-badge';
 import { DarkModeToggle } from '@/components/dark-mode-toggle';
+import { SiteSwitcher } from '@/components/site-switcher';
+import type { Site } from '@/hooks/use-site';
 
 const navItems = [
   { href: '', label: 'Overview', icon: '📊' },
@@ -34,9 +36,12 @@ interface DashboardShellProps {
   children: React.ReactNode;
 }
 
-export function DashboardShell({ userEmail, children }: DashboardShellProps) {
+function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sites, setSites] = useState<Site[]>([]);
 
   // Extract siteId from path: /dashboard/[siteId]/...
   const pathParts = pathname.split('/');
@@ -47,6 +52,14 @@ export function DashboardShell({ userEmail, children }: DashboardShellProps) {
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // Fetch user's sites for switcher
+  useEffect(() => {
+    fetch('/api/sites')
+      .then((r) => r.json())
+      .then((data) => setSites(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,6 +81,13 @@ export function DashboardShell({ userEmail, children }: DashboardShellProps) {
             <Link href="/dashboard" className="text-lg font-bold">
               Tracking
             </Link>
+            {isOnSite && sites.length > 1 && (
+              <SiteSwitcher
+                sites={sites}
+                currentSiteId={siteId}
+                onSelect={(id) => router.push(`/dashboard/${id}`)}
+              />
+            )}
             {isOnSite && <ActiveVisitorsBadge siteId={siteId} />}
           </div>
           <div className="flex items-center gap-3">
@@ -103,7 +123,8 @@ export function DashboardShell({ userEmail, children }: DashboardShellProps) {
             >
               <nav className="p-3 space-y-0.5">
                 {navItems.map((item) => {
-                  const href = `/dashboard/${siteId}${item.href}`;
+                  const qs = searchParams.toString();
+                  const href = `/dashboard/${siteId}${item.href}${qs ? '?' + qs : ''}`;
                   const isActive =
                     item.href === ''
                       ? pathname === `/dashboard/${siteId}`
@@ -135,5 +156,13 @@ export function DashboardShell({ userEmail, children }: DashboardShellProps) {
         </main>
       </div>
     </div>
+  );
+}
+
+export function DashboardShell(props: DashboardShellProps) {
+  return (
+    <Suspense>
+      <DashboardShellInner {...props} />
+    </Suspense>
   );
 }

@@ -1,15 +1,14 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { MetricCard } from '@/components/metric-card';
 import { DataTable } from '@/components/tables/data-table';
 import { RevenueTimeSeries } from '@/components/charts/revenue-time-series';
 
 export default function EcommercePage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [data, setData] = useState<{
     total_revenue: number;
     total_orders: number;
@@ -21,14 +20,14 @@ export default function EcommercePage({ params }: { params: Promise<{ siteId: st
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}&metric=ecommerce`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=ecommerce`)
       .then((res) => res.json())
       .then((d) => {
         setData(d);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -37,7 +36,6 @@ export default function EcommercePage({ params }: { params: Promise<{ siteId: st
           <h1 className="text-2xl font-bold tracking-tight">E-commerce</h1>
           <p className="text-sm text-muted-foreground">Revenue, orders, and product analytics</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

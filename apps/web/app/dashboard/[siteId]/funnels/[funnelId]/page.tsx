@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { FunnelChart } from '@/components/charts/funnel-chart';
 
 interface FunnelData {
@@ -16,20 +15,20 @@ export default function FunnelDetailPage({
   params: Promise<{ siteId: string; funnelId: string }>;
 }) {
   const { siteId, funnelId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [data, setData] = useState<FunnelData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/funnels/${funnelId}/stats?site_id=${siteId}&period=${period}`)
+    fetch(`/api/funnels/${funnelId}/stats?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
       .then((d) => {
         setData(d);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [funnelId, siteId, period]);
+  }, [funnelId, siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -38,7 +37,6 @@ export default function FunnelDetailPage({
           <h1 className="text-2xl font-bold tracking-tight">{data?.funnel.name || 'Funnel'}</h1>
           <p className="text-sm text-muted-foreground">{data?.funnel.description}</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

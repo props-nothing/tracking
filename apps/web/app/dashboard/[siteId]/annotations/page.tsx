@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 
 interface Annotation {
   id: string;
@@ -14,7 +13,7 @@ interface Annotation {
 
 export default function AnnotationsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { period, queryString } = useDashboard();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -24,7 +23,7 @@ export default function AnnotationsPage({ params }: { params: Promise<{ siteId: 
 
   const fetchAnnotations = () => {
     setLoading(true);
-    fetch(`/api/annotations?site_id=${siteId}&period=${period}`)
+    fetch(`/api/annotations?site_id=${siteId}&${queryString}`)
       .then((r) => r.json())
       .then((d) => {
         setAnnotations(d.annotations || []);
@@ -33,7 +32,7 @@ export default function AnnotationsPage({ params }: { params: Promise<{ siteId: 
       .catch(() => setLoading(false));
   };
 
-  useEffect(fetchAnnotations, [siteId, period]);
+  useEffect(fetchAnnotations, [siteId, queryString]);
 
   const handleCreate = async () => {
     setCreating(true);
@@ -60,15 +59,12 @@ export default function AnnotationsPage({ params }: { params: Promise<{ siteId: 
           <h1 className="text-2xl font-bold tracking-tight">Annotations</h1>
           <p className="text-sm text-muted-foreground">Mark important events on your analytics timeline</p>
         </div>
-        <div className="flex items-center gap-3">
-          <DateRangePicker period={period} onPeriodChange={setPeriod} />
-          <button
-            onClick={() => setShowCreate(!showCreate)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Add Annotation
-          </button>
-        </div>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Add Annotation
+        </button>
       </div>
 
       {showCreate && (

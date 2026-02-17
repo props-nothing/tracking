@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState, useRef, useCallback } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { sankey, sankeyLinkHorizontal, SankeyNode, SankeyLink } from 'd3-sankey';
 
 interface FlowNode {
@@ -28,14 +27,14 @@ const COLORS = [
 
 export default function FlowPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [data, setData] = useState<SankeyData | null>(null);
   const [loading, setLoading] = useState(true);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
       .then((stats) => {
         // Build flow data from top pages (sessions entry → pages → exit pattern)
@@ -102,7 +101,7 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   const width = 800;
   const height = 500;
@@ -131,7 +130,6 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
           <h1 className="text-2xl font-bold tracking-tight">User Flow</h1>
           <p className="text-sm text-muted-foreground">Navigation path analysis (Sankey diagram)</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

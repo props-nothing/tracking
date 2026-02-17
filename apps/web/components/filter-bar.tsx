@@ -1,20 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-
-export interface Filters {
-  page?: string;
-  country?: string;
-  browser?: string;
-  os?: string;
-  device?: string;
-  referrer?: string;
-}
-
-interface FilterBarProps {
-  filters: Filters;
-  onChange: (filters: Filters) => void;
-}
+import { useDashboard, type Filters } from '@/hooks/use-dashboard-context';
 
 const filterFields: { key: keyof Filters; label: string; placeholder: string }[] = [
   { key: 'page', label: 'Page', placeholder: '/blog/*' },
@@ -25,18 +12,11 @@ const filterFields: { key: keyof Filters; label: string; placeholder: string }[]
   { key: 'referrer', label: 'Referrer', placeholder: 'google.com' },
 ];
 
-export function FilterBar({ filters, onChange }: FilterBarProps) {
+export type { Filters };
+
+export function FilterBar() {
+  const { filters, updateFilter, clearFilters, activeFilterCount } = useDashboard();
   const [open, setOpen] = useState(false);
-  const activeCount = Object.values(filters).filter(Boolean).length;
-
-  const updateFilter = (key: keyof Filters, value: string) => {
-    onChange({ ...filters, [key]: value || undefined });
-  };
-
-  const clearAll = () => {
-    onChange({});
-    setOpen(false);
-  };
 
   return (
     <div className="space-y-2">
@@ -44,7 +24,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
         <button
           onClick={() => setOpen(!open)}
           className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
-            activeCount > 0
+            activeFilterCount > 0
               ? 'border-primary/50 bg-primary/5 text-primary'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
@@ -53,12 +33,12 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
             <path d="M1 2h12M3 5h8M5 8h4M6 11h2" />
           </svg>
           Filters
-          {activeCount > 0 && (
-            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">{activeCount}</span>
+          {activeFilterCount > 0 && (
+            <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] text-primary-foreground">{activeFilterCount}</span>
           )}
         </button>
-        {activeCount > 0 && (
-          <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-foreground">
+        {activeFilterCount > 0 && (
+          <button onClick={() => { clearFilters(); setOpen(false); }} className="text-xs text-muted-foreground hover:text-foreground">
             Clear all
           </button>
         )}

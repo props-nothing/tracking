@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { DataTable } from '@/components/tables/data-table';
 
 interface PageData {
@@ -15,7 +14,7 @@ interface PageData {
 
 export default function PagesPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [pages, setPages] = useState<PageData[]>([]);
   const [entryPages, setEntryPages] = useState<{ path: string; count: number }[]>([]);
   const [exitPages, setExitPages] = useState<{ path: string; count: number }[]>([]);
@@ -23,7 +22,7 @@ export default function PagesPage({ params }: { params: Promise<{ siteId: string
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
       .then((data) => {
         setPages(data.top_pages || []);
@@ -32,7 +31,7 @@ export default function PagesPage({ params }: { params: Promise<{ siteId: string
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -41,7 +40,6 @@ export default function PagesPage({ params }: { params: Promise<{ siteId: string
           <h1 className="text-2xl font-bold tracking-tight">Pages</h1>
           <p className="text-sm text-muted-foreground">Top pages, entry pages, and exit pages</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (
@@ -58,6 +56,7 @@ export default function PagesPage({ params }: { params: Promise<{ siteId: string
               { key: 'bounce_rate', label: 'Bounce %', align: 'right' as const },
             ]}
             data={pages}
+            searchable
           />
 
           <div className="grid gap-6 lg:grid-cols-2">

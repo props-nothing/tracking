@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { RetentionMatrix } from '@/components/charts/retention-matrix';
 
 interface CohortData {
@@ -11,25 +12,28 @@ interface CohortData {
 
 export default function RetentionPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
+  const { queryString } = useDashboard();
   const [cohorts, setCohorts] = useState<CohortData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Fetch retention data from stats API
-    fetch(`/api/stats?site_id=${siteId}&period=last_90_days&metric=retention`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=retention`)
       .then((res) => res.json())
       .then((data) => {
         setCohorts(data.cohorts || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Retention</h1>
-        <p className="text-sm text-muted-foreground">Returning visitor cohort analysis</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Retention</h1>
+          <p className="text-sm text-muted-foreground">Returning visitor cohort analysis</p>
+        </div>
       </div>
 
       {loading ? (

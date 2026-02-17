@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { MetricCard } from '@/components/metric-card';
 import { BarChart } from '@/components/charts/bar-chart';
 
@@ -16,14 +15,14 @@ interface FormData {
 
 export default function FormsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [forms, setForms] = useState<FormData[]>([]);
   const [abandonFields, setAbandonFields] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/forms?site_id=${siteId}`)
+    fetch(`/api/forms?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
       .then((data) => {
         setForms(data.forms || []);
@@ -31,7 +30,7 @@ export default function FormsPage({ params }: { params: Promise<{ siteId: string
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId]);
+  }, [siteId, queryString]);
 
   const totalSubmissions = forms.reduce((s, f) => s + (f.submissions || 0), 0);
   const totalAbandonment = forms.reduce((s, f) => s + (f.abandonments || 0), 0);
@@ -46,7 +45,6 @@ export default function FormsPage({ params }: { params: Promise<{ siteId: string
           <h1 className="text-2xl font-bold tracking-tight">Form Analytics</h1>
           <p className="text-sm text-muted-foreground">Submissions, abandonment, and field-level analytics</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { MetricCard } from '@/components/metric-card';
 import Link from 'next/link';
 
@@ -17,7 +16,7 @@ interface Goal {
 
 export default function GoalsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,15 +37,12 @@ export default function GoalsPage({ params }: { params: Promise<{ siteId: string
           <h1 className="text-2xl font-bold tracking-tight">Goals</h1>
           <p className="text-sm text-muted-foreground">Conversion goals and tracking</p>
         </div>
-        <div className="flex items-center gap-3">
-          <DateRangePicker period={period} onPeriodChange={setPeriod} />
-          <Link
-            href={`/dashboard/${siteId}/goals/new`}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            New Goal
-          </Link>
-        </div>
+        <Link
+          href={`/dashboard/${siteId}/goals/new`}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          New Goal
+        </Link>
       </div>
 
       {loading ? (

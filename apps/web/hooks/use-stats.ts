@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Period } from './use-date-range';
 
 export interface Stats {
   pageviews: number;
@@ -26,7 +25,13 @@ export interface Stats {
   timeseries: { date: string; pageviews: number; visitors: number }[];
 }
 
-export function useStats(siteId: string | null, period: Period) {
+/**
+ * Fetch stats using the full query string from DashboardContext.
+ * @param siteId - The site ID
+ * @param queryString - Pre-built query string with period, from, to, and all filters
+ * @param metric - Optional metric type (ecommerce, errors, events, retention)
+ */
+export function useStats(siteId: string | null, queryString: string, metric?: string) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -34,14 +39,17 @@ export function useStats(siteId: string | null, period: Period) {
     if (!siteId) return;
     setLoading(true);
 
-    fetch(`/api/stats?site_id=${siteId}&period=${period}`)
+    let url = `/api/stats?site_id=${siteId}&${queryString}`;
+    if (metric) url += `&metric=${metric}`;
+
+    fetch(url)
       .then((res) => res.json())
       .then((data) => {
         setStats(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString, metric]);
 
   return { stats, loading };
 }

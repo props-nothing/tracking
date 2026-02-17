@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { DataTable } from '@/components/tables/data-table';
 
 interface EventRow {
@@ -13,7 +12,7 @@ interface EventRow {
 
 export default function EventsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [events, setEvents] = useState<EventRow[]>([]);
   const [recentEvents, setRecentEvents] = useState<{
     event_name: string;
@@ -25,7 +24,7 @@ export default function EventsPage({ params }: { params: Promise<{ siteId: strin
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}&metric=events`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=events`)
       .then((res) => res.json())
       .then((data) => {
         setEvents(data.custom_events || []);
@@ -33,7 +32,7 @@ export default function EventsPage({ params }: { params: Promise<{ siteId: strin
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -42,7 +41,6 @@ export default function EventsPage({ params }: { params: Promise<{ siteId: strin
           <h1 className="text-2xl font-bold tracking-tight">Custom Events</h1>
           <p className="text-sm text-muted-foreground">Custom events fired via tracking API</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

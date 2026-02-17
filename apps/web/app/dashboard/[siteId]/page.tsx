@@ -1,15 +1,13 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use } from 'react';
 import { useSite } from '@/hooks/use-site';
 import { useStats } from '@/hooks/use-stats';
-import { useDateRange } from '@/hooks/use-date-range';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { MetricCard } from '@/components/metric-card';
-import { DateRangePicker } from '@/components/date-range-picker';
 import { TimeSeries } from '@/components/charts/time-series';
 import { DataTable } from '@/components/tables/data-table';
 import { ExportBar } from '@/components/export-bar';
-import { FilterBar, type Filters } from '@/components/filter-bar';
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -33,9 +31,8 @@ export default function SiteDashboardPage({
 }) {
   const { siteId } = use(params);
   const { site, loading: siteLoading } = useSite(siteId);
-  const { period, setPeriod, customFrom, setCustomFrom, customTo, setCustomTo } = useDateRange();
-  const { stats, loading: statsLoading } = useStats(siteId, period);
-  const [filters, setFilters] = useState<Filters>({});
+  const { period, queryString } = useDashboard();
+  const { stats, loading: statsLoading } = useStats(siteId, queryString);
 
   if (siteLoading) {
     return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
@@ -49,17 +46,8 @@ export default function SiteDashboardPage({
           <h1 className="text-2xl font-bold tracking-tight">{site?.name || 'Site Analytics'}</h1>
           <p className="text-sm text-muted-foreground">{site?.domain}</p>
         </div>
-        <DateRangePicker
-          period={period}
-          onPeriodChange={setPeriod}
-          customFrom={customFrom}
-          customTo={customTo}
-          onCustomFromChange={setCustomFrom}
-          onCustomToChange={setCustomTo}
-        />
       </div>
 
-      <FilterBar filters={filters} onChange={setFilters} />
       <ExportBar siteId={siteId} period={period} />
 
       {statsLoading ? (

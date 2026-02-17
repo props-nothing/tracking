@@ -1,21 +1,20 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { DataTable } from '@/components/tables/data-table';
 import { BarChart } from '@/components/charts/bar-chart';
 
 export default function GeoPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [countries, setCountries] = useState<{ country: string; count: number }[]>([]);
   const [cities, setCities] = useState<{ city: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
       .then((data) => {
         setCountries(data.top_countries || []);
@@ -23,7 +22,7 @@ export default function GeoPage({ params }: { params: Promise<{ siteId: string }
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -32,7 +31,6 @@ export default function GeoPage({ params }: { params: Promise<{ siteId: string }
           <h1 className="text-2xl font-bold tracking-tight">Geography</h1>
           <p className="text-sm text-muted-foreground">Visitors by location</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

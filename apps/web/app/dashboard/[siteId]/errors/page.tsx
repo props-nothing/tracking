@@ -1,8 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { MetricCard } from '@/components/metric-card';
 
 interface ErrorRow {
@@ -15,14 +14,14 @@ interface ErrorRow {
 
 export default function ErrorsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [errors, setErrors] = useState<ErrorRow[]>([]);
   const [totalErrors, setTotalErrors] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}&metric=errors`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=errors`)
       .then((res) => res.json())
       .then((data) => {
         setErrors(data.errors || []);
@@ -30,7 +29,7 @@ export default function ErrorsPage({ params }: { params: Promise<{ siteId: strin
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -39,7 +38,6 @@ export default function ErrorsPage({ params }: { params: Promise<{ siteId: strin
           <h1 className="text-2xl font-bold tracking-tight">JS Errors</h1>
           <p className="text-sm text-muted-foreground">JavaScript error tracking</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Period } from '@/hooks/use-date-range';
+import { useDashboard, type Period } from '@/hooks/use-dashboard-context';
+
+export type { Period };
 
 const periods: { value: Period; label: string }[] = [
   { value: 'today', label: 'Today' },
@@ -13,23 +15,8 @@ const periods: { value: Period; label: string }[] = [
   { value: 'custom', label: 'Custom' },
 ];
 
-interface DateRangePickerProps {
-  period: Period;
-  onPeriodChange: (period: Period) => void;
-  customFrom?: string;
-  customTo?: string;
-  onCustomFromChange?: (v: string) => void;
-  onCustomToChange?: (v: string) => void;
-}
-
-export function DateRangePicker({
-  period,
-  onPeriodChange,
-  customFrom,
-  customTo,
-  onCustomFromChange,
-  onCustomToChange,
-}: DateRangePickerProps) {
+export function DateRangePicker() {
+  const { period, setPeriod, customFrom, customTo, setCustomFrom, setCustomTo } = useDashboard();
   const [showCustom, setShowCustom] = useState(period === 'custom');
 
   const handlePeriodClick = (p: Period) => {
@@ -38,7 +25,7 @@ export function DateRangePicker({
     } else {
       setShowCustom(false);
     }
-    onPeriodChange(p);
+    setPeriod(p);
   };
 
   return (
@@ -63,14 +50,14 @@ export function DateRangePicker({
           <input
             type="date"
             value={customFrom || ''}
-            onChange={(e) => onCustomFromChange?.(e.target.value)}
+            onChange={(e) => setCustomFrom(e.target.value)}
             className="rounded-md border bg-transparent px-2 py-1.5 text-xs"
           />
           <span className="text-xs text-muted-foreground">to</span>
           <input
             type="date"
             value={customTo || ''}
-            onChange={(e) => onCustomToChange?.(e.target.value)}
+            onChange={(e) => setCustomTo(e.target.value)}
             className="rounded-md border bg-transparent px-2 py-1.5 text-xs"
           />
         </div>

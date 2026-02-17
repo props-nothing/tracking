@@ -1,13 +1,12 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { DataTable } from '@/components/tables/data-table';
 
 export default function ReferrersPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [referrers, setReferrers] = useState<{ source: string; count: number }[]>([]);
   const [utmSources, setUtmSources] = useState<{ source: string; count: number }[]>([]);
   const [utmMediums, setUtmMediums] = useState<{ medium: string; count: number }[]>([]);
@@ -16,7 +15,7 @@ export default function ReferrersPage({ params }: { params: Promise<{ siteId: st
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
       .then((data) => {
         setReferrers(data.top_referrers || []);
@@ -26,7 +25,7 @@ export default function ReferrersPage({ params }: { params: Promise<{ siteId: st
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -35,7 +34,6 @@ export default function ReferrersPage({ params }: { params: Promise<{ siteId: st
           <h1 className="text-2xl font-bold tracking-tight">Referrers</h1>
           <p className="text-sm text-muted-foreground">Traffic sources and UTM campaigns</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (

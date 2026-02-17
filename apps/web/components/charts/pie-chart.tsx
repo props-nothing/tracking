@@ -41,7 +41,7 @@ export function PieChart({ data, height = 300 }: PieChartProps) {
           ))}
         </Pie>
         <Tooltip
-          contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 12 }}
+          contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12, color: 'hsl(var(--foreground))' }}
         />
         <Legend />
       </RechartsPieChart>

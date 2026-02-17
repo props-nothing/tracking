@@ -1,14 +1,13 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { useDateRange } from '@/hooks/use-date-range';
-import { DateRangePicker } from '@/components/date-range-picker';
+import { useDashboard } from '@/hooks/use-dashboard-context';
 import { DataTable } from '@/components/tables/data-table';
 import { PieChart } from '@/components/charts/pie-chart';
 
 export default function DevicesPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, setPeriod } = useDateRange();
+  const { queryString } = useDashboard();
   const [browsers, setBrowsers] = useState<{ browser: string; count: number }[]>([]);
   const [os, setOs] = useState<{ os: string; count: number }[]>([]);
   const [devices, setDevices] = useState<{ device: string; count: number }[]>([]);
@@ -16,7 +15,7 @@ export default function DevicesPage({ params }: { params: Promise<{ siteId: stri
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&period=${period}`)
+    fetch(`/api/stats?site_id=${siteId}&${queryString}`)
       .then((res) => res.json())
       .then((data) => {
         setBrowsers(data.top_browsers || []);
@@ -25,7 +24,7 @@ export default function DevicesPage({ params }: { params: Promise<{ siteId: stri
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, period]);
+  }, [siteId, queryString]);
 
   return (
     <div className="space-y-8">
@@ -34,7 +33,6 @@ export default function DevicesPage({ params }: { params: Promise<{ siteId: stri
           <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
           <p className="text-sm text-muted-foreground">Browsers, operating systems, and device types</p>
         </div>
-        <DateRangePicker period={period} onPeriodChange={setPeriod} />
       </div>
 
       {loading ? (
