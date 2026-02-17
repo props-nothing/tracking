@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
     // 7. Parse user-agent
     const ua = parseUserAgent(userAgent);
 
-    // 8. Geo-locate IP
-    const geo = await geolocate(ip);
+    // 8. Geo-locate IP (uses Vercel/Cloudflare headers first, then MaxMind)
+    const geo = await geolocate(ip, request);
 
     // 9. Generate visitor hash
     const screenRes = `${data.screen_width || 0}x${data.screen_height || 0}`;
