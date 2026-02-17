@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Trace dependencies from monorepo root for proper serverless bundling
+  outputFileTracingRoot: "../../",
 };
 
 export default nextConfig;
