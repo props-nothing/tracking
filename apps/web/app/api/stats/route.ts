@@ -273,6 +273,14 @@ export async function GET(request: NextRequest) {
     .gte('timestamp', fromStr)
     .lte('timestamp', toStr);
 
+  // Also fetch sessions for reliable exit_path and duration
+  const { data: sessions } = await db
+    .from('sessions')
+    .select('id, exit_path, duration_ms, is_bounce')
+    .eq('site_id', siteId)
+    .gte('started_at', fromStr)
+    .lte('started_at', toStr);
+
   if (!events) {
     return NextResponse.json({
       pageviews: 0, unique_visitors: 0, sessions: 0,
@@ -298,6 +306,12 @@ export async function GET(request: NextRequest) {
     ? Math.round(engagedTimes.reduce((a, b) => a + b, 0) / engagedTimes.length)
     : 0;
 
+  // Avg session duration from sessions table (more reliable than event-level timing)
+  const sessionDurations = (sessions || []).filter((s) => s.duration_ms > 0).map((s) => s.duration_ms);
+  const avgSessionDuration = sessionDurations.length > 0
+    ? Math.round(sessionDurations.reduce((a: number, b: number) => a + b, 0) / sessionDurations.length)
+    : avgEngagedTime;
+
   // Top pages (enriched with unique_visitors, avg_time, bounce_rate)
   const pageGroups: Record<string, { count: number; visitors: Set<string>; times: number[]; bounces: number; sessions: Set<string> }> = {};
   for (const e of pvEvents) {
@@ -307,6 +321,7 @@ export async function GET(request: NextRequest) {
     pg.visitors.add(e.visitor_hash);
     pg.sessions.add(e.session_id);
     if (e.time_on_page_ms) pg.times.push(e.time_on_page_ms);
+    else if (e.engaged_time_ms) pg.times.push(e.engaged_time_ms);
     if (e.is_bounce) pg.bounces++;
   }
   const topPages = Object.entries(pageGroups)
@@ -326,9 +341,10 @@ export async function GET(request: NextRequest) {
     (e) => e.path
   ).slice(0, 10).map(([path, count]) => ({ path, count }));
 
+  // Exit pages from sessions table (is_exit on events is unreliable)
   const exitPages = countBy(
-    events.filter((e) => e.is_exit),
-    (e) => e.path
+    (sessions || []).filter((s) => s.exit_path),
+    (s) => s.exit_path
   ).slice(0, 10).map(([path, count]) => ({ path, count }));
 
   // Referrers
@@ -381,7 +397,7 @@ export async function GET(request: NextRequest) {
     pageviews,
     unique_visitors: uniqueVisitors,
     sessions: uniqueSessions,
-    avg_session_duration: avgEngagedTime,
+    avg_session_duration: avgSessionDuration,
     bounce_rate: bounceRate,
     views_per_session: viewsPerSession,
     avg_engaged_time: avgEngagedTime,

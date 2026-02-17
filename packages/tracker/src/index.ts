@@ -116,6 +116,32 @@ declare global {
   // ── Send initial pageview ───────────────────────────────────
   emitEvent({ event_type: 'pageview' });
 
+  // ── Detect 404 pages ────────────────────────────────────────
+  // Client-side heuristic: check title, meta tags, and common 404 indicators
+  (function detect404() {
+    const title = (document.title || '').toLowerCase();
+    const metaStatus = document.querySelector('meta[name="status-code"]')?.getAttribute('content');
+    const body = document.body?.innerText?.slice(0, 500).toLowerCase() || '';
+
+    const is404 =
+      metaStatus === '404' ||
+      /\b404\b/.test(title) ||
+      /page not found|not found|pagina niet gevonden/.test(title) ||
+      (document.querySelector('[data-404]') !== null);
+
+    if (is404) {
+      emitEvent({
+        event_type: 'custom',
+        event_name: '404',
+        event_data: {
+          path: window.location.pathname,
+          referrer: document.referrer || null,
+          title: document.title,
+        },
+      });
+    }
+  })();
+
   // ── Web Vitals ──────────────────────────────────────────────
   observeVitals();
 
