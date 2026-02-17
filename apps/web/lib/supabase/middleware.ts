@@ -30,13 +30,11 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refreshing the auth token
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
 
   // Protect dashboard routes
   if (
-    !user &&
+    !session &&
     request.nextUrl.pathname.startsWith('/dashboard')
   ) {
     const url = request.nextUrl.clone();
