@@ -37,7 +37,7 @@ export async function GET(
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
     if (hash !== report.password_hash) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid password' }, { status: 403 });
     }
   }
 
@@ -64,8 +64,21 @@ export async function GET(
     .gte('timestamp', fromDate.toISOString())
     .lte('timestamp', now.toISOString());
 
-  if (!events) {
-    return NextResponse.json({ report: { title: report.title, description: report.description }, data: null });
+  if (!events || events.length === 0) {
+    return NextResponse.json({
+      site_name: (report as any).sites?.name,
+      site_domain: (report as any).sites?.domain,
+      report_name: report.title,
+      description: report.description,
+      logo_url: report.logo_url,
+      brand_color: report.brand_color,
+      metrics: { visitors: 0, pageviews: 0, sessions: 0, bounce_rate: 0, views_per_session: 0, avg_duration: 0 },
+      timeseries: [],
+      top_pages: [],
+      top_referrers: [],
+      browsers: [],
+      countries: [],
+    });
   }
 
   const pageviews = events.filter((e) => e.event_type === 'pageview').length;
@@ -78,21 +91,25 @@ export async function GET(
   const hiddenMetrics = new Set(report.hidden_metrics || []);
   const visibleSections = new Set(report.visible_sections || []);
 
+  // Calculate avg duration from engaged_time_ms
+  const totalEngaged = events.reduce((sum, e) => sum + (e.engaged_time_ms || 0), 0);
+  const avgDuration = sessions > 0 ? Math.round(totalEngaged / sessions / 1000) : 0;
+
   const result: Record<string, unknown> = {
-    report: {
-      title: report.title,
-      description: report.description,
-      logo_url: report.logo_url,
-      brand_color: report.brand_color,
-      site_name: (report as any).sites?.name,
-      site_domain: (report as any).sites?.domain,
-    },
+    // Flat fields expected by the report page
+    site_name: (report as any).sites?.name,
+    site_domain: (report as any).sites?.domain,
+    report_name: report.title,
+    description: report.description,
+    logo_url: report.logo_url,
+    brand_color: report.brand_color,
     metrics: {
       ...(hiddenMetrics.has('pageviews') ? {} : { pageviews }),
-      ...(hiddenMetrics.has('unique_visitors') ? {} : { unique_visitors: uniqueVisitors }),
+      ...(hiddenMetrics.has('unique_visitors') ? {} : { visitors: uniqueVisitors }),
       ...(hiddenMetrics.has('sessions') ? {} : { sessions }),
       ...(hiddenMetrics.has('bounce_rate') ? {} : { bounce_rate: bounceRate }),
       ...(hiddenMetrics.has('views_per_session') ? {} : { views_per_session: viewsPerSession }),
+      avg_duration: avgDuration,
     },
   };
 
@@ -104,7 +121,7 @@ export async function GET(
     });
     result.top_pages = Object.entries(pageCounts)
       .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([path, count]) => ({ path, count }));
+      .map(([path, views]) => ({ path, views }));
   }
 
   if (visibleSections.has('referrers') || visibleSections.size === 0) {
@@ -114,7 +131,7 @@ export async function GET(
     });
     result.top_referrers = Object.entries(refCounts)
       .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([source, count]) => ({ source, count }));
+      .map(([source, visitors]) => ({ source, visitors }));
   }
 
   if (visibleSections.has('countries') || visibleSections.size === 0) {
@@ -124,7 +141,42 @@ export async function GET(
     });
     result.top_countries = Object.entries(countryCounts)
       .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([country, count]) => ({ country, count }));
+      .map(([name, visitors]) => ({ name, visitors }));
+  }
+
+  // Browsers (used by pie chart on report page)
+  if (visibleSections.has('devices') || visibleSections.size === 0) {
+    const browserCounts: Record<string, number> = {};
+    events.filter((e) => e.browser).forEach((e) => {
+      browserCounts[e.browser!] = (browserCounts[e.browser!] || 0) + 1;
+    });
+    result.browsers = Object.entries(browserCounts)
+      .sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([name, value]) => ({ name, value }));
+  }
+
+  // Timeseries (daily visitors + pageviews)
+  if (visibleSections.has('chart') || visibleSections.size === 0) {
+    const dayMap: Record<string, { visitors: Set<string>; pageviews: number }> = {};
+    events.forEach((e) => {
+      const day = new Date(e.timestamp).toISOString().slice(0, 10);
+      if (!dayMap[day]) dayMap[day] = { visitors: new Set(), pageviews: 0 };
+      dayMap[day].visitors.add(e.visitor_hash);
+      if (e.event_type === 'pageview') dayMap[day].pageviews++;
+    });
+    result.timeseries = Object.entries(dayMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, d]) => ({ date, visitors: d.visitors.size, pageviews: d.pageviews }));
+  }
+
+  // Rename fields for embed format compatibility
+  if (request.nextUrl.searchParams.get('format') === 'embed') {
+    const m = result.metrics as Record<string, unknown>;
+    return NextResponse.json({
+      visitors: m?.visitors ?? 0,
+      pageviews: m?.pageviews ?? 0,
+      timeseries: result.timeseries ?? [],
+    });
   }
 
   return NextResponse.json(result);

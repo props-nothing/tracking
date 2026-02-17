@@ -67,7 +67,6 @@ export async function POST(request: NextRequest) {
     insertData.password_hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  const db = await createServiceClient();
   const dbPost = await createServiceClient();
   const { data, error } = await dbPost
     .from('shared_reports')

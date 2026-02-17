@@ -50,7 +50,22 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           return;
         }
         const d = await res.json();
-        setData(d);
+        // Map API response keys to local interface
+        setData({
+          site_name: d.site_name ?? '',
+          report_name: d.report_name ?? '',
+          metrics: {
+            visitors: d.metrics?.visitors ?? 0,
+            pageviews: d.metrics?.pageviews ?? 0,
+            bounce_rate: d.metrics?.bounce_rate ?? 0,
+            avg_duration: d.metrics?.avg_duration ?? 0,
+          },
+          timeseries: d.timeseries ?? [],
+          top_pages: d.top_pages ?? [],
+          top_referrers: d.top_referrers ?? [],
+          browsers: d.browsers ?? [],
+          countries: d.top_countries ?? d.countries ?? [],
+        });
         setNeedsPassword(false);
         setLoading(false);
       })

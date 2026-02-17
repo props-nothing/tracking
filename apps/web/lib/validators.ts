@@ -67,6 +67,8 @@ export const siteSchema = z.object({
   timezone: z.string().max(100).default('UTC'),
   logo_url: z.string().url().nullable().optional(),
   brand_color: z.string().max(20).optional(),
+  public: z.boolean().default(false),
+  allowed_origins: z.array(z.string()).default([]),
 });
 
 export const goalSchema = z.object({
