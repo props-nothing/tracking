@@ -13,7 +13,7 @@ export async function GET(
     .from('shared_reports')
     .select('*, sites(name, domain)')
     .eq('token', token)
-    .single();
+    .maybeSingle();
 
   if (error || !report) {
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });

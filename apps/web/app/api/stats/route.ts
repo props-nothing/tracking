@@ -262,7 +262,7 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Default: overview stats ---
-  const selectFields = 'event_type, event_name, visitor_hash, session_id, path, referrer_hostname, country_code, city, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, utm_source, utm_medium, utm_campaign, timestamp';
+  const selectFields = 'event_type, event_name, visitor_hash, session_id, path, referrer_hostname, country_code, city, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, utm_source, utm_medium, utm_campaign, time_on_page_ms, timestamp';
 
   const { data: events } = await supabase
     .from('events')
@@ -296,10 +296,27 @@ export async function GET(request: NextRequest) {
     ? Math.round(engagedTimes.reduce((a, b) => a + b, 0) / engagedTimes.length)
     : 0;
 
-  // Top pages
-  const topPages = countBy(pvEvents, (e) => e.path)
+  // Top pages (enriched with unique_visitors, avg_time, bounce_rate)
+  const pageGroups: Record<string, { count: number; visitors: Set<string>; times: number[]; bounces: number; sessions: Set<string> }> = {};
+  for (const e of pvEvents) {
+    if (!pageGroups[e.path]) pageGroups[e.path] = { count: 0, visitors: new Set(), times: [], bounces: 0, sessions: new Set() };
+    const pg = pageGroups[e.path];
+    pg.count++;
+    pg.visitors.add(e.visitor_hash);
+    pg.sessions.add(e.session_id);
+    if (e.time_on_page_ms) pg.times.push(e.time_on_page_ms);
+    if (e.is_bounce) pg.bounces++;
+  }
+  const topPages = Object.entries(pageGroups)
+    .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 20)
-    .map(([path, count]) => ({ path, count }));
+    .map(([path, pg]) => ({
+      path,
+      count: pg.count,
+      unique_visitors: pg.visitors.size,
+      avg_time: pg.times.length > 0 ? Math.round(pg.times.reduce((a, b) => a + b, 0) / pg.times.length) : 0,
+      bounce_rate: pg.sessions.size > 0 ? Math.round((pg.bounces / pg.sessions.size) * 100) : 0,
+    }));
 
   // Entry / exit pages
   const entryPages = countBy(

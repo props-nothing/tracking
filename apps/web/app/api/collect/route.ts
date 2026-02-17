@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
       .from('sites')
       .select('id, domain')
       .eq('id', data.site_id)
-      .single();
+      .maybeSingle();
 
     if (!site) {
       return NextResponse.json(

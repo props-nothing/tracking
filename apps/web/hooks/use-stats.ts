@@ -11,9 +11,15 @@ export interface Stats {
   bounce_rate: number;
   views_per_session: number;
   avg_engaged_time: number;
-  top_pages: { path: string; count: number }[];
+  top_pages: { path: string; count: number; unique_visitors: number; avg_time: number; bounce_rate: number }[];
+  entry_pages: { path: string; count: number }[];
+  exit_pages: { path: string; count: number }[];
   top_referrers: { source: string; count: number }[];
+  utm_sources: { source: string; count: number }[];
+  utm_mediums: { medium: string; count: number }[];
+  utm_campaigns: { campaign: string; count: number }[];
   top_countries: { country: string; count: number }[];
+  top_cities: { city: string; count: number }[];
   top_browsers: { browser: string; count: number }[];
   top_os: { os: string; count: number }[];
   top_devices: { device: string; count: number }[];

@@ -15,21 +15,21 @@ export async function GET(
   }
 
   // Check ownership
-  const { data: site, error } = await supabase
+  const { data: site } = await supabase
     .from('sites')
     .select('*')
     .eq('id', id)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (error || !site) {
+  if (!site) {
     // Check membership
     const { data: membership } = await supabase
       .from('site_members')
       .select('role, sites(*)')
       .eq('site_id', id)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!membership) {
       return NextResponse.json({ error: 'Site not found' }, { status: 404 });

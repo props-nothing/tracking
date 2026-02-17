@@ -35,14 +35,21 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('site_members')
-    .select('*')
+    .select('id, site_id, user_id, role, invited_at, accepted_at')
     .eq('site_id', siteId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ members: data || [] });
+  // Map DB fields to frontend-expected fields
+  const members = (data || []).map((m: Record<string, unknown>) => ({
+    ...m,
+    email: m.user_id, // user_id is what we have; frontend displays it
+    joined_at: m.accepted_at || m.invited_at,
+  }));
+
+  return NextResponse.json({ members });
 }
 
 export async function POST(request: NextRequest) {

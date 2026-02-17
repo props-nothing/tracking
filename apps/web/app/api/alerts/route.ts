@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     threshold: typeof a.threshold === 'object' && a.threshold !== null ? (a.threshold as Record<string, unknown>).value ?? 0 : a.threshold,
     notify_email: Array.isArray(a.notify_email) ? (a.notify_email as string[])[0] || '' : a.notify_email || '',
     notify_slack_url: a.notify_slack_webhook || null,
-    enabled: a.enabled ?? true,
+    enabled: a.active ?? true,
   }));
 
   return NextResponse.json({ alerts });
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       threshold: { value: threshold },
       notify_email: [notify_email],
       notify_slack_webhook: notify_slack_url || null,
-      enabled: true,
+      active: true,
       created_by: user.id,
     })
     .select()
