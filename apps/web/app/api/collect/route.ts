@@ -199,13 +199,14 @@ export async function POST(request: NextRequest) {
     if (insertedEvent && data.event_type === 'form_submit') {
       const hasLeadData = data.lead_name || data.lead_email || data.lead_phone || data.lead_company;
       if (hasLeadData) {
-        const { error: leadError } = await supabase.from('leads').insert({
+        const normalizedEmail = data.lead_email ? data.lead_email.toLowerCase().trim() : null;
+        const leadRow = {
           site_id: data.site_id,
           event_id: insertedEvent.id,
           session_id: data.session_id,
           visitor_hash: visitorHash,
           lead_name: data.lead_name || null,
-          lead_email: data.lead_email || null,
+          lead_email: normalizedEmail,
           lead_phone: data.lead_phone || null,
           lead_company: data.lead_company || null,
           lead_message: data.lead_message || null,
@@ -226,7 +227,34 @@ export async function POST(request: NextRequest) {
           device_type: ua.device_type,
           browser: ua.browser,
           os: ua.os,
-        });
+        };
+
+        let leadError;
+        if (normalizedEmail) {
+          // Check if lead with this email already exists for this site
+          const { data: existing } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('site_id', data.site_id)
+            .ilike('lead_email', normalizedEmail)
+            .maybeSingle();
+
+          if (existing) {
+            // Update existing lead with latest data
+            ({ error: leadError } = await supabase
+              .from('leads')
+              .update({
+                ...leadRow,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existing.id));
+          } else {
+            ({ error: leadError } = await supabase.from('leads').insert(leadRow));
+          }
+        } else {
+          // No email — just insert (can't deduplicate without email)
+          ({ error: leadError } = await supabase.from('leads').insert(leadRow));
+        }
         if (leadError) console.error('[Collect] Lead insert error:', leadError);
       }
     }

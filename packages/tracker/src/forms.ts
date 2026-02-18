@@ -1,20 +1,151 @@
 /**
  * Form submission + abandonment + field interaction tracking
  * Supports capturing field values for lead tracking (opt-in via data-capture-leads)
+ *
+ * Field detection uses multiple signals per field (label text, aria-label,
+ * placeholder, autocomplete, data-name, name, id) so it works reliably with
+ * form builders like Fluent Forms that use generic name attributes.
  */
 import { EventPayload } from './collect';
 
 const SENSITIVE_TYPES = new Set(['password', 'hidden']);
 const SENSITIVE_NAMES = /credit_card|card_number|cvv|ssn|password|secret|cc_number|card_exp|security_code/i;
 
-/** Well-known field names mapped to lead properties */
-const LEAD_NAME_PATTERNS = /^(name|full[_-]?name|your[_-]?name|customer[_-]?name|contact[_-]?name|naam|volledige[_-]?naam)$/i;
-const LEAD_FIRST_NAME_PATTERNS = /^(first[_-]?name|fname|voornaam|given[_-]?name)$/i;
-const LEAD_LAST_NAME_PATTERNS = /^(last[_-]?name|lname|surname|achternaam|family[_-]?name)$/i;
-const LEAD_EMAIL_PATTERNS = /^(email|e[_-]?mail|email[_-]?address|your[_-]?email)$/i;
-const LEAD_PHONE_PATTERNS = /^(phone|tel|telephone|phone[_-]?number|mobile|telefoon|telefon)$/i;
-const LEAD_COMPANY_PATTERNS = /^(company|organization|organisation|bedrijf|bedrijfsnaam|company[_-]?name)$/i;
-const LEAD_MESSAGE_PATTERNS = /^(message|comment|comments|bericht|opmerking|notes|beschrijving|description)$/i;
+/* ------------------------------------------------------------------ */
+/*  Signal-based field classification                                 */
+/* ------------------------------------------------------------------ */
+
+type LeadField = 'lead_email' | 'lead_phone' | 'lead_name' | 'first_name' | 'last_name' | 'lead_company' | 'lead_message';
+
+interface FieldRule {
+  field: LeadField;
+  /** Match on input type (definitive — checked first) */
+  types?: string[];
+  /** Match on autocomplete attribute (standardised — checked second) */
+  autocompletes?: string[];
+  /** Regex tested against every text signal on the field */
+  pattern: RegExp;
+}
+
+/**
+ * Rules are ordered by specificity: first_name / last_name before lead_name
+ * so "Voornaam" is not accidentally classified as a generic name field.
+ */
+const FIELD_RULES: FieldRule[] = [
+  {
+    field: 'lead_email',
+    types: ['email'],
+    autocompletes: ['email'],
+    pattern: /e[-_]?mail|emailadres|e-mailadres/i,
+  },
+  {
+    field: 'lead_phone',
+    types: ['tel'],
+    autocompletes: ['tel', 'tel-national', 'tel-local'],
+    pattern: /phone|tel(?:efoon|efon)?|mobile|mobiel|gsm/i,
+  },
+  {
+    field: 'first_name',
+    autocompletes: ['given-name'],
+    pattern: /first[-_]?name|fname|voornaam|given[-_]?name|prénom/i,
+  },
+  {
+    field: 'last_name',
+    autocompletes: ['family-name'],
+    pattern: /last[-_]?name|lname|surname|achternaam|family[-_]?name/i,
+  },
+  {
+    field: 'lead_name',
+    autocompletes: ['name'],
+    // \b prevents matching inside "voornaam" or "achternaam"
+    pattern: /\b(name|full[-_]?name|your[-_]?name|customer[-_]?name|contact[-_]?name|naam|volledige[-_]?naam)\b/i,
+  },
+  {
+    field: 'lead_company',
+    autocompletes: ['organization'],
+    pattern: /company|organi[sz]ation|bedrijf|bedrijfsnaam/i,
+  },
+  {
+    field: 'lead_message',
+    pattern: /message|comment|bericht|opmerking|notes|beschrijving|description|vraag/i,
+  },
+];
+
+/**
+ * Collect every available text hint for a form field so we can classify it
+ * even when the name attribute is generic (e.g. Fluent Forms "input_text").
+ */
+function getFieldSignals(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string[] {
+  const s: string[] = [];
+
+  // name – also extract inner part from bracket notation e.g. names[first_name]
+  if (el.name) {
+    s.push(el.name);
+    const brackets = el.name.match(/\[([^\]]+)\]/g);
+    if (brackets) brackets.forEach(b => s.push(b.replace(/[[\]]/g, '')));
+  }
+
+  if (el.id) s.push(el.id);
+
+  // data-name (Fluent Forms, WPForms, etc.)
+  const dataName = el.getAttribute('data-name');
+  if (dataName) s.push(dataName);
+
+  // placeholder
+  if ('placeholder' in el && (el as HTMLInputElement).placeholder) {
+    s.push((el as HTMLInputElement).placeholder);
+  }
+
+  // aria-label
+  const ariaLabel = el.getAttribute('aria-label');
+  if (ariaLabel) s.push(ariaLabel);
+
+  // autocomplete
+  const ac = el.getAttribute('autocomplete');
+  if (ac) s.push(ac);
+
+  // Associated <label> by for=id
+  if (el.id) {
+    try {
+      const esc = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(el.id) : el.id;
+      const label = document.querySelector(`label[for="${esc}"]`);
+      if (label) s.push((label.textContent || '').trim());
+    } catch { /* ignore */ }
+  }
+
+  // <label> as ancestor
+  try {
+    const parentLabel = el.closest?.('label');
+    if (parentLabel) s.push((parentLabel.textContent || '').trim());
+  } catch { /* ignore */ }
+
+  return s.filter(Boolean);
+}
+
+/** Classify a field using input type → autocomplete → text signals */
+function classifyField(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): LeadField | null {
+  const type = el instanceof HTMLInputElement ? el.type : '';
+  const ac = (el.getAttribute('autocomplete') || '').toLowerCase();
+  const signals = getFieldSignals(el);
+
+  for (const rule of FIELD_RULES) {
+    // 1. Definitive: input type
+    if (rule.types?.includes(type)) return rule.field;
+    // 2. Standardised: autocomplete attribute
+    if (rule.autocompletes && ac && rule.autocompletes.includes(ac)) return rule.field;
+    // 3. Heuristic: test every collected text signal
+    if (signals.some(sig => rule.pattern.test(sig))) return rule.field;
+  }
+
+  // Un-matched <textarea> → likely a message / comment box
+  if (el.tagName.toLowerCase() === 'textarea') return 'lead_message';
+
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lead data extraction                                              */
+/* ------------------------------------------------------------------ */
 
 interface FieldMeta {
   name: string;
@@ -48,30 +179,28 @@ function extractLeadData(form: HTMLFormElement): LeadData {
   const elements = form.elements;
   for (let i = 0; i < elements.length; i++) {
     const el = elements[i] as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
-    const name = (el.name || el.id || '').trim();
+    // Skip non-value elements
+    if (el instanceof HTMLInputElement && (el.type === 'hidden' || el.type === 'checkbox' || el.type === 'radio')) continue;
+    if (el.type === 'submit' || el.type === 'button') continue;
+
     const val = (el.value || '').trim();
-    if (!name || !val) continue;
+    if (!val) continue;
 
-    // Also check input type for email/tel
-    if (el instanceof HTMLInputElement && el.type === 'email' && !lead.lead_email) {
-      lead.lead_email = val;
-      continue;
-    }
-    if (el instanceof HTMLInputElement && el.type === 'tel' && !lead.lead_phone) {
-      lead.lead_phone = val;
-      continue;
-    }
+    const field = classifyField(el);
+    if (!field) continue;
 
-    if (LEAD_NAME_PATTERNS.test(name)) lead.lead_name = val;
-    else if (LEAD_FIRST_NAME_PATTERNS.test(name)) firstName = val;
-    else if (LEAD_LAST_NAME_PATTERNS.test(name)) lastName = val;
-    else if (LEAD_EMAIL_PATTERNS.test(name) && !lead.lead_email) lead.lead_email = val;
-    else if (LEAD_PHONE_PATTERNS.test(name) && !lead.lead_phone) lead.lead_phone = val;
-    else if (LEAD_COMPANY_PATTERNS.test(name)) lead.lead_company = val;
-    else if (LEAD_MESSAGE_PATTERNS.test(name)) lead.lead_message = val;
+    switch (field) {
+      case 'lead_email':   if (!lead.lead_email) lead.lead_email = val; break;
+      case 'lead_phone':   if (!lead.lead_phone) lead.lead_phone = val; break;
+      case 'lead_name':    if (!lead.lead_name) lead.lead_name = val; break;
+      case 'first_name':   if (!firstName) firstName = val; break;
+      case 'last_name':    if (!lastName) lastName = val; break;
+      case 'lead_company': if (!lead.lead_company) lead.lead_company = val; break;
+      case 'lead_message': if (!lead.lead_message) lead.lead_message = val; break;
+    }
   }
 
-  // Combine first + last if no full name
+  // Combine first + last when no full-name field was found
   if (!lead.lead_name && (firstName || lastName)) {
     lead.lead_name = [firstName, lastName].filter(Boolean).join(' ');
   }
