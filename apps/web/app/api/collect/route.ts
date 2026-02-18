@@ -106,6 +106,13 @@ export async function POST(request: NextRequest) {
       data.timezone || ''
     );
 
+    // 9b. Filter out self-referrals (server-side safety net)
+    //     If the referrer hostname matches the site's own domain, null it out
+    if (data.referrer_hostname && data.referrer_hostname === site.domain) {
+      data.referrer_hostname = null;
+      data.referrer = null;
+    }
+
     // 10. Upsert session and determine entry/exit/bounce
     const sessionResult = await upsertSession({
       session_id: data.session_id,
@@ -124,6 +131,7 @@ export async function POST(request: NextRequest) {
       custom_props: data.custom_props || {},
       revenue: data.revenue || null,
       event_type: data.event_type,
+      engaged_time_ms: data.engaged_time_ms ?? null,
     });
 
     // 11. Insert event row
@@ -189,7 +197,7 @@ export async function POST(request: NextRequest) {
       error_line: data.error_line ?? null,
       error_col: data.error_col ?? null,
       is_entry: sessionResult.is_entry,
-      is_exit: false, // Will be updated by session close
+      is_exit: true, // Every new event is potentially the last; un-marked by session-manager when next event arrives
       is_bounce: sessionResult.is_bounce,
     };
 

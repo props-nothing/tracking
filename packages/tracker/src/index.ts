@@ -69,10 +69,18 @@ declare global {
     const utm = parseUTM();
     const loc = window.location;
 
+    let referrer: string | null = document.referrer || null;
     let referrerHostname: string | null = null;
     try {
-      if (document.referrer) {
-        referrerHostname = new URL(document.referrer).hostname;
+      if (referrer) {
+        const refHost = new URL(referrer).hostname;
+        // Filter out self-referrals (same domain = internal navigation, not a real referrer)
+        if (refHost === loc.hostname) {
+          referrer = null;
+          referrerHostname = null;
+        } else {
+          referrerHostname = refHost;
+        }
       }
     } catch { /* ignore */ }
 
@@ -82,7 +90,7 @@ declare global {
       path: loc.pathname,
       hostname: loc.hostname,
       page_title: document.title,
-      referrer: document.referrer || null,
+      referrer,
       referrer_hostname: referrerHostname,
       ...utm,
       session_id: getSessionId(),

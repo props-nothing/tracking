@@ -126,6 +126,325 @@ export async function GET(request: NextRequest) {
   const { fromStr, toStr } = getDateRange(period, customFrom, customTo);
   const filters = parseFilters(searchParams);
 
+  // --- Web Vitals metric ---
+  if (metric === 'vitals') {
+    let vitalsQuery = db
+      .from('events')
+      .select('path, ttfb_ms, fcp_ms, lcp_ms, cls, inp_ms, fid_ms, timestamp')
+      .eq('site_id', siteId)
+      .eq('event_type', 'pageview')
+      .gte('timestamp', fromStr)
+      .lte('timestamp', toStr)
+      .not('ttfb_ms', 'is', null);
+    vitalsQuery = applyDbFilters(vitalsQuery, filters);
+    const { data: events } = await vitalsQuery;
+    const evts = events || [];
+
+    // Overall aggregation
+    const vals = (arr: (number | null)[]): number[] => arr.filter((v): v is number => v != null);
+    const p50 = (arr: number[]) => { if (!arr.length) return null; arr.sort((a, b) => a - b); return arr[Math.floor(arr.length * 0.5)]; };
+    const p75 = (arr: number[]) => { if (!arr.length) return null; arr.sort((a, b) => a - b); return arr[Math.floor(arr.length * 0.75)]; };
+
+    const overall = {
+      sample_count: evts.length,
+      ttfb: { p50: p50(vals(evts.map(e => e.ttfb_ms))), p75: p75(vals(evts.map(e => e.ttfb_ms))) },
+      fcp: { p50: p50(vals(evts.map(e => e.fcp_ms))), p75: p75(vals(evts.map(e => e.fcp_ms))) },
+      lcp: { p50: p50(vals(evts.map(e => e.lcp_ms))), p75: p75(vals(evts.map(e => e.lcp_ms))) },
+      cls: { p50: p50(vals(evts.map(e => e.cls))), p75: p75(vals(evts.map(e => e.cls))) },
+      inp: { p50: p50(vals(evts.map(e => e.inp_ms))), p75: p75(vals(evts.map(e => e.inp_ms))) },
+      fid: { p50: p50(vals(evts.map(e => e.fid_ms))), p75: p75(vals(evts.map(e => e.fid_ms))) },
+    };
+
+    // Per-page breakdown
+    const pageMap: Record<string, typeof evts> = {};
+    for (const e of evts) { (pageMap[e.path] ||= []).push(e); }
+    const pages = Object.entries(pageMap)
+      .map(([path, pe]) => ({
+        path,
+        sample_count: pe.length,
+        lcp_p75: p75(vals(pe.map(e => e.lcp_ms))),
+        fcp_p75: p75(vals(pe.map(e => e.fcp_ms))),
+        cls_p75: p75(vals(pe.map(e => e.cls))),
+        inp_p75: p75(vals(pe.map(e => e.inp_ms))),
+        ttfb_p75: p75(vals(pe.map(e => e.ttfb_ms))),
+      }))
+      .sort((a, b) => b.sample_count - a.sample_count)
+      .slice(0, 30);
+
+    // Timeseries (daily LCP p75)
+    const tsMap: Record<string, number[]> = {};
+    for (const e of evts) {
+      const day = e.timestamp.split('T')[0];
+      (tsMap[day] ||= []).push(e.lcp_ms ?? 0);
+    }
+    const timeseries = Object.entries(tsMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, arr]) => ({ date, lcp_p75: p75(arr.sort((a, b) => a - b)) }));
+
+    return NextResponse.json({ overall, pages, timeseries });
+  }
+
+  // --- Outbound links & downloads metric ---
+  if (metric === 'outbound_downloads') {
+    let obQuery = db
+      .from('events')
+      .select('event_type, event_data, visitor_hash, path, timestamp')
+      .eq('site_id', siteId)
+      .in('event_type', ['outbound_click', 'file_download'])
+      .gte('timestamp', fromStr)
+      .lte('timestamp', toStr);
+    obQuery = applyDbFilters(obQuery, filters);
+    const { data: events } = await obQuery;
+    const evts = events || [];
+
+    const outbound = evts.filter(e => e.event_type === 'outbound_click');
+    const downloads = evts.filter(e => e.event_type === 'file_download');
+
+    // Aggregate outbound by hostname
+    const obMap: Record<string, { count: number; visitors: Set<string>; urls: Record<string, number> }> = {};
+    for (const e of outbound) {
+      const d = e.event_data as any || {};
+      const host = d.hostname || 'unknown';
+      if (!obMap[host]) obMap[host] = { count: 0, visitors: new Set(), urls: {} };
+      obMap[host].count++;
+      obMap[host].visitors.add(e.visitor_hash);
+      const url = d.url || '';
+      obMap[host].urls[url] = (obMap[host].urls[url] || 0) + 1;
+    }
+    const outboundLinks = Object.entries(obMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 30)
+      .map(([hostname, d]) => ({
+        hostname,
+        clicks: d.count,
+        unique_visitors: d.visitors.size,
+        top_url: Object.entries(d.urls).sort((a, b) => b[1] - a[1])[0]?.[0] || '',
+      }));
+
+    // Aggregate downloads by filename
+    const dlMap: Record<string, { count: number; visitors: Set<string>; extension: string }> = {};
+    for (const e of downloads) {
+      const d = e.event_data as any || {};
+      const filename = d.filename || d.url || 'unknown';
+      if (!dlMap[filename]) dlMap[filename] = { count: 0, visitors: new Set(), extension: d.extension || '' };
+      dlMap[filename].count++;
+      dlMap[filename].visitors.add(e.visitor_hash);
+    }
+    const downloadFiles = Object.entries(dlMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 30)
+      .map(([filename, d]) => ({
+        filename,
+        downloads: d.count,
+        unique_visitors: d.visitors.size,
+        extension: d.extension,
+      }));
+
+    return NextResponse.json({
+      total_outbound: outbound.length,
+      total_downloads: downloads.length,
+      outbound_links: outboundLinks,
+      download_files: downloadFiles,
+    });
+  }
+
+  // --- Scroll depth metric ---
+  if (metric === 'scroll_depth') {
+    let scrollQuery = db
+      .from('events')
+      .select('path, scroll_depth_pct, visitor_hash, timestamp')
+      .eq('site_id', siteId)
+      .eq('event_type', 'pageview')
+      .gte('timestamp', fromStr)
+      .lte('timestamp', toStr)
+      .not('scroll_depth_pct', 'is', null);
+    scrollQuery = applyDbFilters(scrollQuery, filters);
+    const { data: events } = await scrollQuery;
+    const evts = events || [];
+
+    // Overall
+    const depths = evts.map(e => e.scroll_depth_pct!);
+    const avgDepth = depths.length > 0 ? Math.round(depths.reduce((a, b) => a + b, 0) / depths.length) : 0;
+    const reached25 = depths.filter(d => d >= 25).length;
+    const reached50 = depths.filter(d => d >= 50).length;
+    const reached75 = depths.filter(d => d >= 75).length;
+    const reached100 = depths.filter(d => d >= 100).length;
+    const total = depths.length || 1;
+
+    // Per-page breakdown
+    const pageMap: Record<string, number[]> = {};
+    for (const e of evts) { (pageMap[e.path] ||= []).push(e.scroll_depth_pct!); }
+    const pages = Object.entries(pageMap)
+      .map(([path, arr]) => ({
+        path,
+        sample_count: arr.length,
+        avg_depth: Math.round(arr.reduce((a, b) => a + b, 0) / arr.length),
+        pct_reached_50: Math.round((arr.filter(d => d >= 50).length / arr.length) * 100),
+        pct_reached_100: Math.round((arr.filter(d => d >= 100).length / arr.length) * 100),
+      }))
+      .sort((a, b) => a.avg_depth - b.avg_depth)
+      .slice(0, 30);
+
+    return NextResponse.json({
+      avg_depth: avgDepth,
+      sample_count: depths.length,
+      funnel: {
+        reached_25: Math.round((reached25 / total) * 100),
+        reached_50: Math.round((reached50 / total) * 100),
+        reached_75: Math.round((reached75 / total) * 100),
+        reached_100: Math.round((reached100 / total) * 100),
+      },
+      pages,
+    });
+  }
+
+  // --- UX issues (rage clicks + dead clicks) metric ---
+  if (metric === 'ux_issues') {
+    let uxQuery = db
+      .from('events')
+      .select('event_type, event_data, path, visitor_hash, timestamp')
+      .eq('site_id', siteId)
+      .in('event_type', ['rage_click', 'dead_click'])
+      .gte('timestamp', fromStr)
+      .lte('timestamp', toStr);
+    uxQuery = applyDbFilters(uxQuery, filters);
+    const { data: events } = await uxQuery;
+    const evts = events || [];
+
+    const rageClicks = evts.filter(e => e.event_type === 'rage_click');
+    const deadClicks = evts.filter(e => e.event_type === 'dead_click');
+
+    function aggregateClicks(clicks: typeof evts) {
+      const map: Record<string, { count: number; visitors: Set<string>; element_tag: string; element_text: string; pages: Set<string> }> = {};
+      for (const e of clicks) {
+        const d = e.event_data as any || {};
+        const key = `${d.element_tag || ''}|${d.element_id || ''}|${d.element_class || ''}`;
+        if (!map[key]) map[key] = { count: 0, visitors: new Set(), element_tag: d.element_tag || '', element_text: (d.element_text || '').slice(0, 100), pages: new Set() };
+        map[key].count++;
+        map[key].visitors.add(e.visitor_hash);
+        map[key].pages.add(e.path);
+      }
+      return Object.values(map)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20)
+        .map(d => ({
+          element_tag: d.element_tag,
+          element_text: d.element_text,
+          count: d.count,
+          unique_visitors: d.visitors.size,
+          pages: [...d.pages].slice(0, 3),
+        }));
+    }
+
+    // Pages with most UX issues
+    const pageIssues: Record<string, { rage: number; dead: number }> = {};
+    for (const e of evts) {
+      if (!pageIssues[e.path]) pageIssues[e.path] = { rage: 0, dead: 0 };
+      if (e.event_type === 'rage_click') pageIssues[e.path].rage++;
+      else pageIssues[e.path].dead++;
+    }
+    const issuePages = Object.entries(pageIssues)
+      .sort((a, b) => (b[1].rage + b[1].dead) - (a[1].rage + a[1].dead))
+      .slice(0, 20)
+      .map(([path, d]) => ({ path, rage_clicks: d.rage, dead_clicks: d.dead, total: d.rage + d.dead }));
+
+    return NextResponse.json({
+      total_rage_clicks: rageClicks.length,
+      total_dead_clicks: deadClicks.length,
+      rage_click_elements: aggregateClicks(rageClicks),
+      dead_click_elements: aggregateClicks(deadClicks),
+      issue_pages: issuePages,
+    });
+  }
+
+  // --- 404 pages metric ---
+  if (metric === '404s') {
+    let query404 = db
+      .from('events')
+      .select('event_data, path, referrer, referrer_hostname, visitor_hash, timestamp')
+      .eq('site_id', siteId)
+      .eq('event_type', 'custom')
+      .eq('event_name', '404')
+      .gte('timestamp', fromStr)
+      .lte('timestamp', toStr);
+    query404 = applyDbFilters(query404, filters);
+    const { data: events } = await query404;
+    const evts = events || [];
+
+    // Aggregate by path
+    const pathMap: Record<string, { count: number; visitors: Set<string>; referrers: Set<string>; last_seen: string }> = {};
+    for (const e of evts) {
+      const p = (e.event_data as any)?.path || e.path;
+      if (!pathMap[p]) pathMap[p] = { count: 0, visitors: new Set(), referrers: new Set(), last_seen: e.timestamp };
+      pathMap[p].count++;
+      pathMap[p].visitors.add(e.visitor_hash);
+      if (e.referrer_hostname) pathMap[p].referrers.add(e.referrer_hostname);
+      if (e.timestamp > pathMap[p].last_seen) pathMap[p].last_seen = e.timestamp;
+    }
+    const pages = Object.entries(pathMap)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 50)
+      .map(([path, d]) => ({
+        path,
+        hits: d.count,
+        unique_visitors: d.visitors.size,
+        referrers: [...d.referrers].slice(0, 5),
+        last_seen: d.last_seen,
+      }));
+
+    return NextResponse.json({
+      total_404s: evts.length,
+      unique_404_pages: Object.keys(pathMap).length,
+      pages,
+    });
+  }
+
+  // --- Time on page metric ---
+  if (metric === 'time_on_page') {
+    let topQuery = db
+      .from('events')
+      .select('path, time_on_page_ms, engaged_time_ms, visitor_hash, timestamp')
+      .eq('site_id', siteId)
+      .eq('event_type', 'pageview')
+      .gte('timestamp', fromStr)
+      .lte('timestamp', toStr);
+    topQuery = applyDbFilters(topQuery, filters);
+    const { data: events } = await topQuery;
+    const evts = (events || []).filter(e => e.time_on_page_ms || e.engaged_time_ms);
+
+    // Per-page breakdown
+    const pageMap: Record<string, { times: number[]; engaged: number[]; visitors: Set<string> }> = {};
+    for (const e of evts) {
+      if (!pageMap[e.path]) pageMap[e.path] = { times: [], engaged: [], visitors: new Set() };
+      if (e.time_on_page_ms) pageMap[e.path].times.push(e.time_on_page_ms);
+      if (e.engaged_time_ms) pageMap[e.path].engaged.push(e.engaged_time_ms);
+      pageMap[e.path].visitors.add(e.visitor_hash);
+    }
+
+    const avg = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    const pages = Object.entries(pageMap)
+      .map(([path, d]) => ({
+        path,
+        sample_count: d.times.length || d.engaged.length,
+        avg_time_on_page: avg(d.times),
+        avg_engaged_time: avg(d.engaged),
+        unique_visitors: d.visitors.size,
+      }))
+      .sort((a, b) => b.avg_time_on_page - a.avg_time_on_page)
+      .slice(0, 30);
+
+    // Overall averages
+    const allTimes = evts.map(e => e.time_on_page_ms).filter((v): v is number => v != null);
+    const allEngaged = evts.map(e => e.engaged_time_ms).filter((v): v is number => v != null);
+
+    return NextResponse.json({
+      avg_time_on_page: avg(allTimes),
+      avg_engaged_time: avg(allEngaged),
+      sample_count: evts.length,
+      pages,
+    });
+  }
+
   // --- Ecommerce metric ---
   if (metric === 'ecommerce') {
     let ecomQuery = db

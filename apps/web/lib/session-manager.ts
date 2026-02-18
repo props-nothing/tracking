@@ -17,6 +17,7 @@ interface SessionData {
   custom_props: Record<string, any>;
   revenue: number | null;
   event_type: string;
+  engaged_time_ms?: number | null;
 }
 
 /**
@@ -33,7 +34,7 @@ export async function upsertSession(data: SessionData): Promise<{
   // Check if session already exists
   const { data: existing } = await supabase
     .from('sessions')
-    .select('id, started_at, pageviews, events_count, entry_path, total_revenue')
+    .select('id, started_at, pageviews, events_count, entry_path, total_revenue, engaged_time_ms')
     .eq('id', data.session_id)
     .single();
 
@@ -46,7 +47,7 @@ export async function upsertSession(data: SessionData): Promise<{
       started_at: now,
       ended_at: now,
       duration_ms: 0,
-      engaged_time_ms: 0,
+      engaged_time_ms: data.engaged_time_ms || 0,
       pageviews: data.event_type === 'pageview' ? 1 : 0,
       events_count: 1,
       is_bounce: true,
@@ -79,6 +80,7 @@ export async function upsertSession(data: SessionData): Promise<{
     .update({
       ended_at: now,
       duration_ms: durationMs,
+      engaged_time_ms: (existing.engaged_time_ms || 0) + (data.engaged_time_ms || 0),
       pageviews: newPageviews,
       events_count: newEventsCount,
       is_bounce: isBounce,
@@ -87,6 +89,15 @@ export async function upsertSession(data: SessionData): Promise<{
       custom_props: data.custom_props || {},
     })
     .eq('id', data.session_id);
+
+  // Un-mark older events in this session as is_exit
+  // (the new event being inserted will be is_exit = true)
+  supabase
+    .from('events')
+    .update({ is_exit: false })
+    .eq('session_id', data.session_id)
+    .eq('is_exit', true)
+    .then(() => { /* fire and forget */ }, () => { /* ignore */ });
 
   return { is_entry: false, is_bounce: isBounce };
 }

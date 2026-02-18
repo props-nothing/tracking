@@ -62,6 +62,7 @@ export default function SiteDashboardPage({
             <MetricCard title="Bounce Rate" value={`${stats.bounce_rate}%`} />
             <MetricCard title="Views / Session" value={stats.views_per_session.toString()} />
             <MetricCard title="Avg. Engaged Time" value={formatDuration(stats.avg_engaged_time)} />
+            <MetricCard title="Avg. Session Duration" value={formatDuration(stats.avg_session_duration)} />
           </div>
 
           {/* Time Series Chart */}
