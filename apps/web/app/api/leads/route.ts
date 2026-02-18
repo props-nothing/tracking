@@ -148,3 +148,35 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json(data);
 }
+
+/**
+ * DELETE — Remove one or more leads
+ */
+export async function DELETE(request: NextRequest) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const { ids } = body as { ids: number[] };
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return NextResponse.json({ error: 'Lead ids required' }, { status: 400 });
+  }
+
+  const db = await createServiceClient();
+
+  const { error } = await db
+    .from('leads')
+    .delete()
+    .in('id', ids);
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ deleted: ids.length });
+}

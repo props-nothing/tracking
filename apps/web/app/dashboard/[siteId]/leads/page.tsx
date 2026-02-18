@@ -125,6 +125,20 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
     );
   };
 
+  const deleteLead = async (leadId: number) => {
+    if (!confirm('Are you sure you want to delete this lead?')) return;
+    const res = await fetch('/api/leads', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [leadId] }),
+    });
+    if (res.ok) {
+      setLeads((prev) => prev.filter((l) => l.id !== leadId));
+      setTotal((prev) => prev - 1);
+      if (expandedLead === leadId) setExpandedLead(null);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(total / 25));
 
   return (
@@ -236,6 +250,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                       <th className="px-4 py-2.5 text-left font-medium">Form</th>
                       <th className="px-4 py-2.5 text-left font-medium">Status</th>
                       <th className="px-4 py-2.5 text-left font-medium">Date</th>
+                      <th className="px-4 py-2.5 text-right font-medium w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -281,10 +296,21 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                           <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                             {formatDate(lead.created_at)}
                           </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); deleteLead(lead.id); }}
+                              className="rounded p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
+                              title="Delete lead"
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                              </svg>
+                            </button>
+                          </td>
                         </tr>
                         {expandedLead === lead.id && (
                           <tr key={`${lead.id}-detail`} className="border-b bg-muted/30">
-                            <td colSpan={7} className="px-6 py-4">
+                            <td colSpan={8} className="px-6 py-4">
                               <div className="grid gap-4 sm:grid-cols-3 text-sm">
                                 <div>
                                   <p className="text-xs font-medium text-muted-foreground mb-1">Contact Details</p>
