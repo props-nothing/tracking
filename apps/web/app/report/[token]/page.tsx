@@ -15,6 +15,26 @@ interface NameVisitors { name: string; visitors: number }
 interface PathViews { path: string; views: number }
 interface SourceVisitors { source: string; visitors: number }
 interface CountryRow { code: string; name: string; visitors: number }
+interface LeadRow {
+  id: number;
+  lead_name: string | null;
+  lead_email: string | null;
+  lead_phone: string | null;
+  lead_company: string | null;
+  lead_message: string | null;
+  form_id: string | null;
+  page_path: string | null;
+  referrer_hostname: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  country_code: string | null;
+  city: string | null;
+  device_type: string | null;
+  status: string;
+  created_at: string;
+}
+interface SourceCount { source: string; count: number }
 
 interface ReportData {
   site_name: string;
@@ -45,6 +65,10 @@ interface ReportData {
   utm_sources: NameVisitors[];
   utm_mediums: NameVisitors[];
   utm_campaigns: NameVisitors[];
+  leads: LeadRow[];
+  lead_sources: SourceCount[];
+  lead_mediums: { medium: string; count: number }[];
+  lead_campaigns: { campaign: string; count: number }[];
 }
 
 interface Filter { key: string; label: string; value: string }
@@ -81,6 +105,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
   const [filters, setFilters] = useState<Filter[]>([]);
   const [activeTab, setActiveTab] = useState<'pages' | 'entry' | 'exit'>('pages');
   const [deviceTab, setDeviceTab] = useState<'browsers' | 'os' | 'devices'>('browsers');
+  const [expandedLead, setExpandedLead] = useState<number | null>(null);
 
   const fetchReport = useCallback((pw?: string) => {
     setLoading(true);
@@ -127,6 +152,10 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           utm_sources: d.utm_sources ?? [],
           utm_mediums: d.utm_mediums ?? [],
           utm_campaigns: d.utm_campaigns ?? [],
+          leads: d.leads ?? [],
+          lead_sources: d.lead_sources ?? [],
+          lead_mediums: d.lead_mediums ?? [],
+          lead_campaigns: d.lead_campaigns ?? [],
         });
         setNeedsPassword(false);
         setLoading(false);
@@ -449,6 +478,155 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                   pageSize={10}
                 />
               )}
+            </div>
+          </>
+        )}
+
+        {/* Leads section */}
+        {data.leads.length > 0 && (
+          <>
+            <h2 className="text-sm font-medium text-muted-foreground pt-2">Leads</h2>
+
+            {/* Lead source breakdown */}
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {data.lead_sources.length > 0 && (
+                <DataTable
+                  title="Lead Sources"
+                  columns={[
+                    { key: 'source', label: 'Source' },
+                    { key: 'count', label: 'Leads', align: 'right' },
+                  ]}
+                  data={data.lead_sources}
+                  pageSize={10}
+                />
+              )}
+              {data.lead_mediums.length > 0 && (
+                <DataTable
+                  title="Lead Mediums"
+                  columns={[
+                    { key: 'medium', label: 'Medium' },
+                    { key: 'count', label: 'Leads', align: 'right' },
+                  ]}
+                  data={data.lead_mediums}
+                  pageSize={10}
+                />
+              )}
+              {data.lead_campaigns.length > 0 && (
+                <DataTable
+                  title="Lead Campaigns"
+                  columns={[
+                    { key: 'campaign', label: 'Campaign' },
+                    { key: 'count', label: 'Leads', align: 'right' },
+                  ]}
+                  data={data.lead_campaigns}
+                  pageSize={10}
+                />
+              )}
+            </div>
+
+            {/* Leads table */}
+            <div className="rounded-lg border bg-card overflow-hidden">
+              <div className="border-b px-4 py-3">
+                <h3 className="text-sm font-medium">All Leads ({data.leads.length})</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b text-xs text-muted-foreground">
+                      <th className="px-4 py-2.5 text-left font-medium">Name</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Email</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Source</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Campaign</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Form</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Status</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.leads.map((lead) => {
+                      const sourceLabel = lead.utm_source
+                        ? [lead.utm_source, lead.utm_medium].filter(Boolean).join(' / ')
+                        : lead.referrer_hostname || 'Direct';
+                      const srcKey = (lead.utm_source || lead.referrer_hostname || '').toLowerCase();
+                      const sourceBadge = srcKey.includes('google')
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
+                        : srcKey.includes('facebook') || srcKey.includes('meta') || srcKey.includes('instagram')
+                        ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                        : srcKey.includes('linkedin')
+                        ? 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
+                        : 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300';
+                      const statusColor: Record<string, string> = {
+                        new: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+                        contacted: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+                        qualified: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+                        converted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+                        archived: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+                      };
+                      const dateStr = new Date(lead.created_at).toLocaleDateString('nl-NL', {
+                        day: 'numeric', month: 'short', year: 'numeric',
+                      });
+                      return (
+                        <>
+                          <tr
+                            key={lead.id}
+                            className="border-b hover:bg-muted/50 cursor-pointer transition-colors text-sm"
+                            onClick={() => setExpandedLead(expandedLead === lead.id ? null : lead.id)}
+                          >
+                            <td className="px-4 py-2.5 font-medium">{lead.lead_name || <span className="text-muted-foreground italic">—</span>}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground">{lead.lead_email || '—'}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${sourceBadge}`}>
+                                {sourceLabel}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-muted-foreground text-xs">{lead.utm_campaign || '—'}</td>
+                            <td className="px-4 py-2.5 text-muted-foreground text-xs">{lead.form_id || '—'}</td>
+                            <td className="px-4 py-2.5">
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[lead.status] || ''}`}>
+                                {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{dateStr}</td>
+                          </tr>
+                          {expandedLead === lead.id && (
+                            <tr key={`${lead.id}-detail`} className="border-b bg-muted/30">
+                              <td colSpan={7} className="px-6 py-4">
+                                <div className="grid gap-4 sm:grid-cols-3 text-sm">
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Contact Details</p>
+                                    {lead.lead_name && <p><span className="text-muted-foreground">Name:</span> {lead.lead_name}</p>}
+                                    {lead.lead_email && <p><span className="text-muted-foreground">Email:</span> {lead.lead_email}</p>}
+                                    {lead.lead_phone && <p><span className="text-muted-foreground">Phone:</span> {lead.lead_phone}</p>}
+                                    {lead.lead_company && <p><span className="text-muted-foreground">Company:</span> {lead.lead_company}</p>}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Attribution</p>
+                                    <p><span className="text-muted-foreground">Source:</span> {lead.utm_source || lead.referrer_hostname || 'Direct'}</p>
+                                    {lead.utm_medium && <p><span className="text-muted-foreground">Medium:</span> {lead.utm_medium}</p>}
+                                    {lead.utm_campaign && <p><span className="text-muted-foreground">Campaign:</span> {lead.utm_campaign}</p>}
+                                    {lead.page_path && <p><span className="text-muted-foreground">Page:</span> {lead.page_path}</p>}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Context</p>
+                                    {lead.country_code && <p><span className="text-muted-foreground">Location:</span> {lead.city ? `${lead.city}, ` : ''}{lead.country_code}</p>}
+                                    {lead.device_type && <p><span className="text-muted-foreground">Device:</span> {lead.device_type}</p>}
+                                    {lead.lead_message && (
+                                      <div className="mt-2">
+                                        <p className="text-muted-foreground">Message:</p>
+                                        <p className="mt-0.5 rounded bg-background p-2 text-xs whitespace-pre-wrap">{lead.lead_message}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </>
         )}

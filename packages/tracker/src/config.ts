@@ -9,6 +9,7 @@ export interface TrackerConfig {
   debug: boolean;
   respectDNT: boolean;
   trackForms: boolean;
+  captureLeads: boolean;
   trackOutbound: boolean;
   trackDownloads: boolean;
   trackErrors: boolean;
@@ -38,6 +39,7 @@ export function readConfig(): TrackerConfig | null {
     debug: script.getAttribute('data-debug') === 'true',
     respectDNT: script.getAttribute('data-respect-dnt') === 'true',
     trackForms: script.getAttribute('data-track-forms') !== 'false',
+    captureLeads: script.getAttribute('data-capture-leads') !== 'false',
     trackOutbound: script.getAttribute('data-track-outbound') !== 'false',
     trackDownloads: script.getAttribute('data-track-downloads') !== 'false',
     trackErrors: script.getAttribute('data-track-errors') !== 'false',

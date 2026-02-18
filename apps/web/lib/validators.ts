@@ -44,6 +44,12 @@ export const collectPayloadSchema = z.object({
   form_fields: z.any().nullable().optional(),
   form_last_field: z.string().max(255).nullable().optional(),
   form_time_to_submit_ms: z.number().int().min(0).nullable().optional(),
+  // Lead capture fields (from form submissions)
+  lead_name: z.string().max(255).nullable().optional(),
+  lead_email: z.string().max(255).nullable().optional(),
+  lead_phone: z.string().max(100).nullable().optional(),
+  lead_company: z.string().max(255).nullable().optional(),
+  lead_message: z.string().max(5000).nullable().optional(),
   ecommerce_action: z.enum([
     'view_item', 'add_to_cart', 'remove_from_cart',
     'begin_checkout', 'purchase', 'refund',

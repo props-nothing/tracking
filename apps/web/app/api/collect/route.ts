@@ -195,7 +195,43 @@ export async function POST(request: NextRequest) {
 
     const { data: insertedEvent } = await supabase.from('events').insert(eventRow).select('id').single();
 
-    // 12. Evaluate goals (async, non-blocking)
+    // 12a. Insert lead if form_submit has lead data
+    if (insertedEvent && data.event_type === 'form_submit') {
+      const hasLeadData = data.lead_name || data.lead_email || data.lead_phone || data.lead_company;
+      if (hasLeadData) {
+        const { error: leadError } = await supabase.from('leads').insert({
+          site_id: data.site_id,
+          event_id: insertedEvent.id,
+          session_id: data.session_id,
+          visitor_hash: visitorHash,
+          lead_name: data.lead_name || null,
+          lead_email: data.lead_email || null,
+          lead_phone: data.lead_phone || null,
+          lead_company: data.lead_company || null,
+          lead_message: data.lead_message || null,
+          form_id: data.form_id || null,
+          form_action: data.form_action || null,
+          page_url: data.url,
+          page_path: data.path,
+          referrer: data.referrer || null,
+          referrer_hostname: data.referrer_hostname || null,
+          utm_source: data.utm_source || null,
+          utm_medium: data.utm_medium || null,
+          utm_campaign: data.utm_campaign || null,
+          utm_term: data.utm_term || null,
+          utm_content: data.utm_content || null,
+          entry_path: sessionResult.is_entry ? data.path : null,
+          country_code: geo.country_code,
+          city: geo.city,
+          device_type: ua.device_type,
+          browser: ua.browser,
+          os: ua.os,
+        });
+        if (leadError) console.error('[Collect] Lead insert error:', leadError);
+      }
+    }
+
+    // 12b. Evaluate goals (async, non-blocking)
     if (insertedEvent) {
       evaluateGoals({
         ...eventRow,

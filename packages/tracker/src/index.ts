@@ -189,7 +189,7 @@ declare global {
 
   // ── Form tracking ──────────────────────────────────────────
   if (config.trackForms) {
-    trackForms(emitEvent);
+    trackForms(emitEvent, config.captureLeads);
   }
 
   // ── Element visibility ─────────────────────────────────────

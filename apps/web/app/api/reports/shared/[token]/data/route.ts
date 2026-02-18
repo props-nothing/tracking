@@ -234,6 +234,34 @@ export async function GET(
     result.utm_campaigns = topN(events, (e) => e.utm_campaign, 10).map(([name, visitors]) => ({ name, visitors }));
   }
 
+  // --- Leads ---
+  if (showSection('leads')) {
+    const { data: leads } = await supabase
+      .from('leads')
+      .select('id, lead_name, lead_email, lead_phone, lead_company, lead_message, form_id, page_path, referrer_hostname, utm_source, utm_medium, utm_campaign, country_code, city, device_type, status, created_at')
+      .eq('site_id', report.site_id)
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    result.leads = leads || [];
+
+    // Leads source breakdown
+    const leadSourceCounts: Record<string, number> = {};
+    const leadMediumCounts: Record<string, number> = {};
+    const leadCampaignCounts: Record<string, number> = {};
+    for (const lead of leads || []) {
+      const src = (lead as any).utm_source || (lead as any).referrer_hostname || 'direct';
+      leadSourceCounts[src] = (leadSourceCounts[src] || 0) + 1;
+      if ((lead as any).utm_medium) leadMediumCounts[(lead as any).utm_medium] = (leadMediumCounts[(lead as any).utm_medium] || 0) + 1;
+      if ((lead as any).utm_campaign) leadCampaignCounts[(lead as any).utm_campaign] = (leadCampaignCounts[(lead as any).utm_campaign] || 0) + 1;
+    }
+    result.lead_sources = Object.entries(leadSourceCounts).map(([source, count]) => ({ source, count })).sort((a, b) => (b as any).count - (a as any).count);
+    result.lead_mediums = Object.entries(leadMediumCounts).map(([medium, count]) => ({ medium, count })).sort((a, b) => (b as any).count - (a as any).count);
+    result.lead_campaigns = Object.entries(leadCampaignCounts).map(([campaign, count]) => ({ campaign, count })).sort((a, b) => (b as any).count - (a as any).count);
+  }
+
   // --- Timeseries ---
   if (showSection('chart')) {
     const dayMap: Record<string, { visitors: Set<string>; pageviews: number }> = {};
