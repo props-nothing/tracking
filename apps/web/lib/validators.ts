@@ -50,6 +50,7 @@ export const collectPayloadSchema = z.object({
   lead_phone: z.string().max(100).nullable().optional(),
   lead_company: z.string().max(255).nullable().optional(),
   lead_message: z.string().max(5000).nullable().optional(),
+  lead_data: z.record(z.string(), z.string().max(500)).nullable().optional(),
   ecommerce_action: z.enum([
     'view_item', 'add_to_cart', 'remove_from_cart',
     'begin_checkout', 'purchase', 'refund',

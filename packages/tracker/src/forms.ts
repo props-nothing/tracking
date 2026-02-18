@@ -162,6 +162,92 @@ interface LeadData {
   lead_phone: string | null;
   lead_company: string | null;
   lead_message: string | null;
+  lead_data: Record<string, string> | null;
+}
+
+/**
+ * Get a human-readable label for a form field.
+ * Tries: label text > aria-label > placeholder > data-name > name > id.
+ */
+function getFieldLabel(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement): string {
+  // Associated <label> by for=id
+  if (el.id) {
+    try {
+      const esc = typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(el.id) : el.id;
+      const label = document.querySelector(`label[for="${esc}"]`);
+      if (label) {
+        const txt = (label.textContent || '').trim();
+        if (txt) return txt;
+      }
+    } catch { /* ignore */ }
+  }
+  // Parent <label>
+  try {
+    const parentLabel = el.closest?.('label');
+    if (parentLabel) {
+      const txt = (parentLabel.textContent || '').trim();
+      if (txt) return txt;
+    }
+  } catch { /* ignore */ }
+
+  const ariaLabel = el.getAttribute('aria-label');
+  if (ariaLabel) return ariaLabel;
+
+  if ('placeholder' in el && (el as HTMLInputElement).placeholder) {
+    return (el as HTMLInputElement).placeholder;
+  }
+
+  return el.getAttribute('data-name') || el.name || el.id || 'unknown';
+}
+
+/**
+ * Collect ALL form field values as a flat label→value map.
+ * Skips: submit/button, password, sensitive patterns, GDPR checkboxes, nonces.
+ * Includes checked checkboxes/radios, selects, textareas, hidden UTM fields, etc.
+ */
+function extractAllFormData(form: HTMLFormElement): Record<string, string> {
+  const data: Record<string, string> = {};
+  const SKIP_HIDDEN_NAMES = /nonce|_wp_http_referer|__fluent_form|_token|csrf|honeypot/i;
+
+  const elements = form.elements;
+  for (let i = 0; i < elements.length; i++) {
+    const el = elements[i] as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+    if (!el.name && !el.id) continue;
+    if (el.type === 'submit' || el.type === 'button') continue;
+    if (el.type === 'password') continue;
+    if (SENSITIVE_NAMES.test(el.name || '')) continue;
+    if (el.hasAttribute('data-no-track')) continue;
+
+    // Skip WordPress/plugin nonce/referer hidden fields
+    if (el.type === 'hidden' && SKIP_HIDDEN_NAMES.test(el.name || '')) continue;
+
+    const key = getFieldLabel(el);
+
+    // Checkboxes & radios: only capture if checked, group values
+    if (el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio')) {
+      if (!el.checked) continue;
+      const val = el.value || 'on';
+      // Accumulate multiple checked checkboxes with same label-group
+      if (data[key]) {
+        data[key] += `, ${val}`;
+      } else {
+        data[key] = val;
+      }
+      continue;
+    }
+
+    const val = (el.value || '').trim();
+    if (!val) continue;
+
+    // For hidden fields (like UTMs), use name as key since there's no label
+    if (el.type === 'hidden') {
+      data[el.name] = val.slice(0, 500);
+    } else {
+      data[key] = val.slice(0, 500);
+    }
+  }
+
+  return data;
 }
 
 function extractLeadData(form: HTMLFormElement): LeadData {
@@ -171,6 +257,7 @@ function extractLeadData(form: HTMLFormElement): LeadData {
     lead_phone: null,
     lead_company: null,
     lead_message: null,
+    lead_data: null,
   };
 
   let firstName = '';
@@ -203,6 +290,12 @@ function extractLeadData(form: HTMLFormElement): LeadData {
   // Combine first + last when no full-name field was found
   if (!lead.lead_name && (firstName || lastName)) {
     lead.lead_name = [firstName, lastName].filter(Boolean).join(' ');
+  }
+
+  // Capture ALL form data as a flat key→value map
+  const allData = extractAllFormData(form);
+  if (Object.keys(allData).length > 0) {
+    lead.lead_data = allData;
   }
 
   return lead;
@@ -334,7 +427,7 @@ export function trackForms(
         form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
       };
 
-      // Extract lead data from well-known form fields
+      // Extract lead data from well-known form fields + all form data
       if (capture) {
         const lead = extractLeadData(form);
         payload.lead_name = lead.lead_name;
@@ -342,6 +435,7 @@ export function trackForms(
         payload.lead_phone = lead.lead_phone;
         payload.lead_company = lead.lead_company;
         payload.lead_message = lead.lead_message;
+        payload.lead_data = lead.lead_data;
       }
 
       onEvent(payload);

@@ -210,6 +210,7 @@ export async function POST(request: NextRequest) {
           lead_phone: data.lead_phone || null,
           lead_company: data.lead_company || null,
           lead_message: data.lead_message || null,
+          lead_data: data.lead_data || null,
           form_id: data.form_id || null,
           form_action: data.form_action || null,
           page_url: data.url,

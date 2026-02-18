@@ -22,6 +22,7 @@ interface LeadRow {
   lead_phone: string | null;
   lead_company: string | null;
   lead_message: string | null;
+  lead_data: Record<string, string> | null;
   form_id: string | null;
   page_path: string | null;
   referrer_hostname: string | null;
@@ -618,6 +619,24 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                                     )}
                                   </div>
                                 </div>
+                                {/* All form data */}
+                                {lead.lead_data && typeof lead.lead_data === 'object' && Object.keys(lead.lead_data).length > 0 && (
+                                  <div className="mt-4 border-t pt-3">
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">All Form Data</p>
+                                    <div className="rounded border bg-background overflow-hidden">
+                                      <table className="w-full text-xs">
+                                        <tbody>
+                                          {Object.entries(lead.lead_data as Record<string, string>).map(([key, value]) => (
+                                            <tr key={key} className="border-b last:border-0">
+                                              <td className="px-3 py-1.5 text-muted-foreground font-medium whitespace-nowrap align-top w-1/3">{key}</td>
+                                              <td className="px-3 py-1.5 whitespace-pre-wrap break-words">{value}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
                               </td>
                             </tr>
                           )}
