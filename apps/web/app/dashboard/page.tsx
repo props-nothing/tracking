@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSites, Site } from '@/hooks/use-site';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { SiteCard } from '@/components/site-card';
 
 export default function DashboardPage() {
   const { sites, loading } = useSites();
@@ -103,19 +104,7 @@ export default function DashboardPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sites.map((site) => (
-            <Link
-              key={site.id}
-              href={`/dashboard/${site.id}`}
-              className="rounded-lg border bg-card p-6 transition-colors hover:bg-accent"
-            >
-              <h3 className="font-semibold">{site.name}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{site.domain}</p>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  {site.role}
-                </span>
-              </div>
-            </Link>
+            <SiteCard key={site.id} site={site} />
           ))}
         </div>
       )}
