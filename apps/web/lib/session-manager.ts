@@ -4,6 +4,7 @@ interface SessionData {
   session_id: string;
   site_id: string;
   visitor_hash: string;
+  visitor_id: string | null;
   path: string;
   referrer_hostname: string | null;
   utm_source: string | null;
@@ -44,6 +45,7 @@ export async function upsertSession(data: SessionData): Promise<{
       id: data.session_id,
       site_id: data.site_id,
       visitor_hash: data.visitor_hash,
+      visitor_id: data.visitor_id,
       started_at: now,
       ended_at: now,
       duration_ms: 0,

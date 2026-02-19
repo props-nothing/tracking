@@ -6,6 +6,7 @@ import { isBotUA } from '@/lib/bot-filter';
 import { checkRateLimit } from '@/lib/rate-limiter';
 import { geolocate } from '@/lib/geo';
 import { upsertSession } from '@/lib/session-manager';
+import { upsertVisitor } from '@/lib/visitor-manager';
 import { evaluateGoals } from '@/lib/goals-engine';
 import { createServiceClient } from '@/lib/supabase/server';
 
@@ -114,10 +115,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 10. Upsert session and determine entry/exit/bounce
+    const visitorId = data.visitor_id || null;
     const sessionResult = await upsertSession({
       session_id: data.session_id,
       site_id: data.site_id,
       visitor_hash: visitorHash,
+      visitor_id: visitorId,
       path: data.path,
       referrer_hostname: data.referrer_hostname || null,
       utm_source: data.utm_source || null,
@@ -200,6 +203,7 @@ export async function POST(request: NextRequest) {
       utm_term: data.utm_term || null,
       utm_content: data.utm_content || null,
       visitor_hash: visitorHash,
+      visitor_id: visitorId,
       session_id: data.session_id,
       custom_props: data.custom_props || {},
       browser: ua.browser,
@@ -316,7 +320,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 12b. Evaluate goals (async, non-blocking)
+    // 12b. Upsert visitor profile (async, non-blocking)
+    if (visitorId) {
+      upsertVisitor(supabase, {
+        site_id: data.site_id,
+        visitor_id: visitorId,
+        path: data.path,
+        referrer_hostname: data.referrer_hostname || null,
+        utm_source: data.utm_source || null,
+        utm_medium: data.utm_medium || null,
+        utm_campaign: data.utm_campaign || null,
+        country_code: geo.country_code,
+        city: geo.city,
+        device_type: ua.device_type,
+        browser: ua.browser,
+        os: ua.os,
+        language: data.language || null,
+        screen_width: data.screen_width || null,
+        screen_height: data.screen_height || null,
+        event_type: data.event_type,
+        revenue: data.revenue || null,
+        engaged_time_ms: data.engaged_time_ms || null,
+        custom_props: data.custom_props || {},
+        is_new_session: sessionResult.is_entry,
+      }).catch((err) => console.error('[Collect] Visitor upsert error:', err));
+    }
+
+    // 12c. Evaluate goals (async, non-blocking)
     if (insertedEvent) {
       evaluateGoals({
         ...eventRow,

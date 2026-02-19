@@ -14,6 +14,7 @@ export const collectPayloadSchema = z.object({
   utm_term: z.string().max(255).nullable().optional(),
   utm_content: z.string().max(255).nullable().optional(),
   session_id: z.string().uuid(),
+  visitor_id: z.string().uuid().nullable().optional(),
   custom_props: z.record(z.string(), z.any()).optional().default({}),
   screen_width: z.number().int().positive().nullable().optional(),
   screen_height: z.number().int().positive().nullable().optional(),

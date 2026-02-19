@@ -24,6 +24,7 @@ import { createEcommercePayload, EcommerceAction, EcommerceData } from './ecomme
 import { autoDetectEcommerce } from './ecommerce-auto';
 import { setConsent, hasConsent } from './consent';
 import { setCustomProps, getCustomProps } from './custom-props';
+import { getVisitorId, clearVisitorId } from './visitor';
 import { isBot, isDNTEnabled, debug } from './utils';
 
 declare global {
@@ -95,6 +96,7 @@ declare global {
       referrer_hostname: referrerHostname,
       ...utm,
       session_id: getSessionId(),
+      visitor_id: getVisitorId(),
       custom_props: getCustomProps(),
       screen_width: window.screen?.width || null,
       screen_height: window.screen?.height || null,
@@ -261,6 +263,7 @@ declare global {
 
     consent(granted: boolean) {
       setConsent(granted);
+      if (!granted) clearVisitorId();
       debug(debugEnabled, 'Consent:', granted ? 'granted' : 'revoked');
     },
 
