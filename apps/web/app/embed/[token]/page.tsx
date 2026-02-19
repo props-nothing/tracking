@@ -43,9 +43,7 @@ export default function EmbedPage({ params }: { params: Promise<{ token: string 
       {data.timeseries && data.timeseries.length > 0 && (
         <TimeSeries data={data.timeseries} />
       )}
-      <p className="text-center text-[10px] text-muted-foreground">
-        Powered by Tracking
-      </p>
+  
     </div>
   );
 }

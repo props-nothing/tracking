@@ -669,7 +669,9 @@ export async function GET(request: NextRequest) {
   const pageviews = pvEvents.length;
   const uniqueVisitors = new Set(events.map((e) => e.visitor_hash)).size;
   const uniqueSessions = new Set(events.map((e) => e.session_id)).size;
-  const bounces = pvEvents.filter((e) => e.is_bounce).length;
+  // Use sessions table for bounce rate — event-level is_bounce is unreliable
+  // because it reflects the session state at insert time (first event always = true)
+  const bounces = (sessions || []).filter((s) => s.is_bounce).length;
   const bounceRate = uniqueSessions > 0 ? Math.round((bounces / uniqueSessions) * 100) : 0;
   const viewsPerSession = uniqueSessions > 0 ? Math.round((pageviews / uniqueSessions) * 10) / 10 : 0;
 
@@ -685,16 +687,20 @@ export async function GET(request: NextRequest) {
     : avgEngagedTime;
 
   // Top pages (enriched with unique_visitors, avg_time, bounce_rate)
-  const pageGroups: Record<string, { count: number; visitors: Set<string>; times: number[]; bounces: number; sessions: Set<string> }> = {};
+  // Build a set of bounced session IDs from the sessions table for accurate per-page bounce rate
+  const bouncedSessionIds = new Set((sessions || []).filter((s) => s.is_bounce).map((s) => s.id));
+  const pageGroups: Record<string, { count: number; visitors: Set<string>; times: number[]; bouncedSessions: number; sessions: Set<string> }> = {};
   for (const e of pvEvents) {
-    if (!pageGroups[e.path]) pageGroups[e.path] = { count: 0, visitors: new Set(), times: [], bounces: 0, sessions: new Set() };
+    if (!pageGroups[e.path]) pageGroups[e.path] = { count: 0, visitors: new Set(), times: [], bouncedSessions: 0, sessions: new Set() };
     const pg = pageGroups[e.path];
     pg.count++;
     pg.visitors.add(e.visitor_hash);
-    pg.sessions.add(e.session_id);
+    if (!pg.sessions.has(e.session_id)) {
+      pg.sessions.add(e.session_id);
+      if (bouncedSessionIds.has(e.session_id)) pg.bouncedSessions++;
+    }
     if (e.time_on_page_ms) pg.times.push(e.time_on_page_ms);
     else if (e.engaged_time_ms) pg.times.push(e.engaged_time_ms);
-    if (e.is_bounce) pg.bounces++;
   }
   const topPages = Object.entries(pageGroups)
     .sort((a, b) => b[1].count - a[1].count)
@@ -704,7 +710,7 @@ export async function GET(request: NextRequest) {
       count: pg.count,
       unique_visitors: pg.visitors.size,
       avg_time: pg.times.length > 0 ? Math.round(pg.times.reduce((a, b) => a + b, 0) / pg.times.length) : 0,
-      bounce_rate: pg.sessions.size > 0 ? Math.round((pg.bounces / pg.sessions.size) * 100) : 0,
+      bounce_rate: pg.sessions.size > 0 ? Math.round((pg.bouncedSessions / pg.sessions.size) * 100) : 0,
     }));
 
   // Entry / exit pages

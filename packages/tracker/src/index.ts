@@ -169,10 +169,11 @@ declare global {
     // Send unload data for previous page
     const vitals = getVitals();
     emitBeacon({
-      event_type: 'pageview',
+      event_type: 'pageleave',
       path: oldPath,
       scroll_depth_pct: getScrollDepth(),
       engaged_time_ms: getEngagedTime(),
+      time_on_page_ms: getEngagedTime(),
       ...vitals,
     });
 
@@ -226,7 +227,7 @@ declare global {
   window.addEventListener('beforeunload', () => {
     const vitals = getVitals();
     emitBeacon({
-      event_type: 'pageview',
+      event_type: 'pageleave',
       scroll_depth_pct: getScrollDepth(),
       engaged_time_ms: getEngagedTime(),
       time_on_page_ms: getEngagedTime(),

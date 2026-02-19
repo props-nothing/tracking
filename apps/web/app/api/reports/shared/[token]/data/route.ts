@@ -142,11 +142,24 @@ export async function GET(
   const uniqueVisitors = new Set(events.map((e) => e.visitor_hash)).size;
   const sessionSet = new Set(events.map((e) => e.session_id));
   const sessions = sessionSet.size;
-  const bounces = pvEvents.filter((e) => e.is_bounce).length;
+
+  // Fetch sessions for reliable bounce rate and duration
+  const { data: sessRows } = await supabase
+    .from('sessions')
+    .select('id, duration_ms, is_bounce')
+    .eq('site_id', report.site_id)
+    .gte('started_at', fromDate.toISOString())
+    .lte('started_at', toDate.toISOString());
+
+  // Bounce rate from sessions table — event-level is_bounce is unreliable
+  const bounces = (sessRows || []).filter((s) => s.is_bounce).length;
   const bounceRate = sessions > 0 ? Math.round((bounces / sessions) * 100) : 0;
   const viewsPerSession = sessions > 0 ? Math.round((pageviews / sessions) * 10) / 10 : 0;
-  const totalEngaged = events.reduce((sum, e) => sum + (e.engaged_time_ms || 0), 0);
-  const avgDuration = sessions > 0 ? Math.round(totalEngaged / sessions / 1000) : 0;
+  // Avg duration from sessions table (event-level engaged_time summing double-counts)
+  const sessionDurations = (sessRows || []).filter((s) => s.duration_ms > 0).map((s) => s.duration_ms);
+  const avgDuration = sessionDurations.length > 0
+    ? Math.round(sessionDurations.reduce((a: number, b: number) => a + b, 0) / sessionDurations.length / 1000)
+    : 0;
 
   const hiddenMetrics = new Set(report.hidden_metrics || []);
   const visibleSections = new Set(report.visible_sections || []);
@@ -284,6 +297,23 @@ export async function GET(
       pageviews: m?.pageviews ?? 0,
       timeseries: result.timeseries ?? [],
     });
+  }
+
+  // --- AI Insights (if enabled for this shared report) ---
+  if (report.show_ai_insights) {
+    const { data: aiReport } = await supabase
+      .from('ai_reports')
+      .select('analysis, generated_at, period_start, period_end, model_used')
+      .eq('site_id', report.site_id)
+      .order('generated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (aiReport?.analysis) {
+      result.ai_analysis = typeof aiReport.analysis === 'string'
+        ? JSON.parse(aiReport.analysis)
+        : aiReport.analysis;
+    }
   }
 
   return NextResponse.json(result);

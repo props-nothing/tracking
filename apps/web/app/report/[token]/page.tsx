@@ -6,6 +6,7 @@ import { TimeSeries } from '@/components/charts/time-series';
 import { BarChart } from '@/components/charts/bar-chart';
 import { PieChart } from '@/components/charts/pie-chart';
 import { DataTable } from '@/components/tables/data-table';
+import { AIReportCard } from '@/components/ai-report-card';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -36,6 +37,18 @@ interface LeadRow {
   created_at: string;
 }
 interface SourceCount { source: string; count: number }
+
+interface AIAnalysisData {
+  summary: string;
+  highlights: { type: string; title: string; detail: string; metric?: string; change_pct?: number }[];
+  lead_insights: { top_sources: string; recommendations: string[]; quality_assessment: string };
+  campaign_insights: { best_performing: string; worst_performing: string; budget_recommendations: string[]; new_ideas: string[] };
+  traffic_insights: { trends: string; anomalies: string[]; opportunities: string[] };
+  page_insights: { top_performers: string; underperformers: string; optimization_suggestions: string[] };
+  comparison?: { summary: string; improvements: string[]; regressions: string[]; campaign_comparison: string };
+  action_items: { priority: string; category: string; action: string; expected_impact: string }[];
+  confidence_notes: string;
+}
 
 interface ReportData {
   site_name: string;
@@ -70,6 +83,7 @@ interface ReportData {
   lead_sources: SourceCount[];
   lead_mediums: { medium: string; count: number }[];
   lead_campaigns: { campaign: string; count: number }[];
+  ai_analysis?: AIAnalysisData;
 }
 
 interface Filter { key: string; label: string; value: string }
@@ -157,6 +171,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           lead_sources: d.lead_sources ?? [],
           lead_mediums: d.lead_mediums ?? [],
           lead_campaigns: d.lead_campaigns ?? [],
+          ai_analysis: d.ai_analysis ?? undefined,
         });
         setNeedsPassword(false);
         setLoading(false);
@@ -321,6 +336,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                   data={data.top_pages}
                   pageSize={10}
                   searchable
+                  borderless
                 />
               )}
               {activeTab === 'entry' && (
@@ -332,6 +348,8 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                   ]}
                   data={data.entry_pages}
                   pageSize={10}
+                  searchable
+                  borderless
                 />
               )}
               {activeTab === 'exit' && (
@@ -343,6 +361,8 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                   ]}
                   data={data.exit_pages}
                   pageSize={10}
+                  searchable
+                  borderless
                 />
               )}
             </div>
@@ -650,10 +670,20 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           </>
         )}
 
-        {/* Footer */}
-        <div className="border-t pt-6 text-center text-xs text-muted-foreground">
-          Powered by <span className="font-semibold">Tracking</span> — Privacy-friendly analytics
-        </div>
+        {/* AI Insights (if available in shared report) */}
+        {data.ai_analysis && (
+          <>
+            <h2 className="text-sm font-medium text-muted-foreground pt-2">AI Insights</h2>
+            <div className="rounded-lg border bg-card p-6">
+              <AIReportCard
+                analysis={data.ai_analysis as any}
+                periodStart={data.date_from}
+                periodEnd={data.date_to}
+                compact
+              />
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

@@ -16,6 +16,7 @@ interface DataTableProps {
   emptyMessage?: string;
   pageSize?: number;
   searchable?: boolean;
+  borderless?: boolean;
 }
 
 export function DataTable({
@@ -25,6 +26,7 @@ export function DataTable({
   emptyMessage = 'No data',
   pageSize = 10,
   searchable = false,
+  borderless = false,
 }: DataTableProps) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -67,19 +69,21 @@ export function DataTable({
   };
 
   return (
-    <div className="rounded-lg border bg-card">
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <h3 className="text-sm font-medium">{title}</h3>
-        {searchable && (
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            className="rounded-md border bg-transparent px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-primary w-40"
-          />
-        )}
-      </div>
+    <div className={borderless ? '' : 'rounded-lg border bg-card'}>
+      {(!borderless || title || searchable) && (
+        <div className={`flex items-center justify-between ${borderless && !title ? 'px-4 py-2' : 'border-b px-4 py-3'}`}>
+          {title ? <h3 className="text-sm font-medium">{title}</h3> : <span />}
+          {searchable && (
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              className="rounded-md border bg-transparent px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-primary w-40"
+            />
+          )}
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>

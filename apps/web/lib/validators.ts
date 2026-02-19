@@ -23,7 +23,7 @@ export const collectPayloadSchema = z.object({
   timezone: z.string().max(100).nullable().optional(),
   connection_type: z.string().max(20).nullable().optional(),
   event_type: z.enum([
-    'pageview', 'custom', 'form_submit', 'form_abandon',
+    'pageview', 'pageleave', 'custom', 'form_submit', 'form_abandon',
     'outbound_click', 'file_download', 'scroll_depth',
     'rage_click', 'dead_click', 'element_visible',
     'copy', 'print', 'error', 'ecommerce',
@@ -129,6 +129,7 @@ export const sharedReportSchema = z.object({
   email_recipients: z.array(z.string().email()).nullable().optional(),
   email_schedule: z.enum(['weekly', 'monthly']).nullable().optional(),
   allow_embed: z.boolean().default(false),
+  show_ai_insights: z.boolean().default(false),
 });
 
 export const alertSchema = z.object({

@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useMemo } from 'react';
 import { useSite } from '@/hooks/use-site';
 import { useStats } from '@/hooks/use-stats';
 import { useDashboard } from '@/hooks/use-dashboard-context';
@@ -8,6 +8,7 @@ import { MetricCard } from '@/components/metric-card';
 import { TimeSeries } from '@/components/charts/time-series';
 import { DataTable } from '@/components/tables/data-table';
 import { ExportBar } from '@/components/export-bar';
+import { AIInsightsPanel } from '@/components/ai-insights-panel';
 
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -31,8 +32,31 @@ export default function SiteDashboardPage({
 }) {
   const { siteId } = use(params);
   const { site, loading: siteLoading } = useSite(siteId);
-  const { period, queryString } = useDashboard();
+  const { period, queryString, customFrom, customTo } = useDashboard();
   const { stats, loading: statsLoading } = useStats(siteId, queryString);
+
+  // Compute date range for AI insights
+  const { periodStart, periodEnd } = useMemo(() => {
+    const now = new Date();
+    let from: Date;
+    const to = customTo ? new Date(customTo) : now;
+    if (period === 'custom' && customFrom) {
+      from = new Date(customFrom);
+    } else {
+      switch (period) {
+        case 'today': from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
+        case 'yesterday': from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1); break;
+        case 'last_7_days': from = new Date(now.getTime() - 7 * 86400000); break;
+        case 'last_90_days': from = new Date(now.getTime() - 90 * 86400000); break;
+        case 'last_365_days': from = new Date(now.getTime() - 365 * 86400000); break;
+        default: from = new Date(now.getTime() - 30 * 86400000);
+      }
+    }
+    return {
+      periodStart: from.toISOString().slice(0, 10),
+      periodEnd: to.toISOString().slice(0, 10),
+    };
+  }, [period, customFrom, customTo]);
 
   if (siteLoading) {
     return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
@@ -127,6 +151,13 @@ export default function SiteDashboardPage({
               data={stats.top_devices}
             />
           </div>
+
+          {/* AI Insights */}
+          <AIInsightsPanel
+            siteId={siteId}
+            periodStart={periodStart}
+            periodEnd={periodEnd}
+          />
 
           {/* Tracking Code */}
           <div className="rounded-lg border bg-card p-6">

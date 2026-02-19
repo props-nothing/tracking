@@ -49,7 +49,17 @@ export async function GET(
   const pageviews = evts.filter((e) => e.event_type === 'pageview').length;
   const uniqueVisitors = new Set(evts.map((e) => e.visitor_hash)).size;
   const sessions = new Set(evts.map((e) => e.session_id)).size;
-  const bounces = evts.filter((e) => e.is_bounce && e.event_type === 'pageview').length;
+
+  // Fetch sessions for reliable bounce rate
+  const { data: sessRows } = await supabase
+    .from('sessions')
+    .select('id, is_bounce')
+    .eq('site_id', report.site_id)
+    .gte('started_at', fromDate.toISOString())
+    .lte('started_at', now.toISOString());
+
+  // Bounce rate from sessions table — event-level is_bounce is unreliable
+  const bounces = (sessRows || []).filter((s) => s.is_bounce).length;
   const bounceRate = sessions > 0 ? Math.round((bounces / sessions) * 100) : 0;
   const viewsPerSession = sessions > 0 ? Math.round((pageviews / sessions) * 10) / 10 : 0;
   const engagedTimes = evts.filter((e) => e.engaged_time_ms).map((e) => e.engaged_time_ms!);

@@ -134,7 +134,55 @@ export async function POST(request: NextRequest) {
       engaged_time_ms: data.engaged_time_ms ?? null,
     });
 
-    // 11. Insert event row
+    // 11. Handle pageleave: update existing pageview instead of inserting duplicate
+    if (data.event_type === 'pageleave') {
+      // Find the latest pageview event for this session + path and update it
+      // with engagement data (time_on_page, engaged_time, scroll depth, vitals)
+      const { data: existingPv } = await supabase
+        .from('events')
+        .select('id')
+        .eq('session_id', data.session_id)
+        .eq('path', data.path)
+        .eq('event_type', 'pageview')
+        .order('timestamp', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingPv) {
+        const updateFields: Record<string, any> = {};
+        if (data.time_on_page_ms != null) updateFields.time_on_page_ms = data.time_on_page_ms;
+        if (data.engaged_time_ms != null) updateFields.engaged_time_ms = data.engaged_time_ms;
+        if (data.scroll_depth_pct != null) updateFields.scroll_depth_pct = data.scroll_depth_pct;
+        if (data.ttfb_ms != null) updateFields.ttfb_ms = data.ttfb_ms;
+        if (data.fcp_ms != null) updateFields.fcp_ms = data.fcp_ms;
+        if (data.lcp_ms != null) updateFields.lcp_ms = data.lcp_ms;
+        if (data.cls != null) updateFields.cls = data.cls;
+        if (data.inp_ms != null) updateFields.inp_ms = data.inp_ms;
+        if (data.fid_ms != null) updateFields.fid_ms = data.fid_ms;
+
+        if (Object.keys(updateFields).length > 0) {
+          await supabase
+            .from('events')
+            .update(updateFields)
+            .eq('id', existingPv.id);
+        }
+
+        // Evaluate goals with the enriched data (e.g., time_on_page goals)
+        evaluateGoals({
+          id: existingPv.id,
+          site_id: data.site_id,
+          event_type: 'pageview',
+          path: data.path,
+          session_id: data.session_id,
+          visitor_hash: visitorHash,
+          engaged_time_ms: data.engaged_time_ms ?? null,
+        } as any).catch((err) => console.error('[Collect] Goal evaluation error:', err));
+      }
+
+      return new NextResponse(null, { status: 202, headers: corsHeaders });
+    }
+
+    // 12. Insert event row
     const eventRow = {
       site_id: data.site_id,
       event_type: data.event_type,

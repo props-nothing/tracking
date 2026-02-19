@@ -8,6 +8,7 @@ interface SharedReport {
   name: string;
   token: string;
   password_protected: boolean;
+  show_ai_insights: boolean;
   created_at: string;
   expires_at: string | null;
 }
@@ -20,6 +21,7 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showAI, setShowAI] = useState(false);
 
   const fetchReports = () => {
     setLoading(true);
@@ -39,10 +41,11 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
     await fetch('/api/reports', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site_id: siteId, name, password: password || undefined }),
+      body: JSON.stringify({ site_id: siteId, name, password: password || undefined, show_ai_insights: showAI }),
     });
     setName('');
     setPassword('');
+    setShowAI(false);
     setShowCreate(false);
     setCreating(false);
     fetchReports();
@@ -94,6 +97,15 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
           </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={showAI}
+              onChange={(e) => setShowAI(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Include AI insights
+          </label>
           <button
             onClick={handleCreate}
             disabled={!name || creating}
@@ -122,10 +134,26 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
                 <p className="text-xs text-muted-foreground">
                   Created {new Date(r.created_at).toLocaleDateString()}
                   {r.password_protected && ' · 🔒 Password protected'}
+                  {r.show_ai_insights && ' · ✨ AI insights'}
                   {r.expires_at && ` · Expires ${new Date(r.expires_at).toLocaleDateString()}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    await fetch(`/api/reports/${r.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ show_ai_insights: !r.show_ai_insights }),
+                    });
+                    fetchReports();
+                  }}
+                  className={`rounded-md border px-3 py-1.5 text-xs hover:bg-muted ${
+                    r.show_ai_insights ? 'border-purple-300 bg-purple-50 text-purple-700' : ''
+                  }`}
+                >
+                  {r.show_ai_insights ? 'AI On' : 'AI Off'}
+                </button>
                 <button
                   onClick={() => copyLink(r.token)}
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
