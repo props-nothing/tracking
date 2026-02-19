@@ -1,6 +1,10 @@
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <div className="flex min-h-screen flex-col">
       {/* Nav */}
@@ -16,12 +20,21 @@ export default function HomePage() {
             <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground">
               Docs
             </Link>
-            <Link
-              href="/login"
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Log In
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Log In
+              </Link>
+            )}
           </nav>
         </div>
       </header>
