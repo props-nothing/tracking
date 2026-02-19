@@ -8,8 +8,8 @@ import { FilterBar } from '@/components/filter-bar';
 function DashboardControls({ children }: { children: React.ReactNode }) {
   return (
     <DashboardProvider>
-      <div className="mb-6 flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="mb-6 flex flex-col gap-3 sm:mb-8">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <DateRangePicker />
           <FilterBar />
         </div>

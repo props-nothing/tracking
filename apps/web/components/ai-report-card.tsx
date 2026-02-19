@@ -15,16 +15,16 @@ interface AIReportCardProps {
 }
 
 const highlightColors: Record<AIHighlight['type'], { bg: string; text: string; icon: string }> = {
-  positive: { bg: 'bg-green-50 dark:bg-green-950/30', text: 'text-green-700 dark:text-green-400', icon: '↑' },
-  negative: { bg: 'bg-red-50 dark:bg-red-950/30', text: 'text-red-700 dark:text-red-400', icon: '↓' },
-  neutral: { bg: 'bg-blue-50 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-400', icon: '→' },
-  opportunity: { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', icon: '★' },
+  positive: { bg: 'bg-muted/60', text: 'text-foreground', icon: '↑' },
+  negative: { bg: 'bg-muted/60', text: 'text-foreground', icon: '↓' },
+  neutral: { bg: 'bg-muted/60', text: 'text-foreground', icon: '→' },
+  opportunity: { bg: 'bg-muted/60', text: 'text-foreground', icon: '★' },
 };
 
 const priorityColors: Record<ActionItem['priority'], string> = {
-  high: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
-  low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  high: 'bg-muted text-foreground',
+  medium: 'bg-muted text-foreground',
+  low: 'bg-muted text-muted-foreground',
 };
 
 export function AIReportCard({
@@ -43,15 +43,15 @@ export function AIReportCard({
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="rounded-lg border bg-gradient-to-r from-indigo-50 to-purple-50 p-5 dark:from-indigo-950/20 dark:to-purple-950/20">
+      <div className="rounded-lg border bg-muted/50 p-5">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-full bg-indigo-100 p-2 dark:bg-indigo-900/50">
-            <svg className="h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="mt-0.5 rounded-full bg-muted p-2">
+            <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
             </svg>
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">AI Summary</h3>
+            <h3 className="font-semibold text-foreground">Summary</h3>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{analysis.summary}</p>
           </div>
         </div>

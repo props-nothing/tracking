@@ -73,12 +73,12 @@ function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
     <div className="min-h-screen bg-background">
       {/* Top nav */}
       <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-14 items-center justify-between px-4 lg:px-6">
-          <div className="flex items-center gap-4">
+        <div className="flex h-14 items-center justify-between gap-2 px-4 lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             {isOnSite && (
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden rounded-md p-1.5 hover:bg-muted"
+                className="shrink-0 lg:hidden rounded-md p-1.5 hover:bg-muted"
                 aria-label="Toggle sidebar"
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -86,25 +86,31 @@ function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
                 </svg>
               </button>
             )}
-            <Link href="/dashboard" className="text-lg font-bold">
+            <Link href="/dashboard" className="shrink-0 text-lg font-bold">
               Tracking
             </Link>
             {isOnSite && sites.length > 1 && (
-              <SiteSwitcher
-                sites={sites}
-                currentSiteId={siteId}
-                onSelect={(id) => router.push(`/dashboard/${id}`)}
-              />
+              <div className="hidden sm:block">
+                <SiteSwitcher
+                  sites={sites}
+                  currentSiteId={siteId}
+                  onSelect={(id) => router.push(`/dashboard/${id}`)}
+                />
+              </div>
             )}
-            {isOnSite && <ActiveVisitorsBadge siteId={siteId} />}
+            {isOnSite && (
+              <div className="hidden xs:block sm:block">
+                <ActiveVisitorsBadge siteId={siteId} />
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <DarkModeToggle />
-            <span className="hidden text-sm text-muted-foreground sm:inline">{userEmail}</span>
+            <span className="hidden max-w-[140px] truncate text-sm text-muted-foreground md:inline">{userEmail}</span>
             <form action="/api/auth/signout" method="POST">
               <button
                 type="submit"
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                className="whitespace-nowrap text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Sign out
               </button>
@@ -125,7 +131,7 @@ function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
               />
             )}
             <aside
-              className={`fixed left-0 top-14 z-30 h-[calc(100vh-3.5rem)] w-56 border-r bg-background overflow-y-auto transition-transform duration-200 lg:sticky lg:translate-x-0 ${
+              className={`fixed left-0 top-14 z-30 h-[calc(100vh-3.5rem)] w-56 border-r bg-background overflow-y-auto scrollbar-hide transition-transform duration-200 lg:sticky lg:translate-x-0 ${
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full'
               }`}
             >
@@ -159,7 +165,7 @@ function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
         )}
 
         {/* Content */}
-        <main className={`flex-1 min-w-0 mx-auto max-w-7xl px-4 py-8 lg:px-6 ${isOnSite ? 'lg:ml-0' : ''}`}>
+        <main className={`flex-1 min-w-0 mx-auto max-w-7xl px-4 py-6 lg:px-6 lg:py-8 ${isOnSite ? 'lg:ml-0' : ''}`}>
           {children}
         </main>
       </div>
