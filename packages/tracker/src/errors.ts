@@ -3,6 +3,27 @@
  */
 import { EventPayload } from './collect';
 
+/** Well-known browser noise errors that are not actionable */
+const IGNORED_ERRORS = [
+  'ResizeObserver loop',
+  'ResizeObserver loop completed with undelivered notifications',
+  'Script error.',
+  'Script error',
+  // Chrome extensions / third-party injected noise
+  'Non-Error promise rejection captured',
+  // Safari benign errors
+  'cancelled',
+  'The operation was aborted',
+  // Network noise
+  'Load failed',
+  'Failed to fetch',
+  'NetworkError when attempting to fetch resource',
+];
+
+function isIgnoredError(message: string): boolean {
+  return IGNORED_ERRORS.some((ignored) => message.includes(ignored));
+}
+
 export function trackErrors(
   onEvent: (payload: Partial<EventPayload>) => void
 ): void {
@@ -13,10 +34,15 @@ export function trackErrors(
     // Skip third-party script errors
     if (e.filename && !e.filename.startsWith(origin)) return;
 
+    const message = e.message || 'Unknown error';
+
+    // Skip known browser noise
+    if (isIgnoredError(message)) return;
+
     onEvent({
       event_type: 'error',
       event_name: 'js_error',
-      error_message: e.message || 'Unknown error',
+      error_message: message,
       error_stack: e.error?.stack?.slice(0, 2000) || null,
       error_source: e.filename || null,
       error_line: e.lineno || null,
@@ -35,6 +61,9 @@ export function trackErrors(
     } else if (typeof reason === 'string') {
       message = reason;
     }
+
+    // Skip known browser noise
+    if (isIgnoredError(message)) return;
 
     onEvent({
       event_type: 'error',

@@ -21,6 +21,7 @@ import { trackClipboard } from './clipboard';
 import { trackPrint } from './print';
 import { trackErrors } from './errors';
 import { createEcommercePayload, EcommerceAction, EcommerceData } from './ecommerce';
+import { autoDetectEcommerce } from './ecommerce-auto';
 import { setConsent, hasConsent } from './consent';
 import { setCustomProps, getCustomProps } from './custom-props';
 import { isBot, isDNTEnabled, debug } from './utils';
@@ -222,6 +223,9 @@ declare global {
   if (config.trackErrors) {
     trackErrors(emitEvent);
   }
+
+  // ── Auto-detect ecommerce (WooCommerce, Shopify) ───────────
+  autoDetectEcommerce(emitEvent, debugEnabled);
 
   // ── Page unload — send final data ───────────────────────────
   window.addEventListener('beforeunload', () => {

@@ -317,6 +317,52 @@ export function trackForms(
     return form.id || form.getAttribute('name') || `form-${Array.from(document.forms).indexOf(form)}`;
   }
 
+  /**
+   * Detect ecommerce forms that should NOT be tracked as form_submit / lead data.
+   * These include add-to-cart, checkout, payment and cart-update forms from
+   * WooCommerce, Shopify, Magento, BigCommerce, PrestaShop, etc.
+   */
+  function isEcommerceForm(form: HTMLFormElement): boolean {
+    const id = (form.id || '').toLowerCase();
+    const cls = (form.className || '').toLowerCase();
+    const action = (form.action || '').toLowerCase();
+    const name = (form.name || '').toLowerCase();
+
+    // WooCommerce: add-to-cart forms, checkout, cart update
+    if (form.querySelector('button[name="add-to-cart"], input[name="add-to-cart"]')) return true;
+    if (id === 'checkout' || cls.includes('woocommerce-checkout')) return true;
+    if (cls.includes('woocommerce') && cls.includes('cart')) return true;
+    if (form.querySelector('[name="update_cart"]')) return true;
+    if (form.querySelector('[name="coupon_code"]')) return true;
+
+    // Shopify: add-to-cart and checkout forms
+    if (action.includes('/cart/add') || action.includes('/cart')) return true;
+    if (form.querySelector('[name="add"], button[data-action="add-to-cart"]')) {
+      // Only match if this looks like a product form (has a quantity or variant field)
+      if (form.querySelector('[name="quantity"], [name="id"], [name="variant_id"]')) return true;
+    }
+    if (cls.includes('shopify-payment') || id === 'shopify-checkout') return true;
+
+    // Generic ecommerce signals
+    if (action.includes('/checkout') || action.includes('/cart') || action.includes('/basket')) return true;
+    if (id === 'payment-form' || cls.includes('payment-form')) return true;
+    if (name === 'checkout' || name === 'payment') return true;
+
+    // Form has payment/card fields
+    if (form.querySelector('[name*="card_number"], [name*="cc_number"], [name*="payment_method"], [autocomplete="cc-number"]')) return true;
+
+    // WooCommerce / generic: data attribute markers
+    if (form.getAttribute('data-product_id') || form.getAttribute('data-product-id')) return true;
+
+    // Magento
+    if (id === 'product_addtocart_form' || id === 'co-payment-form') return true;
+
+    // PrestaShop
+    if (cls.includes('add-to-cart-or-refresh')) return true;
+
+    return false;
+  }
+
   function shouldCaptureLeads(form: HTMLFormElement): boolean {
     // Per-form opt-in/opt-out overrides global setting
     const formAttr = form.getAttribute('data-capture-leads');
@@ -376,6 +422,9 @@ export function trackForms(
 
   // Attach listeners to all forms
   function attachToForm(form: HTMLFormElement) {
+    // Skip ecommerce forms — these are handled by ecommerce tracking, not form analytics
+    if (isEcommerceForm(form)) return;
+
     const formId = getFormId(form);
 
     // Focus tracking per field
@@ -469,6 +518,7 @@ export function trackForms(
   window.addEventListener('beforeunload', () => {
     document.querySelectorAll('form').forEach((form) => {
       const f = form as HTMLFormElement;
+      if (isEcommerceForm(f)) return; // Skip ecommerce forms
       const state = formStates.get(f);
       if (state?.started) {
         const fields = getFieldMeta(f, state, false); // Never capture values on abandon
