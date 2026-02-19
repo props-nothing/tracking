@@ -11,7 +11,7 @@ import { ExportBar } from '@/components/export-bar';
 import { AIInsightsPanel } from '@/components/ai-insights-panel';
 
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
+  if (!ms || ms < 1000) return `${ms ?? 0}ms`;
   const seconds = Math.floor(ms / 1000);
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
@@ -20,6 +20,7 @@ function formatDuration(ms: number): string {
 }
 
 function formatNumber(n: number): string {
+  if (n == null) return '0';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return n.toString();
@@ -92,7 +93,7 @@ export default function SiteDashboardPage({
           {/* Time Series Chart */}
           <div className="rounded-lg border bg-card p-6">
             <h2 className="mb-4 text-sm font-medium">Visitors & Page Views Over Time</h2>
-            <TimeSeries data={stats.timeseries} />
+            <TimeSeries data={stats.timeseries} period={period} />
           </div>
 
           {/* Breakdown Tables */}

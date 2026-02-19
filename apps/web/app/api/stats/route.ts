@@ -16,9 +16,12 @@ function getDateRange(period: string, customFrom?: string | null, customTo?: str
     case 'today':
       fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       break;
-    case 'yesterday':
-      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-      break;
+    case 'yesterday': {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      fromDate = new Date(startOfToday.getTime() - 86400000);
+      const endOfYesterday = new Date(startOfToday.getTime() - 1);
+      return { fromStr: fromDate.toISOString(), toStr: endOfYesterday.toISOString() };
+    }
     case 'last_7_days':
       fromDate = new Date(now.getTime() - 7 * 86400000);
       break;
@@ -98,25 +101,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'site_id required' }, { status: 400 });
   }
 
-  // Verify user has access to this site
-  const { data: ownedSite } = await supabase
-    .from('sites')
-    .select('id')
-    .eq('id', siteId)
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // Verify user has access to this site using the SECURITY DEFINER helper
+  // (bypasses RLS to check both sites.user_id and site_members in one call)
+  const { data: hasAccess } = await supabase.rpc('has_site_access', { p_site_id: siteId });
 
-  if (!ownedSite) {
-    const { data: membership } = await supabase
-      .from('site_members')
-      .select('role')
-      .eq('site_id', siteId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  if (!hasAccess) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Use service client for data queries (auth already verified above)
@@ -773,17 +763,64 @@ export async function GET(request: NextRequest) {
   const topDevices = countBy(events, (e) => e.device_type)
     .map(([device, count]) => ({ device, count }));
 
-  // Time series
-  const tsMap: Record<string, { pageviews: number; visitors: Set<string> }> = {};
-  for (const e of pvEvents) {
-    const day = e.timestamp.split('T')[0];
-    if (!tsMap[day]) tsMap[day] = { pageviews: 0, visitors: new Set() };
-    tsMap[day].pageviews++;
-    tsMap[day].visitors.add(e.visitor_hash);
+  // Fetch leads for timeseries markers
+  const { data: leads } = await db
+    .from('leads')
+    .select('created_at')
+    .eq('site_id', siteId)
+    .gte('created_at', fromStr)
+    .lte('created_at', toStr);
+
+  // Time series — use hourly buckets for today/yesterday, daily for everything else
+  const isHourly = period === 'today' || period === 'yesterday';
+
+  if (isHourly) {
+    const bucketMap: Record<string, { pageviews: number; visitors: Set<string>; leads: number }> = {};
+    // Generate all hour slots
+    const startHour = new Date(fromStr);
+    startHour.setMinutes(0, 0, 0);
+    const endHour = new Date(toStr);
+    for (let h = new Date(startHour); h <= endHour; h = new Date(h.getTime() + 3600000)) {
+      const key = h.toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
+      bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
+    }
+    for (const e of pvEvents) {
+      const key = e.timestamp.slice(0, 13);
+      if (!bucketMap[key]) bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
+      bucketMap[key].pageviews++;
+      bucketMap[key].visitors.add(e.visitor_hash);
+    }
+    for (const l of leads || []) {
+      const key = l.created_at.slice(0, 13);
+      if (bucketMap[key]) bucketMap[key].leads++;
+    }
+    var timeseries = Object.entries(bucketMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, d]) => ({ date, pageviews: d.pageviews, visitors: d.visitors.size, leads: d.leads }));
+  } else {
+    const bucketMap: Record<string, { pageviews: number; visitors: Set<string>; leads: number }> = {};
+    // Fill all day slots in range
+    const startDay = new Date(fromStr);
+    startDay.setHours(0, 0, 0, 0);
+    const endDay = new Date(toStr);
+    for (let d = new Date(startDay); d <= endDay; d = new Date(d.getTime() + 86400000)) {
+      const key = d.toISOString().slice(0, 10);
+      bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
+    }
+    for (const e of pvEvents) {
+      const key = e.timestamp.split('T')[0];
+      if (!bucketMap[key]) bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
+      bucketMap[key].pageviews++;
+      bucketMap[key].visitors.add(e.visitor_hash);
+    }
+    for (const l of leads || []) {
+      const key = l.created_at.split('T')[0];
+      if (bucketMap[key]) bucketMap[key].leads++;
+    }
+    var timeseries = Object.entries(bucketMap)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, d]) => ({ date, pageviews: d.pageviews, visitors: d.visitors.size, leads: d.leads }));
   }
-  const timeseries = Object.entries(tsMap)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([date, d]) => ({ date, pageviews: d.pageviews, visitors: d.visitors.size }));
 
   return NextResponse.json({
     pageviews,

@@ -304,7 +304,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
         {data.timeseries.length > 0 && (
           <div className="rounded-lg border bg-card p-6">
             <h2 className="mb-4 text-sm font-medium">Visitors &amp; Pageviews Over Time</h2>
-            <TimeSeries data={data.timeseries} />
+            <TimeSeries data={data.timeseries} period={range} />
           </div>
         )}
 

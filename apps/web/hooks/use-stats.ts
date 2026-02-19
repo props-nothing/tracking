@@ -22,7 +22,7 @@ export interface Stats {
   top_browsers: { browser: string; count: number }[];
   top_os: { os: string; count: number }[];
   top_devices: { device: string; count: number }[];
-  timeseries: { date: string; pageviews: number; visitors: number }[];
+  timeseries: { date: string; pageviews: number; visitors: number; leads?: number }[];
 }
 
 /**
@@ -43,12 +43,18 @@ export function useStats(siteId: string | null, queryString: string, metric?: st
     if (metric) url += `&metric=${metric}`;
 
     fetch(url)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
         setStats(data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setStats(null);
+        setLoading(false);
+      });
   }, [siteId, queryString, metric]);
 
   return { stats, loading };

@@ -277,16 +277,62 @@ export async function GET(
 
   // --- Timeseries ---
   if (showSection('chart')) {
-    const dayMap: Record<string, { visitors: Set<string>; pageviews: number }> = {};
-    events.forEach((e) => {
-      const day = new Date(e.timestamp).toISOString().slice(0, 10);
-      if (!dayMap[day]) dayMap[day] = { visitors: new Set(), pageviews: 0 };
-      dayMap[day].visitors.add(e.visitor_hash);
-      if (e.event_type === 'pageview') dayMap[day].pageviews++;
-    });
-    result.timeseries = Object.entries(dayMap)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, d]) => ({ date, visitors: d.visitors.size, pageviews: d.pageviews }));
+    // Determine effective period for granularity
+    const effectiveRange = qRange || report.date_range_mode || 'last_30_days';
+    const isHourly = effectiveRange === 'today';
+
+    // Fetch leads for timeseries markers
+    const { data: tsLeads } = await supabase
+      .from('leads')
+      .select('created_at')
+      .eq('site_id', report.site_id)
+      .gte('created_at', fromDate.toISOString())
+      .lte('created_at', toDate.toISOString());
+
+    if (isHourly) {
+      const bucketMap: Record<string, { visitors: Set<string>; pageviews: number; leads: number }> = {};
+      const startHour = new Date(fromDate);
+      startHour.setMinutes(0, 0, 0);
+      for (let h = new Date(startHour); h <= toDate; h = new Date(h.getTime() + 3600000)) {
+        const key = h.toISOString().slice(0, 13);
+        bucketMap[key] = { visitors: new Set(), pageviews: 0, leads: 0 };
+      }
+      events.forEach((e) => {
+        const key = new Date(e.timestamp).toISOString().slice(0, 13);
+        if (!bucketMap[key]) bucketMap[key] = { visitors: new Set(), pageviews: 0, leads: 0 };
+        bucketMap[key].visitors.add(e.visitor_hash);
+        if (e.event_type === 'pageview') bucketMap[key].pageviews++;
+      });
+      for (const l of tsLeads || []) {
+        const key = new Date(l.created_at).toISOString().slice(0, 13);
+        if (bucketMap[key]) bucketMap[key].leads++;
+      }
+      result.timeseries = Object.entries(bucketMap)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, d]) => ({ date, visitors: d.visitors.size, pageviews: d.pageviews, leads: d.leads }));
+    } else {
+      const dayMap: Record<string, { visitors: Set<string>; pageviews: number; leads: number }> = {};
+      // Fill all day slots
+      const startDay = new Date(fromDate);
+      startDay.setHours(0, 0, 0, 0);
+      for (let d = new Date(startDay); d <= toDate; d = new Date(d.getTime() + 86400000)) {
+        const key = d.toISOString().slice(0, 10);
+        dayMap[key] = { visitors: new Set(), pageviews: 0, leads: 0 };
+      }
+      events.forEach((e) => {
+        const day = new Date(e.timestamp).toISOString().slice(0, 10);
+        if (!dayMap[day]) dayMap[day] = { visitors: new Set(), pageviews: 0, leads: 0 };
+        dayMap[day].visitors.add(e.visitor_hash);
+        if (e.event_type === 'pageview') dayMap[day].pageviews++;
+      });
+      for (const l of tsLeads || []) {
+        const key = new Date(l.created_at).toISOString().slice(0, 10);
+        if (dayMap[key]) dayMap[key].leads++;
+      }
+      result.timeseries = Object.entries(dayMap)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, d]) => ({ date, visitors: d.visitors.size, pageviews: d.pageviews, leads: d.leads }));
+    }
   }
 
   // --- Embed format shortcut ---
