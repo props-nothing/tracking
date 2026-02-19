@@ -81,8 +81,10 @@ export async function POST(request: NextRequest) {
     if (origin) {
       try {
         const originHost = new URL(origin).hostname;
+        // Strip leading "www." for comparison so both variants match
+        const normalize = (h: string) => h.replace(/^www\./, '');
         // Allow localhost in development
-        if (originHost !== site.domain && originHost !== 'localhost') {
+        if (normalize(originHost) !== normalize(site.domain) && originHost !== 'localhost') {
           return NextResponse.json(
             { error: 'Origin mismatch' },
             { status: 403, headers: corsHeaders }
