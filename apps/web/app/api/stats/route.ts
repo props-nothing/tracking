@@ -449,7 +449,7 @@ export async function GET(request: NextRequest) {
   if (metric === 'ecommerce') {
     let ecomQuery = db
       .from('events')
-      .select('event_type, ecommerce_action, order_id, revenue, ecommerce_items, timestamp')
+      .select('event_type, ecommerce_action, order_id, revenue, currency, ecommerce_items, timestamp')
       .eq('site_id', siteId)
       .eq('event_type', 'ecommerce')
       .gte('timestamp', fromStr)
@@ -459,9 +459,19 @@ export async function GET(request: NextRequest) {
 
     const evts = events || [];
     const purchases = evts.filter((e) => e.ecommerce_action === 'purchase');
+    const addToCarts = evts.filter((e) => e.ecommerce_action === 'add_to_cart');
+    const checkouts = evts.filter((e) => e.ecommerce_action === 'begin_checkout');
     const totalRevenue = purchases.reduce((s, e) => s + (e.revenue || 0), 0);
     const totalOrders = new Set(purchases.map((e) => e.order_id).filter(Boolean)).size || purchases.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+
+    // Determine predominant currency from events
+    const currencyCounts: Record<string, number> = {};
+    for (const e of evts) {
+      const c = (e.currency || 'EUR').toUpperCase();
+      currencyCounts[c] = (currencyCounts[c] || 0) + 1;
+    }
+    const currency = Object.entries(currencyCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'EUR';
 
     // Top products from ecommerce_items
     const productMap: Record<string, { revenue: number; quantity: number }> = {};
@@ -470,7 +480,7 @@ export async function GET(request: NextRequest) {
       for (const item of items) {
         const name = item.name || item.id || 'Unknown';
         if (!productMap[name]) productMap[name] = { revenue: 0, quantity: 0 };
-        productMap[name].revenue += item.price || 0;
+        productMap[name].revenue += (item.price || 0) * (item.quantity || 1);
         productMap[name].quantity += item.quantity || 1;
       }
     }
@@ -490,9 +500,13 @@ export async function GET(request: NextRequest) {
       .map(([date, revenue]) => ({ date, revenue }));
 
     return NextResponse.json({
+      currency,
       total_revenue: totalRevenue,
       total_orders: totalOrders,
       avg_order_value: avgOrderValue,
+      add_to_cart_count: addToCarts.length,
+      checkout_count: checkouts.length,
+      purchase_count: purchases.length,
       top_products: topProducts,
       revenue_timeseries: revenueTimeseries,
     });

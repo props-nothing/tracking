@@ -7,14 +7,14 @@ import { DataTable } from '@/components/tables/data-table';
 
 interface PageTime {
   path: string;
-  avg_time_ms: number;
-  avg_engaged_ms: number;
-  visitors: number;
+  avg_time_on_page: number;
+  avg_engaged_time: number;
+  unique_visitors: number;
 }
 
 interface TimeOnPageData {
-  overall_avg_time_ms: number;
-  overall_avg_engaged_ms: number;
+  avg_time_on_page: number;
+  avg_engaged_time: number;
   pages: PageTime[];
 }
 
@@ -62,17 +62,17 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
     );
   }
 
-  const engagementRatio = data.overall_avg_time_ms > 0
-    ? Math.round((data.overall_avg_engaged_ms / data.overall_avg_time_ms) * 100)
+  const engagementRatio = data.avg_time_on_page > 0
+    ? Math.round((data.avg_engaged_time / data.avg_time_on_page) * 100)
     : 0;
 
   const tableData = data.pages.map((p) => ({
     ...p,
-    avg_time_fmt: formatDuration(p.avg_time_ms),
-    avg_engaged_fmt: formatDuration(p.avg_engaged_ms),
+    avg_time_fmt: formatDuration(p.avg_time_on_page),
+    avg_engaged_fmt: formatDuration(p.avg_engaged_time),
     engagement_pct:
-      p.avg_time_ms > 0
-        ? `${Math.round((p.avg_engaged_ms / p.avg_time_ms) * 100)}%`
+      p.avg_time_on_page > 0
+        ? `${Math.round((p.avg_engaged_time / p.avg_time_on_page) * 100)}%`
         : '—',
   }));
 
@@ -84,8 +84,8 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Avg. Time on Page" value={formatDuration(data.overall_avg_time_ms)} />
-        <MetricCard title="Avg. Engaged Time" value={formatDuration(data.overall_avg_engaged_ms)} />
+        <MetricCard title="Avg. Time on Page" value={formatDuration(data.avg_time_on_page)} />
+        <MetricCard title="Avg. Engaged Time" value={formatDuration(data.avg_engaged_time)} />
         <MetricCard title="Engagement Ratio" value={`${engagementRatio}%`} />
         <MetricCard title="Pages Tracked" value={data.pages.length.toString()} />
       </div>
@@ -114,7 +114,7 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
           { key: 'avg_time_fmt', label: 'Avg. Time', align: 'right' as const },
           { key: 'avg_engaged_fmt', label: 'Engaged Time', align: 'right' as const },
           { key: 'engagement_pct', label: 'Engagement', align: 'right' as const },
-          { key: 'visitors', label: 'Visitors', align: 'right' as const, sortable: true },
+          { key: 'unique_visitors', label: 'Visitors', align: 'right' as const, sortable: true },
         ]}
         data={tableData}
         searchable

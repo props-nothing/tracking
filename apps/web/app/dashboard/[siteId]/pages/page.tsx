@@ -12,6 +12,17 @@ interface PageData {
   bounce_rate: number;
 }
 
+function formatDuration(ms: number): string {
+  if (!ms || ms <= 0) return '0s';
+  const secs = Math.round(ms / 1000);
+  if (secs < 60) return `${secs}s`;
+  const mins = Math.floor(secs / 60);
+  const rem = secs % 60;
+  if (mins < 60) return `${mins}m ${rem}s`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ${mins % 60}m`;
+}
+
 export default function PagesPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
@@ -52,10 +63,14 @@ export default function PagesPage({ params }: { params: Promise<{ siteId: string
               { key: 'path', label: 'Page' },
               { key: 'count', label: 'Views', align: 'right' as const },
               { key: 'unique_visitors', label: 'Unique Visitors', align: 'right' as const },
-              { key: 'avg_time', label: 'Avg. Time (ms)', align: 'right' as const },
-              { key: 'bounce_rate', label: 'Bounce %', align: 'right' as const },
+              { key: 'avg_time_fmt', label: 'Avg. Time', align: 'right' as const },
+              { key: 'bounce_rate_fmt', label: 'Bounce %', align: 'right' as const },
             ]}
-            data={pages}
+            data={pages.map((p) => ({
+              ...p,
+              avg_time_fmt: formatDuration(p.avg_time),
+              bounce_rate_fmt: `${p.bounce_rate}%`,
+            }))}
             searchable
           />
 

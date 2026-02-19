@@ -2,11 +2,20 @@
 
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: '€', USD: '$', GBP: '£', JPY: '¥', CNY: '¥', KRW: '₩',
+  INR: '₹', BRL: 'R$', RUB: '₽', TRY: '₺', PLN: 'zł', CHF: 'CHF',
+  SEK: 'kr', NOK: 'kr', DKK: 'kr', CZK: 'Kč', AUD: 'A$', CAD: 'C$',
+};
+
 interface RevenueTimeSeriesProps {
   data: { date: string; revenue: number }[];
+  currency?: string;
 }
 
-export function RevenueTimeSeries({ data }: RevenueTimeSeriesProps) {
+export function RevenueTimeSeries({ data, currency = 'EUR' }: RevenueTimeSeriesProps) {
+  const sym = CURRENCY_SYMBOLS[currency] || currency + ' ';
+
   if (!data.length) {
     return (
       <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
@@ -32,7 +41,7 @@ export function RevenueTimeSeries({ data }: RevenueTimeSeriesProps) {
           tick={{ fill: 'var(--color-muted-foreground)' }}
           stroke="var(--color-border)"
         />
-        <YAxis fontSize={12} tick={{ fill: 'var(--color-muted-foreground)' }} stroke="var(--color-border)" tickFormatter={(v) => `$${v}`} />
+        <YAxis fontSize={12} tick={{ fill: 'var(--color-muted-foreground)' }} stroke="var(--color-border)" tickFormatter={(v) => `${sym}${v}`} />
         <Tooltip
           contentStyle={{
             backgroundColor: 'var(--color-card)',
@@ -42,7 +51,7 @@ export function RevenueTimeSeries({ data }: RevenueTimeSeriesProps) {
             fontSize: '12px',
           }}
           labelStyle={{ color: 'var(--color-foreground)' }}
-          formatter={(value: number | undefined) => [`$${(value ?? 0).toFixed(2)}`, 'Revenue']}
+          formatter={(value: number | undefined) => [`${sym}${(value ?? 0).toFixed(2)}`, 'Revenue']}
         />
         <Area
           type="monotone"
