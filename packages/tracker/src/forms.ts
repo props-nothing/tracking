@@ -498,11 +498,23 @@ export function trackForms(
     });
   }
 
+  // ── Submit-button click fallback (WeakMap declared early for use by submit listener) ──
+  // Many JS frameworks (React, Vue, Next.js) prevent the native submit event
+  // by calling e.preventDefault() on the click. This map tracks pending click
+  // timers so the submit listener can cancel them when the real event fires.
+  const pendingClickSubmits = new WeakMap<HTMLFormElement, ReturnType<typeof setTimeout>>();
+
   // Use capture phase so we run before any handler that calls stopPropagation()
   document.addEventListener('submit', (e) => {
     const form = e.target as HTMLFormElement;
     if (!form || form.tagName !== 'FORM') return;
     if (isEcommerceForm(form)) return;
+
+    // Cancel any pending click-submit timer — the real submit event fired
+    if (pendingClickSubmits.has(form)) {
+      clearTimeout(pendingClickSubmits.get(form)!);
+      pendingClickSubmits.delete(form);
+    }
 
     // Ensure the form is attached (handles late-added forms we might have missed)
     if (!formStates.has(form)) attachToForm(form);
@@ -573,6 +585,72 @@ export function trackForms(
     }
     return origSubmit.call(this);
   };
+
+  // ── Submit-button click fallback ──────────────────────────────────
+  // Capture the click in the capture phase and set a short timer — if no
+  // submit event fires within 200ms, we treat it as a JS-handled submit.
+
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (!target) return;
+
+    // Find the submit trigger: <button type="submit">, <input type="submit">,
+    // or a button inside a form without an explicit type (defaults to submit)
+    const btn = target.closest('button[type="submit"], input[type="submit"], button:not([type])') as HTMLButtonElement | HTMLInputElement | null;
+    if (!btn) return;
+
+    const form = btn.closest('form') as HTMLFormElement | null;
+    if (!form) return;
+    if (isEcommerceForm(form)) return;
+
+    // If we already have a pending click-submit timer for this form, skip
+    if (pendingClickSubmits.has(form)) return;
+
+    // Ensure form is tracked
+    if (!formStates.has(form)) attachToForm(form);
+
+    // Snapshot the form data NOW (before framework might clear fields)
+    const state = getState(form);
+    const capture = shouldCaptureLeads(form);
+    const fields = getFieldMeta(form, state, capture);
+    const formId = getFormId(form);
+    const lead = capture ? extractLeadData(form) : null;
+
+    // Set a short timer — if a submit event fires it will mark __trackSubmitHandled
+    // and we'll cancel this timer
+    const timer = setTimeout(() => {
+      pendingClickSubmits.delete(form);
+      // If the submit event already handled it, skip
+      if ((form as any).__trackClickHandled) {
+        (form as any).__trackClickHandled = false;
+        return;
+      }
+
+      const payload: Partial<EventPayload> = {
+        event_type: 'form_submit',
+        event_name: 'form_submit',
+        form_id: formId,
+        form_action: form.action || null,
+        form_fields: fields,
+        form_last_field: state.lastField || null,
+        form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
+      };
+
+      if (lead) {
+        payload.lead_name = lead.lead_name;
+        payload.lead_email = lead.lead_email;
+        payload.lead_phone = lead.lead_phone;
+        payload.lead_company = lead.lead_company;
+        payload.lead_message = lead.lead_message;
+        payload.lead_data = lead.lead_data;
+      }
+
+      onEvent(payload);
+      formStates.delete(form);
+    }, 200);
+
+    pendingClickSubmits.set(form, timer);
+  }, true); // capture phase — runs before framework handlers
 
   // Attach to existing forms
   document.querySelectorAll('form').forEach((f) => attachToForm(f as HTMLFormElement));
