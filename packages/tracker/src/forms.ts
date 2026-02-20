@@ -460,8 +460,15 @@ export function trackForms(
       }
     });
 
-    // Submit
+    // Submit — handled by the capture-phase document listener.
+    // This per-form listener is kept as a safety net in case the
+    // capture listener did not fire (e.g. very early forms).
     form.addEventListener('submit', () => {
+      if ((form as any).__trackSubmitHandled) {
+        (form as any).__trackSubmitHandled = false;
+        return; // Already handled by capture-phase listener
+      }
+
       const state = getState(form);
       const capture = shouldCaptureLeads(form);
       const fields = getFieldMeta(form, state, capture);
@@ -476,7 +483,6 @@ export function trackForms(
         form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
       };
 
-      // Extract lead data from well-known form fields + all form data
       if (capture) {
         const lead = extractLeadData(form);
         payload.lead_name = lead.lead_name;
@@ -488,11 +494,85 @@ export function trackForms(
       }
 
       onEvent(payload);
-
-      // Reset state
       formStates.delete(form);
     });
   }
+
+  // Use capture phase so we run before any handler that calls stopPropagation()
+  document.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    if (!form || form.tagName !== 'FORM') return;
+    if (isEcommerceForm(form)) return;
+
+    // Ensure the form is attached (handles late-added forms we might have missed)
+    if (!formStates.has(form)) attachToForm(form);
+
+    const state = getState(form);
+    const capture = shouldCaptureLeads(form);
+    const fields = getFieldMeta(form, state, capture);
+    const formId = getFormId(form);
+
+    const payload: Partial<EventPayload> = {
+      event_type: 'form_submit',
+      event_name: 'form_submit',
+      form_id: formId,
+      form_action: form.action || null,
+      form_fields: fields,
+      form_last_field: state.lastField || null,
+      form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
+    };
+
+    if (capture) {
+      const lead = extractLeadData(form);
+      payload.lead_name = lead.lead_name;
+      payload.lead_email = lead.lead_email;
+      payload.lead_phone = lead.lead_phone;
+      payload.lead_company = lead.lead_company;
+      payload.lead_message = lead.lead_message;
+      payload.lead_data = lead.lead_data;
+    }
+
+    // Mark as handled so the per-form submit listener doesn't double-fire
+    (form as any).__trackSubmitHandled = true;
+    onEvent(payload);
+    formStates.delete(form);
+  }, true); // capture phase
+
+  // Intercept programmatic form.submit() which does NOT fire the submit event
+  const origSubmit = HTMLFormElement.prototype.submit;
+  HTMLFormElement.prototype.submit = function (this: HTMLFormElement) {
+    if (!isEcommerceForm(this)) {
+      if (!formStates.has(this)) attachToForm(this);
+      const state = getState(this);
+      const capture = shouldCaptureLeads(this);
+      const fields = getFieldMeta(this, state, capture);
+      const formId = getFormId(this);
+
+      const payload: Partial<EventPayload> = {
+        event_type: 'form_submit',
+        event_name: 'form_submit',
+        form_id: formId,
+        form_action: this.action || null,
+        form_fields: fields,
+        form_last_field: state.lastField || null,
+        form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
+      };
+
+      if (capture) {
+        const lead = extractLeadData(this);
+        payload.lead_name = lead.lead_name;
+        payload.lead_email = lead.lead_email;
+        payload.lead_phone = lead.lead_phone;
+        payload.lead_company = lead.lead_company;
+        payload.lead_message = lead.lead_message;
+        payload.lead_data = lead.lead_data;
+      }
+
+      onEvent(payload);
+      formStates.delete(this);
+    }
+    return origSubmit.call(this);
+  };
 
   // Attach to existing forms
   document.querySelectorAll('form').forEach((f) => attachToForm(f as HTMLFormElement));

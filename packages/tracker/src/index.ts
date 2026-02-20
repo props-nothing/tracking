@@ -27,12 +27,25 @@ import { setCustomProps, getCustomProps } from './custom-props';
 import { getVisitorId, clearVisitorId } from './visitor';
 import { isBot, isDNTEnabled, debug } from './utils';
 
+export interface LeadInput {
+  name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  message?: string;
+  /** Any additional form data as key→value pairs */
+  data?: Record<string, string>;
+  /** Optional form identifier (e.g. 'contact-form', 'demo-request') */
+  form_id?: string;
+}
+
 declare global {
   interface Window {
     tracking: {
       event: (name: string, data?: Record<string, any>) => void;
       set: (props: Record<string, any>) => void;
       ecommerce: (action: EcommerceAction, data: EcommerceData) => void;
+      lead: (data: LeadInput) => void;
       consent: (granted: boolean) => void;
       debug: (enabled: boolean) => void;
     };
@@ -259,6 +272,22 @@ declare global {
     ecommerce(action: EcommerceAction, data: EcommerceData) {
       const payload = createEcommercePayload(action, data);
       emitEvent(payload);
+    },
+
+    lead(data: LeadInput) {
+      const payload: Partial<EventPayload> = {
+        event_type: 'form_submit',
+        event_name: 'form_submit',
+        form_id: data.form_id || 'manual',
+        lead_name: data.name || null,
+        lead_email: data.email || null,
+        lead_phone: data.phone || null,
+        lead_company: data.company || null,
+        lead_message: data.message || null,
+        lead_data: data.data || null,
+      };
+      emitEvent(payload);
+      debug(debugEnabled, 'Lead tracked:', data);
     },
 
     consent(granted: boolean) {
