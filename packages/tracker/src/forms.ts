@@ -317,16 +317,21 @@ export function trackForms(
     return form.id || form.getAttribute('name') || `form-${Array.from(document.forms).indexOf(form)}`;
   }
 
+  /** Safe accessor — form.name / form.action can be shadowed by child elements with matching name attributes */
+  function getFormAttr(form: HTMLFormElement, attr: string): string {
+    return (form.getAttribute(attr) || '');
+  }
+
   /**
    * Detect ecommerce forms that should NOT be tracked as form_submit / lead data.
    * These include add-to-cart, checkout, payment and cart-update forms from
    * WooCommerce, Shopify, Magento, BigCommerce, PrestaShop, etc.
    */
   function isEcommerceForm(form: HTMLFormElement): boolean {
-    const id = (form.id || '').toLowerCase();
-    const cls = (form.className || '').toLowerCase();
-    const action = (form.action || '').toLowerCase();
-    const name = (form.name || '').toLowerCase();
+    const id = (form.getAttribute('id') || '').toLowerCase();
+    const cls = (form.getAttribute('class') || '').toLowerCase();
+    const action = (form.getAttribute('action') || '').toLowerCase();
+    const name = (form.getAttribute('name') || '').toLowerCase();
 
     // WooCommerce: add-to-cart forms, checkout, cart update
     if (form.querySelector('button[name="add-to-cart"], input[name="add-to-cart"]')) return true;
@@ -477,7 +482,7 @@ export function trackForms(
         event_type: 'form_submit',
         event_name: 'form_submit',
         form_id: formId,
-        form_action: form.action || null,
+        form_action: getFormAttr(form, 'action') || null,
         form_fields: fields,
         form_last_field: state.lastField || null,
         form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
@@ -528,7 +533,7 @@ export function trackForms(
       event_type: 'form_submit',
       event_name: 'form_submit',
       form_id: formId,
-      form_action: form.action || null,
+      form_action: getFormAttr(form, 'action') || null,
       form_fields: fields,
       form_last_field: state.lastField || null,
       form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
@@ -564,7 +569,7 @@ export function trackForms(
         event_type: 'form_submit',
         event_name: 'form_submit',
         form_id: formId,
-        form_action: this.action || null,
+        form_action: getFormAttr(this, 'action') || null,
         form_fields: fields,
         form_last_field: state.lastField || null,
         form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
@@ -630,7 +635,7 @@ export function trackForms(
         event_type: 'form_submit',
         event_name: 'form_submit',
         form_id: formId,
-        form_action: form.action || null,
+        form_action: getFormAttr(form, 'action') || null,
         form_fields: fields,
         form_last_field: state.lastField || null,
         form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
@@ -686,7 +691,7 @@ export function trackForms(
             event_type: 'form_abandon',
             event_name: 'form_abandon',
             form_id: getFormId(f),
-            form_action: f.action || null,
+            form_action: getFormAttr(f, 'action') || null,
             form_fields: fields,
             form_last_field: state.lastField || null,
             form_time_to_submit_ms: state.startTime ? Date.now() - state.startTime : null,
