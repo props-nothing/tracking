@@ -185,7 +185,7 @@ export default function SiteDashboardPage({
               Voeg dit fragment toe vóór de sluitende &lt;/head&gt;-tag op je website.
             </p>
             <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs">
-              {`<script defer src="${typeof window !== 'undefined' ? window.location.origin : ''}/t.js" data-site-id="${siteId}"></script>`}
+              {`<script defer src="${typeof window !== 'undefined' ? window.location.origin : ''}/t.js" data-site-id="${siteId}" data-api="${typeof window !== 'undefined' ? window.location.origin : ''}/api/collect"></script>`}
             </pre>
           </div>
         </>
