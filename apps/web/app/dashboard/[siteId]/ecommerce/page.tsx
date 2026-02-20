@@ -54,45 +54,45 @@ export default function EcommercePage({ params }: { params: Promise<{ siteId: st
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">E-commerce</h1>
-          <p className="text-sm text-muted-foreground">Revenue, orders, conversion funnel, and product analytics</p>
+          <p className="text-sm text-muted-foreground">Omzet, bestellingen, conversiefunnel en productanalyse</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : !hasData ? (
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No e-commerce data yet</h3>
+          <h3 className="text-lg font-medium">Nog geen e-commercedata</h3>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            E-commerce events are tracked automatically for WooCommerce and Shopify stores.
-            Data will appear here once customers start adding items to cart and placing orders.
+            E-commerce-events worden automatisch gevolgd voor WooCommerce- en Shopify-winkels.
+            Data verschijnt hier zodra klanten items aan het winkelwagentje toevoegen en bestellingen plaatsen.
           </p>
         </div>
       ) : (
         <>
           {/* Revenue metrics */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <MetricCard title="Total Revenue" value={formatMoney(data.total_revenue, currency)} />
-            <MetricCard title="Total Orders" value={data.total_orders.toString()} />
-            <MetricCard title="Avg. Order Value" value={formatMoney(data.avg_order_value, currency)} />
+            <MetricCard title="Totale omzet" value={formatMoney(data.total_revenue, currency)} />
+            <MetricCard title="Totaal bestellingen" value={data.total_orders.toString()} />
+            <MetricCard title="Gem. bestelwaarde" value={formatMoney(data.avg_order_value, currency)} />
           </div>
 
           {/* Conversion funnel */}
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium">Conversion Funnel</h2>
+            <h2 className="mb-4 text-sm font-medium">Conversiefunnel</h2>
             <div className="grid gap-4 sm:grid-cols-3">
               <FunnelStep
-                label="Add to Cart"
+                label="Toevoegen aan winkelwagen"
                 count={data.add_to_cart_count}
                 pct={100}
               />
               <FunnelStep
-                label="Begin Checkout"
+                label="Afrekenen starten"
                 count={data.checkout_count}
                 pct={data.add_to_cart_count > 0 ? Math.round((data.checkout_count / data.add_to_cart_count) * 100) : 0}
               />
               <FunnelStep
-                label="Purchase"
+                label="Aankoop"
                 count={data.purchase_count}
                 pct={data.add_to_cart_count > 0 ? Math.round((data.purchase_count / data.add_to_cart_count) * 100) : 0}
               />
@@ -101,17 +101,17 @@ export default function EcommercePage({ params }: { params: Promise<{ siteId: st
 
           {data.revenue_timeseries && data.revenue_timeseries.length > 0 && (
             <div className="rounded-lg border bg-card p-6">
-              <h2 className="mb-4 text-sm font-medium">Revenue Over Time</h2>
+              <h2 className="mb-4 text-sm font-medium">Omzet over tijd</h2>
               <RevenueTimeSeries data={data.revenue_timeseries} currency={currency} />
             </div>
           )}
 
           <DataTable
-            title="Top Products"
+            title="Topproducten"
             columns={[
               { key: 'name', label: 'Product' },
-              { key: 'quantity', label: 'Quantity', align: 'right' as const },
-              { key: 'revenue_fmt', label: 'Revenue', align: 'right' as const },
+              { key: 'quantity', label: 'Aantal', align: 'right' as const },
+              { key: 'revenue_fmt', label: 'Omzet', align: 'right' as const },
             ]}
             data={data.top_products.map((p) => ({
               ...p,
@@ -137,7 +137,7 @@ function FunnelStep({ label, count, pct }: { label: string; count: number; pct: 
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </div>
-      <p className="text-xs text-muted-foreground">{pct}% of add-to-carts</p>
+      <p className="text-xs text-muted-foreground">{pct}% van winkelwagenitems</p>
     </div>
   );
 }

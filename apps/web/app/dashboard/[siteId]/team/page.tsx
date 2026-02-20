@@ -60,22 +60,22 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Team</h1>
-          <p className="text-sm text-muted-foreground">Manage team members and client access</p>
+          <p className="text-sm text-muted-foreground">Beheer teamleden en klanttoegang</p>
         </div>
         <button
           onClick={() => setShowInvite(!showInvite)}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Invite Member
+          Lid uitnodigen
         </button>
       </div>
 
       {showInvite && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
-          <h2 className="text-sm font-medium">Invite a Team Member</h2>
+          <h2 className="text-sm font-medium">Teamlid uitnodigen</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Email</label>
+              <label className="mb-1 block text-xs text-muted-foreground">E-mail</label>
               <input
                 type="email"
                 value={email}
@@ -85,14 +85,14 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Role</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Rol</label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'admin' | 'viewer')}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm"
               >
-                <option value="viewer">Viewer — read-only access</option>
-                <option value="admin">Admin — full access</option>
+                <option value="viewer">Kijker — alleen-lezen toegang</option>
+                <option value="admin">Beheerder — volledige toegang</option>
               </select>
             </div>
           </div>
@@ -101,13 +101,13 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
             disabled={!email || inviting}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {inviting ? 'Inviting...' : 'Send Invite'}
+            {inviting ? 'Uitnodigen...' : 'Uitnodiging verzenden'}
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <div className="space-y-3">
           {members.map((m) => (
@@ -119,7 +119,7 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
                 <div>
                   <p className="text-sm font-medium">{m.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    Joined {new Date(m.joined_at).toLocaleDateString()}
+                    Lid sinds {new Date(m.joined_at).toLocaleDateString()}
                   </p>
                 </div>
               </div>
@@ -132,7 +132,7 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
                     onClick={() => handleRemove(m.id)}
                     className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
                   >
-                    Remove
+                    Verwijderen
                   </button>
                 )}
               </div>

@@ -31,23 +31,23 @@ export default function RetentionPage({ params }: { params: Promise<{ siteId: st
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Retention</h1>
-          <p className="text-sm text-muted-foreground">Returning visitor cohort analysis</p>
+          <h1 className="text-2xl font-bold tracking-tight">Retentie</h1>
+          <p className="text-sm text-muted-foreground">Cohortanalyse terugkerende bezoekers</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : cohorts.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Retention Analysis</h3>
+          <h3 className="text-lg font-medium">Retentieanalyse</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Retention cohort data requires at least 2 weeks of tracking data to generate meaningful results.
+            Retentie-cohortdata vereist minimaal 2 weken aan trackingdata om betekenisvolle resultaten te genereren.
           </p>
         </div>
       ) : (
         <div className="rounded-lg border bg-card p-6">
-          <h2 className="mb-4 text-sm font-medium">Weekly Cohort Retention</h2>
+          <h2 className="mb-4 text-sm font-medium">Wekelijkse cohortretentie</h2>
           <RetentionMatrix cohorts={cohorts} />
         </div>
       )}

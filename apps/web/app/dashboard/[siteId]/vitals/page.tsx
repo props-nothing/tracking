@@ -43,9 +43,9 @@ function getVitalRating(metric: string, value: number | null): { label: string; 
     cls: [0.1, 0.25],
   };
   const [good, poor] = thresholds[metric] || [Infinity, Infinity];
-  if (value <= good) return { label: 'Good', color: 'text-green-600' };
-  if (value <= poor) return { label: 'Needs Improvement', color: 'text-amber-600' };
-  return { label: 'Poor', color: 'text-red-600' };
+  if (value <= good) return { label: 'Goed', color: 'text-green-600' };
+  if (value <= poor) return { label: 'Verbetering nodig', color: 'text-amber-600' };
+  return { label: 'Slecht', color: 'text-red-600' };
 }
 
 function formatVital(metric: string, value: number | null): string {
@@ -69,19 +69,19 @@ export default function VitalsPage({ params }: { params: Promise<{ siteId: strin
       .catch(() => setLoading(false));
   }, [siteId, queryString]);
 
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
 
   if (!data || data.overall.sample_count === 0) {
     return (
       <div className="space-y-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Web Vitals</h1>
-          <p className="text-sm text-muted-foreground">Core Web Vitals performance metrics</p>
+          <p className="text-sm text-muted-foreground">Core Web Vitals prestatiemetrieken</p>
         </div>
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No vitals data yet</h3>
+          <h3 className="text-lg font-medium">Nog geen vitals-data</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Web Vitals are automatically captured for every pageview. Data will appear once visitors start browsing.
+            Web Vitals worden automatisch vastgelegd bij elke paginaweergave. Data verschijnt zodra bezoekers beginnen met browsen.
           </p>
         </div>
       </div>
@@ -90,12 +90,12 @@ export default function VitalsPage({ params }: { params: Promise<{ siteId: strin
 
   const o = data.overall;
   const vitals = [
-    { key: 'lcp', label: 'Largest Contentful Paint (LCP)', description: 'Loading performance', metric: o.lcp },
-    { key: 'fcp', label: 'First Contentful Paint (FCP)', description: 'First paint', metric: o.fcp },
-    { key: 'cls', label: 'Cumulative Layout Shift (CLS)', description: 'Visual stability', metric: o.cls },
-    { key: 'inp', label: 'Interaction to Next Paint (INP)', description: 'Responsiveness', metric: o.inp },
-    { key: 'ttfb', label: 'Time to First Byte (TTFB)', description: 'Server speed', metric: o.ttfb },
-    { key: 'fid', label: 'First Input Delay (FID)', description: 'Input delay', metric: o.fid },
+    { key: 'lcp', label: 'Largest Contentful Paint (LCP)', description: 'Laadprestaties', metric: o.lcp },
+    { key: 'fcp', label: 'First Contentful Paint (FCP)', description: 'Eerste weergave', metric: o.fcp },
+    { key: 'cls', label: 'Cumulative Layout Shift (CLS)', description: 'Visuele stabiliteit', metric: o.cls },
+    { key: 'inp', label: 'Interaction to Next Paint (INP)', description: 'Responsiviteit', metric: o.inp },
+    { key: 'ttfb', label: 'Time to First Byte (TTFB)', description: 'Serversnelheid', metric: o.ttfb },
+    { key: 'fid', label: 'First Input Delay (FID)', description: 'Invoervertraging', metric: o.fid },
   ];
 
   return (
@@ -104,7 +104,7 @@ export default function VitalsPage({ params }: { params: Promise<{ siteId: strin
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Web Vitals</h1>
           <p className="text-sm text-muted-foreground">
-            Core Web Vitals performance — {o.sample_count.toLocaleString()} samples
+            Core Web Vitals prestaties — {o.sample_count.toLocaleString()} metingen
           </p>
         </div>
       </div>
@@ -139,10 +139,10 @@ export default function VitalsPage({ params }: { params: Promise<{ siteId: strin
 
       {/* Per-page breakdown */}
       <DataTable
-        title="Vitals by Page"
+        title="Vitals per pagina"
         columns={[
-          { key: 'path', label: 'Page' },
-          { key: 'sample_count', label: 'Samples', align: 'right' as const },
+          { key: 'path', label: 'Pagina' },
+          { key: 'sample_count', label: 'Metingen', align: 'right' as const },
           { key: 'lcp_p75', label: 'LCP p75', align: 'right' as const },
           { key: 'fcp_p75', label: 'FCP p75', align: 'right' as const },
           { key: 'cls_p75', label: 'CLS p75', align: 'right' as const },

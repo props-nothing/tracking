@@ -38,29 +38,29 @@ export default function EventsPage({ params }: { params: Promise<{ siteId: strin
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Custom Events</h1>
-          <p className="text-sm text-muted-foreground">Custom events fired via tracking API</p>
+          <h1 className="text-2xl font-bold tracking-tight">Aangepaste events</h1>
+          <p className="text-sm text-muted-foreground">Aangepaste events via de tracking-API</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <>
           <DataTable
-            title="Event Summary"
+            title="Eventoverzicht"
             columns={[
               { key: 'event_name', label: 'Event' },
-              { key: 'count', label: 'Total', align: 'right' },
-              { key: 'unique_visitors', label: 'Unique', align: 'right' },
+              { key: 'count', label: 'Totaal', align: 'right' },
+              { key: 'unique_visitors', label: 'Uniek', align: 'right' },
             ]}
             data={events}
           />
 
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium">Recent Events</h2>
+            <h2 className="mb-4 text-sm font-medium">Recente events</h2>
             {recentEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No custom events yet. Use <code className="rounded bg-muted px-1 text-xs">window.tracking.event(&quot;name&quot;, data)</code> to send events.</p>
+              <p className="text-sm text-muted-foreground">Nog geen aangepaste events. Use <code className="rounded bg-muted px-1 text-xs">window.tracking.event(&quot;name&quot;, data)</code> to send events.</p>
             ) : (
               <div className="space-y-2">
                 {recentEvents.map((evt, i) => (

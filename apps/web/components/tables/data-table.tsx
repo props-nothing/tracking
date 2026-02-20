@@ -23,7 +23,7 @@ export function DataTable({
   title,
   columns,
   data,
-  emptyMessage = 'No data',
+  emptyMessage = 'Geen data',
   pageSize = 10,
   searchable = false,
   borderless = false,
@@ -76,7 +76,7 @@ export function DataTable({
           {searchable && (
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Zoeken..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="rounded-md border bg-transparent px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-primary w-40"
@@ -138,7 +138,7 @@ export function DataTable({
       {sorted.length > pageSize && (
         <div className="flex items-center justify-between border-t px-4 py-2">
           <span className="text-xs text-muted-foreground">
-            {sorted.length} total · Page {page + 1} of {totalPages}
+            {sorted.length} totaal · Pagina {page + 1} van {totalPages}
           </span>
           <div className="flex gap-1">
             <button
@@ -146,14 +146,14 @@ export function DataTable({
               disabled={page === 0}
               className="rounded px-2 py-1 text-xs hover:bg-muted disabled:opacity-30 transition-colors"
             >
-              ← Prev
+              ← Vorige
             </button>
             <button
               onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
               disabled={page >= totalPages - 1}
               className="rounded px-2 py-1 text-xs hover:bg-muted disabled:opacity-30 transition-colors"
             >
-              Next →
+              Volgende →
             </button>
           </div>
         </div>

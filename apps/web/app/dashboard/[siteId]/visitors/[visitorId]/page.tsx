@@ -85,7 +85,7 @@ interface Session {
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString('nl-NL', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -97,7 +97,7 @@ function formatDate(dateStr: string): string {
 
 function formatTime(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  return d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function formatDuration(ms: number): string {
@@ -157,31 +157,31 @@ function getEventLabel(event: SessionEvent): string {
     case 'pageview':
       return event.page_title || event.path;
     case 'custom':
-      return event.event_name || 'Custom Event';
+      return event.event_name || 'Aangepast event';
     case 'form_submit':
-      return `Form submitted${event.form_id ? ` (${event.form_id})` : ''}`;
+      return `Formulier ingediend${event.form_id ? ` (${event.form_id})` : ''}`;
     case 'form_abandon':
-      return `Form abandoned${event.form_id ? ` (${event.form_id})` : ''}`;
+      return `Formulier afgebroken${event.form_id ? ` (${event.form_id})` : ''}`;
     case 'outbound_click':
-      return `Clicked: ${event.event_data?.url || event.event_data?.href || 'external link'}`;
+      return `Geklikt: ${event.event_data?.url || event.event_data?.href || 'externe link'}`;
     case 'file_download':
-      return `Downloaded: ${event.event_data?.filename || event.event_data?.url || 'file'}`;
+      return `Gedownload: ${event.event_data?.filename || event.event_data?.url || 'bestand'}`;
     case 'ecommerce':
       const action = event.ecommerce_action || 'action';
       const amount = event.revenue ? ` (${event.currency || '€'}${event.revenue})` : '';
       return `${action.replace(/_/g, ' ')}${event.order_id ? ` #${event.order_id}` : ''}${amount}`;
     case 'error':
-      return event.error_message || 'JavaScript error';
+      return event.error_message || 'JavaScript-fout';
     case 'rage_click':
-      return `Rage click on ${event.path}`;
+      return `Rage-klik op ${event.path}`;
     case 'dead_click':
-      return `Dead click on ${event.path}`;
+      return `Dead-klik op ${event.path}`;
     case 'copy':
-      return 'Copied text';
+      return 'Tekst gekopieerd';
     case 'print':
-      return 'Printed page';
+      return 'Pagina afgedrukt';
     case 'element_visible':
-      return `Saw element: ${event.event_data?.selector || event.event_data?.element || ''}`;
+      return `Element gezien: ${event.event_data?.selector || event.event_data?.element || ''}`;
     default:
       return event.event_type;
   }
@@ -265,7 +265,7 @@ export default function VisitorProfilePage({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-sm text-muted-foreground">Loading visitor profile...</div>
+        <div className="text-sm text-muted-foreground">Bezoekersprofiel laden...</div>
       </div>
     );
   }
@@ -273,12 +273,12 @@ export default function VisitorProfilePage({
   if (!visitor) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <div className="text-sm text-muted-foreground">Visitor not found</div>
+        <div className="text-sm text-muted-foreground">Bezoeker niet gevonden</div>
         <Link
           href={`/dashboard/${siteId}/visitors`}
           className="text-sm text-primary hover:underline"
         >
-          ← Back to visitors
+          ← Terug naar bezoekers
         </Link>
       </div>
     );
@@ -291,7 +291,7 @@ export default function VisitorProfilePage({
         href={`/dashboard/${siteId}/visitors`}
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        ← Back to visitors
+        ← Terug naar bezoekers
       </Link>
 
       {/* Visitor Header */}
@@ -337,11 +337,11 @@ export default function VisitorProfilePage({
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-4">
             <div className="text-center">
               <div className="text-2xl font-bold">{visitor.total_sessions}</div>
-              <div className="text-xs text-muted-foreground">Sessions</div>
+              <div className="text-xs text-muted-foreground">Sessies</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">{visitor.total_pageviews}</div>
-              <div className="text-xs text-muted-foreground">Pageviews</div>
+              <div className="text-xs text-muted-foreground">Paginaweergaven</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold">{visitor.total_events}</div>
@@ -351,7 +351,7 @@ export default function VisitorProfilePage({
               <div className="text-2xl font-bold">
                 {formatDuration(visitor.total_engaged_time_ms || 0)}
               </div>
-              <div className="text-xs text-muted-foreground">Engaged Time</div>
+              <div className="text-xs text-muted-foreground">Actieve tijd</div>
             </div>
           </div>
         </div>
@@ -359,7 +359,7 @@ export default function VisitorProfilePage({
         {/* Attribution & Timeline */}
         <div className="mt-6 grid grid-cols-1 gap-4 border-t pt-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
-            <div className="text-xs text-muted-foreground">First Source</div>
+            <div className="text-xs text-muted-foreground">Eerste bron</div>
             <div className="text-sm font-medium mt-0.5">
               {visitor.first_utm_source
                 ? `${visitor.first_utm_source}${visitor.first_utm_medium ? ` / ${visitor.first_utm_medium}` : ''}`
@@ -367,19 +367,19 @@ export default function VisitorProfilePage({
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">First Entry Page</div>
+            <div className="text-xs text-muted-foreground">Eerste instappagina</div>
             <div className="text-sm font-medium mt-0.5 truncate" title={visitor.first_entry_path || '—'}>
               {visitor.first_entry_path || '—'}
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">First Seen</div>
+            <div className="text-xs text-muted-foreground">Eerst gezien</div>
             <div className="text-sm font-medium mt-0.5">
               {visitor.first_seen_at ? formatDate(visitor.first_seen_at) : '—'}
             </div>
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Last Seen</div>
+            <div className="text-xs text-muted-foreground">Laatst gezien</div>
             <div className="text-sm font-medium mt-0.5">
               {visitor.last_seen_at ? (
                 <>
@@ -395,7 +395,7 @@ export default function VisitorProfilePage({
           </div>
           {visitor.total_revenue > 0 && (
             <div>
-              <div className="text-xs text-muted-foreground">Total Revenue</div>
+              <div className="text-xs text-muted-foreground">Totale omzet</div>
               <div className="text-sm font-medium mt-0.5 text-green-600 dark:text-green-400">
                 €{Number(visitor.total_revenue).toFixed(2)}
               </div>
@@ -403,7 +403,7 @@ export default function VisitorProfilePage({
           )}
           {visitor.first_utm_campaign && (
             <div>
-              <div className="text-xs text-muted-foreground">Campaign</div>
+              <div className="text-xs text-muted-foreground">Campagne</div>
               <div className="text-sm font-medium mt-0.5">{visitor.first_utm_campaign}</div>
             </div>
           )}
@@ -412,7 +412,7 @@ export default function VisitorProfilePage({
         {/* Custom Properties */}
         {visitor.custom_props && Object.keys(visitor.custom_props).length > 0 && (
           <div className="mt-4 border-t pt-4">
-            <div className="text-xs text-muted-foreground mb-2">Custom Properties</div>
+            <div className="text-xs text-muted-foreground mb-2">Aangepaste eigenschappen</div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(visitor.custom_props).map(([key, value]) => (
                 <span
@@ -431,26 +431,26 @@ export default function VisitorProfilePage({
       {/* Session Timeline */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Session History</h2>
+          <h2 className="text-lg font-semibold">Sessiegeschiedenis</h2>
           <div className="flex gap-2">
             <button
               onClick={expandAll}
               className="rounded-md border px-3 py-1 text-xs hover:bg-muted transition-colors"
             >
-              Expand all
+              Alles uitklappen
             </button>
             <button
               onClick={collapseAll}
               className="rounded-md border px-3 py-1 text-xs hover:bg-muted transition-colors"
             >
-              Collapse all
+              Alles inklappen
             </button>
           </div>
         </div>
 
         {sessions.length === 0 ? (
           <div className="rounded-lg border bg-card px-4 py-12 text-center text-sm text-muted-foreground">
-            No sessions found for this visitor.
+            Geen sessies gevonden voor deze bezoeker.
           </div>
         ) : (
           <div className="space-y-3">
@@ -467,7 +467,7 @@ export default function VisitorProfilePage({
                     <div className="flex items-center justify-center py-2 mb-3">
                       <div className="border-t flex-1" />
                       <span className="px-3 text-xs text-muted-foreground bg-background">
-                        {dayGap} day{dayGap !== 1 ? 's' : ''} later
+                        {dayGap} dag{dayGap !== 1 ? 'en' : ''} later
                       </span>
                       <div className="border-t flex-1" />
                     </div>
@@ -512,7 +512,7 @@ export default function VisitorProfilePage({
                         {session.country_code && (
                           <span>{getCountryFlag(session.country_code)}</span>
                         )}
-                        <span>{session.pageviews} page{session.pageviews !== 1 ? 's' : ''}</span>
+                        <span>{session.pageviews} pagina{session.pageviews !== 1 ? '\'s' : ''}</span>
                         <span>{formatDuration(session.duration_ms)}</span>
                         <span>{session.entry_path}</span>
                       </div>
@@ -523,12 +523,12 @@ export default function VisitorProfilePage({
                       <div className="border-t">
                         {/* Session summary bar */}
                         <div className="flex items-center gap-4 px-4 py-2 bg-muted/30 text-xs text-muted-foreground">
-                          <span>{session.pageviews} pageview{session.pageviews !== 1 ? 's' : ''}</span>
+                          <span>{session.pageviews} paginaweergave{session.pageviews !== 1 ? 'n' : ''}</span>
                           <span>{session.events_count} event{session.events_count !== 1 ? 's' : ''}</span>
-                          <span>Duration: {formatDuration(session.duration_ms)}</span>
-                          <span>Engaged: {formatDuration(session.engaged_time_ms)}</span>
-                          <span>Entry: {session.entry_path}</span>
-                          <span>Exit: {session.exit_path}</span>
+                          <span>Duur: {formatDuration(session.duration_ms)}</span>
+                          <span>Actief: {formatDuration(session.engaged_time_ms)}</span>
+                          <span>Instap: {session.entry_path}</span>
+                          <span>Uitstap: {session.exit_path}</span>
                         </div>
 
                         {/* Event Timeline */}
@@ -595,12 +595,12 @@ export default function VisitorProfilePage({
                                     )}
                                     {event.is_entry && (
                                       <span className="inline-flex items-center rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] text-blue-700 dark:bg-blue-900 dark:text-blue-300">
-                                        entry
+                                        instap
                                       </span>
                                     )}
                                     {event.is_exit && (
                                       <span className="inline-flex items-center rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] text-orange-700 dark:bg-orange-900 dark:text-orange-300">
-                                        exit
+                                        uitstap
                                       </span>
                                     )}
                                   </div>

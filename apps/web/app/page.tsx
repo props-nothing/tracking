@@ -15,10 +15,10 @@ export default async function HomePage() {
           </Link>
           <nav className="flex items-center gap-6">
             <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground">
-              Pricing
+              Prijzen
             </Link>
             <Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground">
-              Docs
+              Documentatie
             </Link>
             {user ? (
               <Link
@@ -32,7 +32,7 @@ export default async function HomePage() {
                 href="/login"
                 className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
-                Log In
+                Inloggen
               </Link>
             )}
           </nav>
@@ -43,18 +43,18 @@ export default async function HomePage() {
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-20 text-center">
         <div className="mx-auto max-w-3xl space-y-6">
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-            Privacy-friendly web analytics
+            Privacyvriendelijke webanalyse
           </h1>
           <p className="text-lg text-muted-foreground sm:text-xl">
-            A self-hosted alternative to Google Analytics. Own your data.
-            No cookies. GDPR compliant. Lightweight tracking script.
+            Een zelfgehost alternatief voor Google Analytics. Jouw data, jouw eigendom.
+            Geen cookies. AVG-conform. Lichtgewicht trackingscript.
           </p>
           <div className="flex items-center justify-center gap-4">
             <Link
               href="/register"
               className="rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Get Started
+              Aan de slag
             </Link>
             <a
               href="https://github.com"
@@ -62,7 +62,7 @@ export default async function HomePage() {
               rel="noopener noreferrer"
               className="rounded-md border px-6 py-3 text-sm font-medium hover:bg-muted"
             >
-              View on GitHub
+              Bekijk op GitHub
             </a>
           </div>
         </div>
@@ -71,28 +71,28 @@ export default async function HomePage() {
         <div className="mx-auto mt-24 grid max-w-5xl gap-8 sm:grid-cols-3">
           {[
             {
-              title: 'Lightweight Script',
-              description: 'Under 5KB gzipped. No impact on your site performance.',
+              title: 'Lichtgewicht script',
+              description: 'Minder dan 5KB gecomprimeerd. Geen impact op de prestaties van je site.',
             },
             {
-              title: 'Complete Analytics',
-              description: 'Pageviews, sessions, UTM tracking, goals, funnels, ecommerce, and more.',
+              title: 'Volledige analyse',
+              description: 'Paginaweergaven, sessies, UTM-tracking, doelen, funnels, e-commerce en meer.',
             },
             {
-              title: 'Privacy First',
-              description: 'No cookies, no personal data, fully GDPR/CCPA/PECR compliant.',
+              title: 'Privacy voorop',
+              description: 'Geen cookies, geen persoonlijke gegevens, volledig AVG/CCPA/PECR-conform.',
             },
             {
-              title: 'Real-time Dashboard',
-              description: 'See visitors on your site right now with live updates.',
+              title: 'Realtime dashboard',
+              description: 'Bekijk bezoekers op je site in realtime met live updates.',
             },
             {
-              title: 'Self-hosted',
-              description: 'Deploy on your own infrastructure. Your data never leaves your servers.',
+              title: 'Zelfgehost',
+              description: 'Draai op je eigen infrastructuur. Je data verlaat nooit je servers.',
             },
             {
-              title: 'Open Source',
-              description: 'Fully open source. Audit the code, contribute, or fork it.',
+              title: 'Open source',
+              description: 'Volledig open source. Controleer de code, draag bij of fork het.',
             },
           ].map((f) => (
             <div key={f.title} className="rounded-lg border bg-card p-6 text-left">
@@ -109,10 +109,10 @@ export default async function HomePage() {
           <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Tracking</p>
           <div className="flex gap-4">
             <Link href="/docs" className="text-xs text-muted-foreground hover:text-foreground">
-              Docs
+              Documentatie
             </Link>
             <Link href="/pricing" className="text-xs text-muted-foreground hover:text-foreground">
-              Pricing
+              Prijzen
             </Link>
           </div>
         </div>

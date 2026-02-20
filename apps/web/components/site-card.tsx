@@ -161,7 +161,7 @@ export function SiteCard({ site }: SiteCardProps) {
             ) : (
               <>
                 <span className="inline-flex h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
-                idle
+                inactief
               </>
             )}
           </div>
@@ -182,7 +182,7 @@ export function SiteCard({ site }: SiteCardProps) {
                 {fmt(quick.pageviews)}
               </p>
               <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                Views today
+                Weergaven vandaag
               </p>
             </div>
             <div>
@@ -190,7 +190,7 @@ export function SiteCard({ site }: SiteCardProps) {
                 {fmt(quick.visitors)}
               </p>
               <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                Visitors today
+                Bezoekers vandaag
               </p>
             </div>
           </div>

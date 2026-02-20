@@ -43,19 +43,19 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
       .catch(() => setLoading(false));
   }, [siteId, queryString]);
 
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
 
   if (!data || data.pages.length === 0) {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Time on Page</h1>
-          <p className="text-sm text-muted-foreground">How long visitors spend on each page</p>
+          <h1 className="text-2xl font-bold tracking-tight">Tijd op pagina</h1>
+          <p className="text-sm text-muted-foreground">Hoe lang bezoekers op elke pagina doorbrengen</p>
         </div>
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No data yet</h3>
+          <h3 className="text-lg font-medium">Nog geen data</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Time on page is tracked automatically when visitors navigate between pages.
+            Tijd op pagina wordt automatisch bijgehouden wanneer bezoekers tussen pagina's navigeren.
           </p>
         </div>
       </div>
@@ -79,20 +79,20 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Time on Page</h1>
-        <p className="text-sm text-muted-foreground">Total time, active engagement, and per-page breakdowns</p>
+        <h1 className="text-2xl font-bold tracking-tight">Tijd op pagina</h1>
+        <p className="text-sm text-muted-foreground">Totale tijd, actieve betrokkenheid en uitsplitsing per pagina</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Avg. Time on Page" value={formatDuration(data.avg_time_on_page)} />
-        <MetricCard title="Avg. Engaged Time" value={formatDuration(data.avg_engaged_time)} />
-        <MetricCard title="Engagement Ratio" value={`${engagementRatio}%`} />
-        <MetricCard title="Pages Tracked" value={data.pages.length.toString()} />
+        <MetricCard title="Gem. tijd op pagina" value={formatDuration(data.avg_time_on_page)} />
+        <MetricCard title="Gem. actieve tijd" value={formatDuration(data.avg_engaged_time)} />
+        <MetricCard title="Betrokkenheidsratio" value={`${engagementRatio}%`} />
+        <MetricCard title="Gevolgde pagina's" value={data.pages.length.toString()} />
       </div>
 
       {/* Visual engagement bar */}
       <div className="rounded-lg border bg-card p-6">
-        <h2 className="mb-3 text-sm font-medium">Overall Engagement</h2>
+        <h2 className="mb-3 text-sm font-medium">Algehele betrokkenheid</h2>
         <div className="flex items-center gap-4">
           <div className="h-4 flex-1 rounded-full bg-muted overflow-hidden">
             <div
@@ -100,21 +100,21 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
               style={{ width: `${engagementRatio}%` }}
             />
           </div>
-          <span className="text-sm font-medium">{engagementRatio}% active</span>
+          <span className="text-sm font-medium">{engagementRatio}% actief</span>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Engaged time measures active interaction (scrolling, clicking, typing) vs idle or background tab time.
+          Actieve tijd meet actieve interactie (scrollen, klikken, typen) versus inactieve of achtergrondtabtijd.
         </p>
       </div>
 
       <DataTable
-        title="Time per Page"
+        title="Tijd per pagina"
         columns={[
-          { key: 'path', label: 'Page' },
-          { key: 'avg_time_fmt', label: 'Avg. Time', align: 'right' as const },
-          { key: 'avg_engaged_fmt', label: 'Engaged Time', align: 'right' as const },
-          { key: 'engagement_pct', label: 'Engagement', align: 'right' as const },
-          { key: 'unique_visitors', label: 'Visitors', align: 'right' as const, sortable: true },
+          { key: 'path', label: 'Pagina' },
+          { key: 'avg_time_fmt', label: 'Gem. tijd', align: 'right' as const },
+          { key: 'avg_engaged_fmt', label: 'Actieve tijd', align: 'right' as const },
+          { key: 'engagement_pct', label: 'Betrokkenheid', align: 'right' as const },
+          { key: 'unique_visitors', label: 'Bezoekers', align: 'right' as const, sortable: true },
         ]}
         data={tableData}
         searchable

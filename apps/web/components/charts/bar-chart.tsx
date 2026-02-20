@@ -18,7 +18,7 @@ interface BarChartProps {
 
 export function BarChart({ data, color = 'var(--color-chart-1)', height = 300 }: BarChartProps) {
   if (!data.length) {
-    return <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">No data</div>;
+    return <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">Geen data</div>;
   }
 
   return (

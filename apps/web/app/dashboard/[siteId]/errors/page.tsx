@@ -35,25 +35,25 @@ export default function ErrorsPage({ params }: { params: Promise<{ siteId: strin
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">JS Errors</h1>
-          <p className="text-sm text-muted-foreground">JavaScript error tracking</p>
+          <h1 className="text-2xl font-bold tracking-tight">JS-fouten</h1>
+          <p className="text-sm text-muted-foreground">JavaScript-foutopsporing</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <MetricCard title="Total Errors" value={totalErrors.toString()} />
-            <MetricCard title="Unique Errors" value={errors.length.toString()} />
+            <MetricCard title="Totaal fouten" value={totalErrors.toString()} />
+            <MetricCard title="Unieke fouten" value={errors.length.toString()} />
           </div>
 
           {errors.length === 0 ? (
             <div className="rounded-lg border bg-card p-12 text-center">
-              <h3 className="text-lg font-medium">No errors captured</h3>
+              <h3 className="text-lg font-medium">Geen fouten vastgelegd</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Enable error tracking with <code className="rounded bg-muted px-1 text-xs">data-track-errors=&quot;true&quot;</code>
+                Schakel foutopsporing in met <code className="rounded bg-muted px-1 text-xs">data-track-errors=&quot;true&quot;</code>
               </p>
             </div>
           ) : (

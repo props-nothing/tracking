@@ -47,21 +47,21 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
       }),
     });
     setSaving(false);
-    setMessage(res.ok ? 'Settings saved!' : 'Failed to save settings.');
+    setMessage(res.ok ? 'Instellingen opgeslagen!' : 'Instellingen opslaan mislukt.');
   };
 
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this site? This action is irreversible.')) return;
+    if (!confirm('Weet je zeker dat je deze site wilt verwijderen? Deze actie is onomkeerbaar.')) return;
     await fetch(`/api/sites/${siteId}`, { method: 'DELETE' });
     window.location.href = '/dashboard';
   };
 
   if (loading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+    return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
   }
 
   if (!site) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Site not found</div>;
+    return <div className="py-20 text-center text-sm text-muted-foreground">Site niet gevonden</div>;
   }
 
   const trackingSnippet = `<script defer data-site-id="${siteId}" src="${typeof window !== 'undefined' ? window.location.origin : ''}/t.js"></script>`;
@@ -69,15 +69,15 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage site configuration</p>
+        <h1 className="text-2xl font-bold tracking-tight">Instellingen</h1>
+        <p className="text-sm text-muted-foreground">Beheer siteconfiguratie</p>
       </div>
 
       <div className="rounded-lg border bg-card p-6 space-y-5">
-        <h2 className="text-sm font-medium">General</h2>
+        <h2 className="text-sm font-medium">Algemeen</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Site Name</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Sitenaam</label>
             <input
               value={site.name}
               onChange={(e) => setSite({ ...site, name: e.target.value })}
@@ -85,7 +85,7 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Domain</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Domein</label>
             <input
               value={site.domain}
               onChange={(e) => setSite({ ...site, domain: e.target.value })}
@@ -93,7 +93,7 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Timezone</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Tijdzone</label>
             <select
               value={site.timezone}
               onChange={(e) => setSite({ ...site, timezone: e.target.value })}
@@ -112,11 +112,11 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
               onChange={(e) => setSite({ ...site, public: e.target.checked })}
               className="h-4 w-4 rounded border"
             />
-            <label htmlFor="public" className="text-sm">Public dashboard</label>
+            <label htmlFor="public" className="text-sm">Openbaar dashboard</label>
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Allowed Origins (comma-separated)</label>
+          <label className="mb-1 block text-xs text-muted-foreground">Toegestane origins (kommagescheiden)</label>
           <input
             value={(site.allowed_origins || []).join(', ')}
             onChange={(e) => setSite({ ...site, allowed_origins: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
@@ -130,34 +130,34 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
             disabled={saving}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? 'Opslaan...' : 'Instellingen opslaan'}
           </button>
           {message && <span className="text-sm text-green-600">{message}</span>}
         </div>
       </div>
 
       <div className="rounded-lg border bg-card p-6 space-y-4">
-        <h2 className="text-sm font-medium">Tracking Code</h2>
-        <p className="text-xs text-muted-foreground">Add this snippet to the <code>&lt;head&gt;</code> of your website:</p>
+        <h2 className="text-sm font-medium">Trackingcode</h2>
+        <p className="text-xs text-muted-foreground">Voeg dit fragment toe aan de <code>&lt;head&gt;</code> van je website:</p>
         <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs">{trackingSnippet}</pre>
         <button
           onClick={() => navigator.clipboard.writeText(trackingSnippet)}
           className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
         >
-          Copy to clipboard
+          Kopiëren naar klembord
         </button>
       </div>
 
       <div className="rounded-lg border border-red-200 bg-card p-6 space-y-4">
-        <h2 className="text-sm font-medium text-red-600">Danger Zone</h2>
+        <h2 className="text-sm font-medium text-red-600">Gevarenzone</h2>
         <p className="text-xs text-muted-foreground">
-          Permanently delete this site and all associated data. This cannot be undone.
+          Verwijder deze site en alle bijbehorende gegevens permanent. Dit kan niet ongedaan gemaakt worden.
         </p>
         <button
           onClick={handleDelete}
           className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
         >
-          Delete Site
+          Site verwijderen
         </button>
       </div>
     </div>

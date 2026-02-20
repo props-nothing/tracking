@@ -11,7 +11,7 @@ interface RetentionMatrixProps {
 
 export function RetentionMatrix({ cohorts, periodLabel = 'Week' }: RetentionMatrixProps) {
   if (!cohorts.length) {
-    return <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">No retention data</div>;
+    return <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">Geen retentiedata</div>;
   }
 
   const maxPeriods = Math.max(...cohorts.map((c) => c.periods.length));
@@ -31,7 +31,7 @@ export function RetentionMatrix({ cohorts, periodLabel = 'Week' }: RetentionMatr
         <thead>
           <tr>
             <th className="px-3 py-2 text-left font-medium text-muted-foreground">Cohort</th>
-            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Users</th>
+            <th className="px-3 py-2 text-right font-medium text-muted-foreground">Gebruikers</th>
             {Array.from({ length: maxPeriods }, (_, i) => (
               <th key={i} className="px-3 py-2 text-center font-medium text-muted-foreground">
                 {periodLabel} {i}

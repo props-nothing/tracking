@@ -34,28 +34,28 @@ export default function GoalsPage({ params }: { params: Promise<{ siteId: string
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Goals</h1>
-          <p className="text-sm text-muted-foreground">Conversion goals and tracking</p>
+          <h1 className="text-2xl font-bold tracking-tight">Doelen</h1>
+          <p className="text-sm text-muted-foreground">Conversiedoelen en tracking</p>
         </div>
         <Link
           href={`/dashboard/${siteId}/goals/new`}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          New Goal
+          Nieuw doel
         </Link>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : goals.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No goals yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground">Create your first goal to start tracking conversions.</p>
+          <h3 className="text-lg font-medium">Nog geen doelen</h3>
+          <p className="mt-2 text-sm text-muted-foreground">Maak je eerste doel aan om conversies te volgen.</p>
           <Link
             href={`/dashboard/${siteId}/goals/new`}
             className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Create Goal
+            Doel aanmaken
           </Link>
         </div>
       ) : (
@@ -74,7 +74,7 @@ export default function GoalsPage({ params }: { params: Promise<{ siteId: string
               <p className="mt-3 text-2xl font-bold">
                 {goal.goal_conversions?.[0]?.count || 0}
               </p>
-              <p className="text-xs text-muted-foreground">total conversions</p>
+              <p className="text-xs text-muted-foreground">totale conversies</p>
             </Link>
           ))}
         </div>

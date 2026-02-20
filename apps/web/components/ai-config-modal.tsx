@@ -21,15 +21,15 @@ interface AIConfigData {
 }
 
 const ALL_SECTIONS = [
-  { key: 'traffic', label: 'Traffic Overview' },
-  { key: 'leads', label: 'Lead Analysis' },
-  { key: 'campaigns', label: 'Campaign Performance' },
-  { key: 'goals', label: 'Goal Conversions' },
-  { key: 'pages', label: 'Page Performance' },
-  { key: 'geo', label: 'Geographic Data' },
-  { key: 'devices', label: 'Device Breakdown' },
+  { key: 'traffic', label: 'Verkeersoverzicht' },
+  { key: 'leads', label: 'Leadanalyse' },
+  { key: 'campaigns', label: 'Campagneprestaties' },
+  { key: 'goals', label: 'Doelconversies' },
+  { key: 'pages', label: 'Paginaprestaties' },
+  { key: 'geo', label: 'Geografische data' },
+  { key: 'devices', label: 'Apparaatverdeling' },
   { key: 'ecommerce', label: 'E-commerce' },
-  { key: 'performance', label: 'Web Vitals' },
+  { key: 'performance', label: 'Webprestaties' },
 ];
 
 const MODELS = [
@@ -107,7 +107,7 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border bg-card shadow-xl">
         <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 className="text-lg font-semibold">AI Insights Settings</h2>
+          <h2 className="text-lg font-semibold">AI-inzichten instellingen</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -116,14 +116,14 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
         </div>
 
         {loading ? (
-          <div className="px-6 py-12 text-center text-sm text-muted-foreground">Loading settings...</div>
+          <div className="px-6 py-12 text-center text-sm text-muted-foreground">Instellingen laden...</div>
         ) : (
           <div className="space-y-6 px-6 py-5">
             {/* Enable toggle */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium">Enable AI Insights</p>
-                <p className="text-xs text-muted-foreground">Automatically analyze your analytics data</p>
+                <p className="text-sm font-medium">AI-inzichten inschakelen</p>
+                <p className="text-xs text-muted-foreground">Analyseer automatisch je analysedata</p>
               </div>
               <button
                 onClick={() => setConfig(prev => ({ ...prev, enabled: !prev.enabled }))}
@@ -139,19 +139,19 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
 
             {/* Schedule */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Schedule</label>
+              <label className="text-sm font-medium">Planning</label>
               <select
                 value={config.schedule}
                 onChange={e => setConfig(prev => ({ ...prev, schedule: e.target.value as any }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                <option value="manual">Manual only</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly (Mondays)</option>
+                <option value="manual">Alleen handmatig</option>
+                <option value="daily">Dagelijks</option>
+                <option value="weekly">Wekelijks (maandag)</option>
               </select>
               {config.schedule !== 'manual' && (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-muted-foreground">Run at hour:</label>
+                  <label className="text-xs text-muted-foreground">Uitvoeren om uur:</label>
                   <input
                     type="number"
                     min={0}
@@ -160,14 +160,14 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
                     onChange={e => setConfig(prev => ({ ...prev, schedule_hour: parseInt(e.target.value) || 8 }))}
                     className="h-8 w-16 rounded-md border border-input bg-background px-2 text-sm"
                   />
-                  <span className="text-xs text-muted-foreground">(0-23, in site timezone)</span>
+                  <span className="text-xs text-muted-foreground">(0-23, in sitetijdzone)</span>
                 </div>
               )}
             </div>
 
             {/* Model */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">AI Model</label>
+              <label className="text-sm font-medium">AI-model</label>
               <select
                 value={config.openai_model}
                 onChange={e => setConfig(prev => ({ ...prev, openai_model: e.target.value }))}
@@ -183,8 +183,8 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium">Period Comparison</p>
-                  <p className="text-xs text-muted-foreground">Compare with a previous period</p>
+                  <p className="text-sm font-medium">Periodevergelijking</p>
+                  <p className="text-xs text-muted-foreground">Vergelijk met een vorige periode</p>
                 </div>
                 <button
                   onClick={() => setConfig(prev => ({ ...prev, comparison_enabled: !prev.comparison_enabled }))}
@@ -203,16 +203,16 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
                   onChange={e => setConfig(prev => ({ ...prev, comparison_period: e.target.value as any }))}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="previous_period">Previous period</option>
-                  <option value="previous_month">Previous month</option>
-                  <option value="previous_year">Previous year</option>
+                  <option value="previous_period">Vorige periode</option>
+                  <option value="previous_month">Vorige maand</option>
+                  <option value="previous_year">Vorig jaar</option>
                 </select>
               )}
             </div>
 
             {/* Sections */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Data Sections to Analyze</label>
+              <label className="text-sm font-medium">Datasecties om te analyseren</label>
               <div className="grid grid-cols-2 gap-2">
                 {ALL_SECTIONS.map(s => (
                   <label key={s.key} className="flex items-center gap-2 rounded-md border p-2 text-sm">
@@ -230,16 +230,16 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
 
             {/* Custom prompt */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Custom Instructions</label>
+              <label className="text-sm font-medium">Aangepaste instructies</label>
               <textarea
                 value={config.custom_prompt}
                 onChange={e => setConfig(prev => ({ ...prev, custom_prompt: e.target.value }))}
-                placeholder="E.g., Focus on B2B SaaS leads from LinkedIn. Ignore direct traffic. Our main goal is demo signups."
+                placeholder="Bijv., Focus op B2B SaaS leads van LinkedIn. Negeer direct verkeer. Ons hoofddoel is demo-aanmeldingen."
                 rows={3}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground"
               />
               <p className="text-xs text-muted-foreground">
-                These instructions are appended to the AI prompt to customize the analysis for your business.
+                Deze instructies worden toegevoegd aan de AI-prompt om de analyse voor je bedrijf aan te passen.
               </p>
             </div>
           </div>
@@ -250,14 +250,14 @@ export function AIConfigModal({ siteId, open, onClose }: AIConfigModalProps) {
             onClick={onClose}
             className="inline-flex h-9 items-center rounded-md border px-4 text-sm"
           >
-            Cancel
+            Annuleren
           </button>
           <button
             onClick={handleSave}
             disabled={saving || loading}
             className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Settings'}
+            {saving ? 'Opslaan...' : 'Instellingen opslaan'}
           </button>
         </div>
       </div>

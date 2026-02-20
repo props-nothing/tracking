@@ -345,57 +345,59 @@ export async function buildDataPayload(
 /* ------------------------------------------------------------------ */
 
 export function buildSystemPrompt(config: AIConfig, hasComparison: boolean): string {
-  return `You are a senior digital marketing analyst and data scientist. You analyze web analytics data and provide actionable insights for website owners.
+  return `Je bent een senior digital marketing analist en datawetenschapper. Je analyseert webanalysedata en biedt bruikbare inzichten voor website-eigenaren.
 
-Your analysis must be based strictly on the data provided. Do not hallucinate metrics or make up numbers.
+Je analyse moet strikt gebaseerd zijn op de aangeleverde data. Verzin geen statistieken of cijfers.
 
-Return your analysis as a JSON object with this exact structure:
+Antwoord altijd in het Nederlands.
+
+Geef je analyse terug als een JSON-object met exact deze structuur:
 {
-  "summary": "2-3 sentence executive summary of the most important findings",
+  "summary": "2-3 zinnen samenvatting van de belangrijkste bevindingen",
   "highlights": [
-    { "type": "positive|negative|neutral|opportunity", "title": "Short title", "detail": "Explanation", "metric": "optional metric name", "change_pct": optional_number }
+    { "type": "positive|negative|neutral|opportunity", "title": "Korte titel", "detail": "Uitleg", "metric": "optionele metrieknaam", "change_pct": optioneel_getal }
   ],
   "lead_insights": {
-    "top_sources": "Where most/best leads come from",
-    "recommendations": ["How to get more leads"],
-    "quality_assessment": "Lead quality analysis"
+    "top_sources": "Waar de meeste/beste leads vandaan komen",
+    "recommendations": ["Hoe meer leads te genereren"],
+    "quality_assessment": "Leadkwaliteitsanalyse"
   },
   "campaign_insights": {
-    "best_performing": "Which UTM campaigns win and why",
-    "worst_performing": "Which campaigns underperform",
-    "budget_recommendations": ["Where to shift marketing budget"],
-    "new_ideas": ["New campaign ideas based on the data patterns"]
+    "best_performing": "Welke UTM-campagnes winnen en waarom",
+    "worst_performing": "Welke campagnes onderpresteren",
+    "budget_recommendations": ["Waar marketingbudget naartoe te verschuiven"],
+    "new_ideas": ["Nieuwe campagne-ideeën op basis van datapatronen"]
   },
   "traffic_insights": {
-    "trends": "Traffic trend description",
-    "anomalies": ["Any unusual spikes or drops"],
-    "opportunities": ["Growth opportunities"]
+    "trends": "Beschrijving van verkeerstrends",
+    "anomalies": ["Ongebruikelijke pieken of dalingen"],
+    "opportunities": ["Groeikansen"]
   },
   "page_insights": {
-    "top_performers": "Top performing pages and why",
-    "underperformers": "Pages that need attention",
-    "optimization_suggestions": ["Specific page optimization suggestions"]
+    "top_performers": "Best presterende pagina's en waarom",
+    "underperformers": "Pagina's die aandacht nodig hebben",
+    "optimization_suggestions": ["Specifieke pagina-optimalisatiesuggesties"]
   },
   ${hasComparison ? `"comparison": {
-    "summary": "Overall comparison between the two periods",
-    "improvements": ["Things that improved"],
-    "regressions": ["Things that got worse"],
-    "campaign_comparison": "Detailed campaign performance comparison"
+    "summary": "Algehele vergelijking tussen de twee periodes",
+    "improvements": ["Zaken die verbeterd zijn"],
+    "regressions": ["Zaken die verslechterd zijn"],
+    "campaign_comparison": "Gedetailleerde campagneprestatie-vergelijking"
   },` : ''}
   "action_items": [
-    { "priority": "high|medium|low", "category": "leads|campaigns|traffic|pages|technical", "action": "Specific action to take", "expected_impact": "What improvement to expect" }
+    { "priority": "high|medium|low", "category": "leads|campaigns|traffic|pages|technical", "action": "Specifieke actie om te ondernemen", "expected_impact": "Welke verbetering te verwachten" }
   ],
-  "confidence_notes": "Caveats about data quality, sample size, or limitations"
+  "confidence_notes": "Kanttekeningen bij datakwaliteit, steekproefgrootte of beperkingen"
 }
 
-Rules:
-- Provide 3-5 highlights
-- Provide 3-5 action items, prioritized by expected impact
-- Be specific with numbers and percentages from the data
-- If lead data is empty, still provide campaign and traffic insights
-- If comparison data is available, always include the comparison section
-- Focus on actionable recommendations, not just observations
-${config.custom_prompt ? `\nAdditional instructions from the site owner:\n${config.custom_prompt}` : ''}`;
+Regels:
+- Geef 3-5 highlights
+- Geef 3-5 actiepunten, geprioriteerd op verwachte impact
+- Wees specifiek met cijfers en percentages uit de data
+- Als er geen leaddata is, geef dan alsnog campagne- en verkeersinzichten
+- Als vergelijkingsdata beschikbaar is, neem dan altijd de vergelijkingssectie op
+- Focus op bruikbare aanbevelingen, niet alleen observaties
+${config.custom_prompt ? `\nAanvullende instructies van de site-eigenaar:\n${config.custom_prompt}` : ''}`;
 }
 
 export function buildUserPrompt(
@@ -406,42 +408,42 @@ export function buildUserPrompt(
   const parts: string[] = [];
 
   parts.push(`## Website: ${data.site_name} (${data.site_domain})`);
-  parts.push(`## Period: ${data.period.start} to ${data.period.end}`);
+  parts.push(`## Periode: ${data.period.start} tot ${data.period.end}`);
   parts.push('');
 
   // Core metrics
-  parts.push('### Core Metrics');
-  parts.push(`- Visitors: ${data.metrics.visitors}`);
-  parts.push(`- Pageviews: ${data.metrics.pageviews}`);
-  parts.push(`- Sessions: ${data.metrics.sessions}`);
-  parts.push(`- Bounce Rate: ${data.metrics.bounce_rate}%`);
-  parts.push(`- Avg Session Duration: ${Math.round(data.metrics.avg_session_duration_ms / 1000)}s`);
-  parts.push(`- Avg Engaged Time: ${Math.round(data.metrics.avg_engaged_time_ms / 1000)}s`);
-  parts.push(`- Form Submissions: ${data.metrics.form_submissions}`);
-  if (data.metrics.total_revenue > 0) parts.push(`- Total Revenue: €${data.metrics.total_revenue.toFixed(2)}`);
+  parts.push('### Kernstatistieken');
+  parts.push(`- Bezoekers: ${data.metrics.visitors}`);
+  parts.push(`- Paginaweergaven: ${data.metrics.pageviews}`);
+  parts.push(`- Sessies: ${data.metrics.sessions}`);
+  parts.push(`- Bouncepercentage: ${data.metrics.bounce_rate}%`);
+  parts.push(`- Gem. sessieduur: ${Math.round(data.metrics.avg_session_duration_ms / 1000)}s`);
+  parts.push(`- Gem. actieve tijd: ${Math.round(data.metrics.avg_engaged_time_ms / 1000)}s`);
+  parts.push(`- Formulierinzendingen: ${data.metrics.form_submissions}`);
+  if (data.metrics.total_revenue > 0) parts.push(`- Totale omzet: €${data.metrics.total_revenue.toFixed(2)}`);
   parts.push('');
 
   // Daily trend
   if (data.daily_trend.length > 0) {
-    parts.push('### Daily Trend (last entries)');
+    parts.push('### Dagelijkse trend (laatste items)');
     for (const d of data.daily_trend.slice(-14)) {
-      parts.push(`  ${d.day}: ${d.visitors} visitors, ${d.pageviews} pageviews, ${d.sessions} sessions`);
+      parts.push(`  ${d.day}: ${d.visitors} bezoekers, ${d.pageviews} paginaweergaven, ${d.sessions} sessies`);
     }
     parts.push('');
   }
 
   // Top pages
   if (data.top_pages.length > 0) {
-    parts.push('### Top Pages');
+    parts.push('### Toppagina\'s');
     for (const p of data.top_pages.slice(0, 15)) {
-      parts.push(`  ${p.path}: ${p.views} views, ${p.visitors} unique visitors`);
+      parts.push(`  ${p.path}: ${p.views} weergaven, ${p.visitors} unieke bezoekers`);
     }
     parts.push('');
   }
 
   // Referrers
   if (data.top_referrers.length > 0) {
-    parts.push('### Top Referrers');
+    parts.push('### Topverwijzers');
     for (const r of data.top_referrers.slice(0, 10)) {
       parts.push(`  ${r.source}: ${r.count}`);
     }
@@ -450,7 +452,7 @@ export function buildUserPrompt(
 
   // Countries
   if (data.countries.length > 0) {
-    parts.push('### Top Countries');
+    parts.push('### Toplanden');
     for (const c of data.countries.slice(0, 10)) {
       parts.push(`  ${c.country}: ${c.count}`);
     }
@@ -459,7 +461,7 @@ export function buildUserPrompt(
 
   // Devices
   if (data.devices.length > 0) {
-    parts.push('### Device Breakdown');
+    parts.push('### Apparaatverdeling');
     for (const d of data.devices) {
       parts.push(`  ${d.device}: ${d.count}`);
     }
@@ -468,53 +470,53 @@ export function buildUserPrompt(
 
   // UTM
   if (data.utm_sources.length > 0) {
-    parts.push('### UTM Sources');
+    parts.push('### UTM-bronnen');
     for (const u of data.utm_sources) parts.push(`  ${u.source}: ${u.count}`);
     parts.push('');
   }
   if (data.utm_mediums.length > 0) {
-    parts.push('### UTM Mediums');
+    parts.push('### UTM-media');
     for (const u of data.utm_mediums) parts.push(`  ${u.medium}: ${u.count}`);
     parts.push('');
   }
   if (data.utm_campaigns.length > 0) {
-    parts.push('### UTM Campaigns');
+    parts.push('### UTM-campagnes');
     for (const u of data.utm_campaigns) parts.push(`  ${u.campaign}: ${u.count}`);
     parts.push('');
   }
 
   // Leads
-  parts.push('### Lead Data');
-  parts.push(`- Total Leads: ${data.leads.total}`);
-  parts.push(`- New Leads: ${data.leads.new}`);
+  parts.push('### Leaddata');
+  parts.push(`- Totaal leads: ${data.leads.total}`);
+  parts.push(`- Nieuwe leads: ${data.leads.new}`);
   if (data.leads.by_source.length > 0) {
-    parts.push('- Lead Sources:');
+    parts.push('- Leadbronnen:');
     for (const s of data.leads.by_source) parts.push(`    ${s.source}: ${s.count}`);
   }
   if (data.leads.by_medium.length > 0) {
-    parts.push('- Lead Mediums:');
+    parts.push('- Lead-media:');
     for (const m of data.leads.by_medium) parts.push(`    ${m.medium}: ${m.count}`);
   }
   if (data.leads.by_campaign.length > 0) {
-    parts.push('- Lead Campaigns:');
+    parts.push('- Leadcampagnes:');
     for (const c of data.leads.by_campaign) parts.push(`    ${c.campaign}: ${c.count}`);
   }
   parts.push('');
 
   // Goals
   if (data.goals.length > 0) {
-    parts.push('### Goal Conversions');
+    parts.push('### Doelconversies');
     for (const g of data.goals) {
-      parts.push(`  ${g.name}: ${g.conversions} conversions${g.revenue > 0 ? `, €${g.revenue.toFixed(2)} revenue` : ''}`);
+      parts.push(`  ${g.name}: ${g.conversions} conversies${g.revenue > 0 ? `, €${g.revenue.toFixed(2)} omzet` : ''}`);
     }
     parts.push('');
   }
 
   // Forms
   if (data.forms.length > 0) {
-    parts.push('### Form Analytics');
+    parts.push('### Formulieranalyse');
     for (const f of data.forms) {
-      parts.push(`  ${f.form_id}: ${f.submissions} submissions, ${f.abandonments} abandonments, ${f.completion_rate}% completion`);
+      parts.push(`  ${f.form_id}: ${f.submissions} inzendingen, ${f.abandonments} afbrekingen, ${f.completion_rate}% voltooiing`);
     }
     parts.push('');
   }
@@ -522,28 +524,28 @@ export function buildUserPrompt(
   // Comparison data
   if (comparisonData) {
     parts.push('---');
-    parts.push(`## COMPARISON PERIOD: ${comparisonData.period.start} to ${comparisonData.period.end}`);
+    parts.push(`## VERGELIJKINGSPERIODE: ${comparisonData.period.start} tot ${comparisonData.period.end}`);
     parts.push('');
-    parts.push('### Comparison Core Metrics');
-    parts.push(`- Visitors: ${comparisonData.metrics.visitors}`);
-    parts.push(`- Pageviews: ${comparisonData.metrics.pageviews}`);
-    parts.push(`- Sessions: ${comparisonData.metrics.sessions}`);
-    parts.push(`- Bounce Rate: ${comparisonData.metrics.bounce_rate}%`);
-    parts.push(`- Form Submissions: ${comparisonData.metrics.form_submissions}`);
-    if (comparisonData.metrics.total_revenue > 0) parts.push(`- Revenue: €${comparisonData.metrics.total_revenue.toFixed(2)}`);
+    parts.push('### Vergelijkende kernstatistieken');
+    parts.push(`- Bezoekers: ${comparisonData.metrics.visitors}`);
+    parts.push(`- Paginaweergaven: ${comparisonData.metrics.pageviews}`);
+    parts.push(`- Sessies: ${comparisonData.metrics.sessions}`);
+    parts.push(`- Bouncepercentage: ${comparisonData.metrics.bounce_rate}%`);
+    parts.push(`- Formulierinzendingen: ${comparisonData.metrics.form_submissions}`);
+    if (comparisonData.metrics.total_revenue > 0) parts.push(`- Omzet: €${comparisonData.metrics.total_revenue.toFixed(2)}`);
     parts.push('');
 
     if (comparisonData.utm_campaigns.length > 0) {
-      parts.push('### Comparison UTM Campaigns');
+      parts.push('### Vergelijkende UTM-campagnes');
       for (const u of comparisonData.utm_campaigns) parts.push(`  ${u.campaign}: ${u.count}`);
       parts.push('');
     }
 
-    parts.push('### Comparison Leads');
-    parts.push(`- Total Leads: ${comparisonData.leads.total}`);
-    parts.push(`- New Leads: ${comparisonData.leads.new}`);
+    parts.push('### Vergelijkende leads');
+    parts.push(`- Totaal leads: ${comparisonData.leads.total}`);
+    parts.push(`- Nieuwe leads: ${comparisonData.leads.new}`);
     if (comparisonData.leads.by_source.length > 0) {
-      parts.push('- Lead Sources:');
+      parts.push('- Leadbronnen:');
       for (const s of comparisonData.leads.by_source) parts.push(`    ${s.source}: ${s.count}`);
     }
     parts.push('');
@@ -552,14 +554,14 @@ export function buildUserPrompt(
   // AI Memory: previous summaries
   if (previousSummaries && previousSummaries.length > 0) {
     parts.push('---');
-    parts.push('## PREVIOUS ANALYSIS SUMMARIES (for context/trends):');
+    parts.push('## EERDERE ANALYSESAMENVATTINGEN (voor context/trends):');
     for (let i = 0; i < previousSummaries.length; i++) {
       parts.push(`${i + 1}. ${previousSummaries[i]}`);
     }
     parts.push('');
   }
 
-  parts.push('Please analyze this data and return your insights as JSON.');
+  parts.push('Analyseer deze data en geef je inzichten terug als JSON. Antwoord in het Nederlands.');
 
   return parts.join('\n');
 }
@@ -606,7 +608,7 @@ export async function analyzeData(
       traffic_insights: { trends: '', anomalies: [], opportunities: [] },
       page_insights: { top_performers: '', underperformers: '', optimization_suggestions: [] },
       action_items: [],
-      confidence_notes: 'Failed to parse structured response from AI.',
+      confidence_notes: 'Gestructureerd antwoord van AI kon niet geparsed worden.',
     };
   }
 
@@ -631,48 +633,50 @@ export async function compareReports(
 ): Promise<{ analysis: AIAnalysis; tokens_used: number }> {
   const openai = getOpenAIClient();
 
-  const systemPrompt = `You are a senior digital marketing analyst. Compare two analytics periods and provide insights on what changed, what improved, what regressed, and what actions to take.
+  const systemPrompt = `Je bent een senior digital marketing analist. Vergelijk twee analyseperiodes en geef inzichten over wat er veranderd is, wat verbeterd is, wat verslechterd is en welke acties ondernomen moeten worden.
 
-Return your analysis as a JSON object with this exact structure:
+Antwoord altijd in het Nederlands.
+
+Geef je analyse terug als een JSON-object met exact deze structuur:
 {
-  "summary": "2-3 sentence comparison summary",
+  "summary": "2-3 zinnen vergelijkingssamenvatting",
   "highlights": [
-    { "type": "positive|negative|neutral|opportunity", "title": "Short title", "detail": "Explanation", "change_pct": optional_number }
+    { "type": "positive|negative|neutral|opportunity", "title": "Korte titel", "detail": "Uitleg", "change_pct": optioneel_getal }
   ],
   "lead_insights": { "top_sources": "", "recommendations": [], "quality_assessment": "" },
   "campaign_insights": { "best_performing": "", "worst_performing": "", "budget_recommendations": [], "new_ideas": [] },
   "traffic_insights": { "trends": "", "anomalies": [], "opportunities": [] },
   "page_insights": { "top_performers": "", "underperformers": "", "optimization_suggestions": [] },
   "comparison": {
-    "summary": "Detailed comparison",
-    "improvements": ["Things that improved"],
-    "regressions": ["Things that got worse"],
-    "campaign_comparison": "Detailed campaign A/B analysis"
+    "summary": "Gedetailleerde vergelijking",
+    "improvements": ["Zaken die verbeterd zijn"],
+    "regressions": ["Zaken die verslechterd zijn"],
+    "campaign_comparison": "Gedetailleerde campagne A/B-analyse"
   },
   "action_items": [
-    { "priority": "high|medium|low", "category": "leads|campaigns|traffic|pages|technical", "action": "Action", "expected_impact": "Impact" }
+    { "priority": "high|medium|low", "category": "leads|campaigns|traffic|pages|technical", "action": "Actie", "expected_impact": "Impact" }
   ],
-  "confidence_notes": "Caveats"
+  "confidence_notes": "Kanttekeningen"
 }
-${config.custom_prompt ? `\nAdditional instructions: ${config.custom_prompt}` : ''}`;
+${config.custom_prompt ? `\nAanvullende instructies: ${config.custom_prompt}` : ''}`;
 
-  const userPrompt = `## PERIOD A: ${reportA.period}
-### Metrics
+  const userPrompt = `## PERIODE A: ${reportA.period}
+### Statistieken
 ${JSON.stringify(reportA.data_snapshot.metrics, null, 2)}
-### Previous AI Summary
+### Eerdere AI-samenvatting
 ${reportA.analysis.summary}
 
 ---
 
-## PERIOD B: ${reportB.period}
-### Metrics
+## PERIODE B: ${reportB.period}
+### Statistieken
 ${JSON.stringify(reportB.data_snapshot.metrics, null, 2)}
-### Previous AI Summary
+### Eerdere AI-samenvatting
 ${reportB.analysis.summary}
 
 ---
 
-Compare these two periods and provide actionable insights.`;
+Vergelijk deze twee periodes en geef bruikbare inzichten. Antwoord in het Nederlands.`;
 
   const response = await openai.chat.completions.create({
     model: config.openai_model || 'gpt-5.2-2025-12-11',
@@ -698,7 +702,7 @@ Compare these two periods and provide actionable insights.`;
       traffic_insights: { trends: '', anomalies: [], opportunities: [] },
       page_insights: { top_performers: '', underperformers: '', optimization_suggestions: [] },
       action_items: [],
-      confidence_notes: 'Failed to parse structured response.',
+      confidence_notes: 'Gestructureerd antwoord kon niet geparsed worden.',
     };
   }
 

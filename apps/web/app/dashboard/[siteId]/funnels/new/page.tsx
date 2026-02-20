@@ -18,13 +18,13 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [steps, setSteps] = useState<FunnelStep[]>([
-    { name: 'Step 1', type: 'page_visit', value: '' },
-    { name: 'Step 2', type: 'page_visit', value: '' },
+    { name: 'Stap 1', type: 'page_visit', value: '' },
+    { name: 'Stap 2', type: 'page_visit', value: '' },
   ]);
   const [saving, setSaving] = useState(false);
 
   const addStep = () => {
-    setSteps([...steps, { name: `Step ${steps.length + 1}`, type: 'page_visit', value: '' }]);
+    setSteps([...steps, { name: `Stap ${steps.length + 1}`, type: 'page_visit', value: '' }]);
   };
 
   const removeStep = (index: number) => {
@@ -58,13 +58,13 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Create Funnel</h1>
-        <p className="text-sm text-muted-foreground">Define a multi-step conversion funnel</p>
+        <h1 className="text-2xl font-bold tracking-tight">Funnel aanmaken</h1>
+        <p className="text-sm text-muted-foreground">Definieer een meerstaps-conversiefunnel</p>
       </div>
 
       <div className="space-y-6 rounded-lg border bg-card p-6">
         <div>
-          <label className="text-sm font-medium">Funnel Name</label>
+          <label className="text-sm font-medium">Funnelnaam</label>
           <input
             type="text"
             value={name}
@@ -75,7 +75,7 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
         </div>
 
         <div>
-          <label className="text-sm font-medium">Description (optional)</label>
+          <label className="text-sm font-medium">Beschrijving (optioneel)</label>
           <input
             type="text"
             value={description}
@@ -86,17 +86,17 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
         </div>
 
         <div className="space-y-4">
-          <label className="text-sm font-medium">Steps</label>
+          <label className="text-sm font-medium">Stappen</label>
           {steps.map((step, i) => (
             <div key={i} className="rounded-lg border p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">Step {i + 1}</span>
+                <span className="text-xs font-medium text-muted-foreground">Stap {i + 1}</span>
                 {steps.length > 2 && (
                   <button
                     onClick={() => removeStep(i)}
                     className="text-xs text-red-500 hover:text-red-600"
                   >
-                    Remove
+                    Verwijderen
                   </button>
                 )}
               </div>
@@ -104,7 +104,7 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
                 type="text"
                 value={step.name}
                 onChange={(e) => updateStep(i, { name: e.target.value })}
-                placeholder="Step name"
+                placeholder="Stapnaam"
                 className="w-full rounded-md border px-3 py-2 text-sm"
               />
               <select
@@ -112,9 +112,9 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
                 onChange={(e) => updateStep(i, { type: e.target.value })}
                 className="w-full rounded-md border px-3 py-2 text-sm"
               >
-                <option value="page_visit">Page Visit</option>
-                <option value="event">Custom Event</option>
-                <option value="form_submit">Form Submission</option>
+                <option value="page_visit">Paginabezoek</option>
+                <option value="event">Aangepast event</option>
+                <option value="form_submit">Formulierinzending</option>
               </select>
               {step.type === 'page_visit' && (
                 <input
@@ -150,7 +150,7 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
             onClick={addStep}
             className="w-full rounded-md border border-dashed px-4 py-2 text-sm text-muted-foreground hover:bg-accent"
           >
-            + Add Step
+            + Stap toevoegen
           </button>
         </div>
 
@@ -159,7 +159,7 @@ export default function NewFunnelPage({ params }: { params: Promise<{ siteId: st
           disabled={!name || steps.length < 2 || saving}
           className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {saving ? 'Creating...' : 'Create Funnel'}
+          {saving ? 'Aanmaken...' : 'Funnel aanmaken'}
         </button>
       </div>
     </div>

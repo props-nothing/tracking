@@ -45,48 +45,48 @@ export default function OutboundDownloadsPage({ params }: { params: Promise<{ si
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Outbound Links & Downloads</h1>
-        <p className="text-sm text-muted-foreground">External link clicks and file downloads</p>
+        <h1 className="text-2xl font-bold tracking-tight">Uitgaande links & downloads</h1>
+        <p className="text-sm text-muted-foreground">Externe linkklikken en bestandsdownloads</p>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard title="Total Outbound Clicks" value={totalOutbound.toLocaleString()} />
-            <MetricCard title="Unique Outbound Hosts" value={outboundLinks.length.toString()} />
-            <MetricCard title="Total Downloads" value={totalDownloads.toLocaleString()} />
-            <MetricCard title="Unique Files" value={downloadFiles.length.toString()} />
+            <MetricCard title="Totaal uitgaande klikken" value={totalOutbound.toLocaleString()} />
+            <MetricCard title="Unieke uitgaande hosts" value={outboundLinks.length.toString()} />
+            <MetricCard title="Totaal downloads" value={totalDownloads.toLocaleString()} />
+            <MetricCard title="Unieke bestanden" value={downloadFiles.length.toString()} />
           </div>
 
           {outboundLinks.length === 0 && downloadFiles.length === 0 ? (
             <div className="rounded-lg border bg-card p-12 text-center">
-              <h3 className="text-lg font-medium">No outbound clicks or downloads yet</h3>
+              <h3 className="text-lg font-medium">Nog geen uitgaande klikken of downloads</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Outbound link clicks and file downloads are tracked automatically.
+                Uitgaande linkklikken en bestandsdownloads worden automatisch gevolgd.
               </p>
             </div>
           ) : (
             <div className="grid gap-6 lg:grid-cols-2">
               <DataTable
-                title="Outbound Links"
+                title="Uitgaande links"
                 columns={[
-                  { key: 'hostname', label: 'Hostname' },
-                  { key: 'clicks', label: 'Clicks', align: 'right' as const, sortable: true },
-                  { key: 'unique_visitors', label: 'Visitors', align: 'right' as const },
+                  { key: 'hostname', label: 'Hostnaam' },
+                  { key: 'clicks', label: 'Klikken', align: 'right' as const, sortable: true },
+                  { key: 'unique_visitors', label: 'Bezoekers', align: 'right' as const },
                 ]}
                 data={outboundLinks}
                 searchable
               />
 
               <DataTable
-                title="File Downloads"
+                title="Bestandsdownloads"
                 columns={[
-                  { key: 'filename', label: 'File' },
+                  { key: 'filename', label: 'Bestand' },
                   { key: 'extension', label: 'Type' },
                   { key: 'downloads', label: 'Downloads', align: 'right' as const, sortable: true },
-                  { key: 'unique_visitors', label: 'Visitors', align: 'right' as const },
+                  { key: 'unique_visitors', label: 'Bezoekers', align: 'right' as const },
                 ]}
                 data={downloadFiles}
                 searchable

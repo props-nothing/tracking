@@ -8,7 +8,7 @@ const COLORS = ['#6366f1', '#818cf8', '#a78bfa', '#c4b5fd', '#ddd6fe'];
 
 export function FunnelChart({ steps }: FunnelChartProps) {
   if (!steps.length) {
-    return <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">No funnel data</div>;
+    return <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">Geen funneldata</div>;
   }
 
   const maxCount = Math.max(...steps.map((s) => s.count), 1);
@@ -38,7 +38,7 @@ export function FunnelChart({ steps }: FunnelChartProps) {
             </div>
             {step.dropoff > 0 && (
               <div className="text-xs text-red-500">
-                ↓ {step.dropoff.toLocaleString()} dropped off
+                ↓ {step.dropoff.toLocaleString()} afgevallen
               </div>
             )}
           </div>

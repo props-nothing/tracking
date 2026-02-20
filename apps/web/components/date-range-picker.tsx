@@ -6,13 +6,13 @@ import { useDashboard, type Period } from '@/hooks/use-dashboard-context';
 export type { Period };
 
 const periods: { value: Period; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'last_7_days', label: '7 days' },
-  { value: 'last_30_days', label: '30 days' },
-  { value: 'last_90_days', label: '90 days' },
-  { value: 'last_365_days', label: '365 days' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'today', label: 'Vandaag' },
+  { value: 'yesterday', label: 'Gisteren' },
+  { value: 'last_7_days', label: '7 dagen' },
+  { value: 'last_30_days', label: '30 dagen' },
+  { value: 'last_90_days', label: '90 dagen' },
+  { value: 'last_365_days', label: '365 dagen' },
+  { value: 'custom', label: 'Aangepast' },
 ];
 
 export function DateRangePicker() {
@@ -53,7 +53,7 @@ export function DateRangePicker() {
             onChange={(e) => setCustomFrom(e.target.value)}
             className="rounded-md border bg-transparent px-2 py-1.5 text-xs"
           />
-          <span className="text-xs text-muted-foreground">to</span>
+          <span className="text-xs text-muted-foreground">tot</span>
           <input
             type="date"
             value={customTo || ''}

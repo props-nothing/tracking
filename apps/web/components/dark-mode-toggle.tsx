@@ -37,7 +37,7 @@ export function DarkModeToggle() {
     <button
       onClick={toggleTheme}
       className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-      title={`Theme: ${theme}`}
+      title={`Thema: ${theme}`}
     >
       {resolvedTheme() === 'dark' ? (
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">

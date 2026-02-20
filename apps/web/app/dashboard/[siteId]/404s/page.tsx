@@ -33,19 +33,19 @@ export default function NotFoundPagesPage({ params }: { params: Promise<{ siteId
       .catch(() => setLoading(false));
   }, [siteId, queryString]);
 
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
 
   if (!data || data.total_404s === 0) {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">404 Pages</h1>
-          <p className="text-sm text-muted-foreground">Pages that returned a "Not Found" error</p>
+          <h1 className="text-2xl font-bold tracking-tight">404-pagina's</h1>
+          <p className="text-sm text-muted-foreground">Pagina's die een "Niet gevonden"-fout gaven</p>
         </div>
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No 404 errors found</h3>
+          <h3 className="text-lg font-medium">Geen 404-fouten gevonden</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            404 pages are tracked automatically when your site sends a custom "404" event.
+            404-pagina's worden automatisch gevolgd wanneer je site een aangepast "404"-event verstuurt.
           </p>
         </div>
       </div>
@@ -61,27 +61,27 @@ export default function NotFoundPagesPage({ params }: { params: Promise<{ siteId
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">404 Pages</h1>
-        <p className="text-sm text-muted-foreground">Broken links and missing pages</p>
+        <h1 className="text-2xl font-bold tracking-tight">404-pagina's</h1>
+        <p className="text-sm text-muted-foreground">Gebroken links en ontbrekende pagina's</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <MetricCard title="Total 404 Hits" value={data.total_404s.toLocaleString()} />
-        <MetricCard title="Unique 404 Pages" value={data.unique_pages.toLocaleString()} />
+        <MetricCard title="Totaal 404-hits" value={data.total_404s.toLocaleString()} />
+        <MetricCard title="Unieke 404-pagina's" value={data.unique_pages.toLocaleString()} />
         <MetricCard
-          title="Avg Hits per Page"
+          title="Gem. hits per pagina"
           value={data.unique_pages > 0 ? (data.total_404s / data.unique_pages).toFixed(1) : '0'}
         />
       </div>
 
       <DataTable
-        title="404 Pages"
+        title="404-pagina's"
         columns={[
-          { key: 'path', label: 'Page Path' },
+          { key: 'path', label: 'Paginapad' },
           { key: 'hits', label: 'Hits', align: 'right' as const, sortable: true },
-          { key: 'unique_visitors', label: 'Visitors', align: 'right' as const, sortable: true },
-          { key: 'referrer_list', label: 'Referrers' },
-          { key: 'last_seen_fmt', label: 'Last Seen', align: 'right' as const },
+          { key: 'unique_visitors', label: 'Bezoekers', align: 'right' as const, sortable: true },
+          { key: 'referrer_list', label: 'Verwijzers' },
+          { key: 'last_seen_fmt', label: 'Laatst gezien', align: 'right' as const },
         ]}
         data={tableData}
         searchable
@@ -89,12 +89,12 @@ export default function NotFoundPagesPage({ params }: { params: Promise<{ siteId
 
       {/* Quick fix suggestions */}
       <div className="rounded-lg border bg-card p-6">
-        <h2 className="mb-3 text-sm font-medium">Fixing Tips</h2>
+        <h2 className="mb-3 text-sm font-medium">Hersteltips</h2>
         <ul className="space-y-2 text-sm text-muted-foreground">
-          <li>• Check for broken internal links on pages that reference these URLs</li>
-          <li>• Set up 301 redirects for renamed or moved pages</li>
-          <li>• Review referrer sources to find where visitors are following broken links</li>
-          <li>• Consider adding a helpful custom 404 page with search or navigation</li>
+          <li>• Controleer op gebroken interne links op pagina's die naar deze URL's verwijzen</li>
+          <li>• Stel 301-omleidingen in voor hernoemde of verplaatste pagina's</li>
+          <li>• Bekijk verwijzerbronnen om te vinden waar bezoekers gebroken links volgen</li>
+          <li>• Overweeg een behulpzame aangepaste 404-pagina met zoekfunctie of navigatie toe te voegen</li>
         </ul>
       </div>
     </div>

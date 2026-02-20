@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tracking – Open-Source Web Analytics",
-  description: "Privacy-friendly, self-hosted web analytics. No cookies, full GDPR compliance.",
+  title: "Tracking – Open-source webanalyse",
+  description: "Privacyvriendelijke, zelfgehoste webanalyse. Geen cookies, volledig AVG-conform.",
 };
 
 export default function RootLayout({
@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="nl">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

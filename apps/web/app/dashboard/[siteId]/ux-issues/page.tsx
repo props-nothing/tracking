@@ -42,19 +42,19 @@ export default function UXIssuesPage({ params }: { params: Promise<{ siteId: str
       .catch(() => setLoading(false));
   }, [siteId, queryString]);
 
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
 
   if (!data || (data.total_rage_clicks === 0 && data.total_dead_clicks === 0)) {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">UX Issues</h1>
-          <p className="text-sm text-muted-foreground">Rage clicks and dead clicks that indicate frustration</p>
+          <h1 className="text-2xl font-bold tracking-tight">UX-problemen</h1>
+          <p className="text-sm text-muted-foreground">Rage-klikken en dead-klikken die frustratie aangeven</p>
         </div>
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No UX issues detected</h3>
+          <h3 className="text-lg font-medium">Geen UX-problemen gedetecteerd</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Rage clicks (3+ rapid clicks) and dead clicks (clicks with no response) are tracked automatically.
+            Rage-klikken (3+ snelle klikken) en dead-klikken (klikken zonder reactie) worden automatisch gevolgd.
           </p>
         </div>
       </div>
@@ -64,25 +64,25 @@ export default function UXIssuesPage({ params }: { params: Promise<{ siteId: str
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">UX Issues</h1>
-        <p className="text-sm text-muted-foreground">Rage clicks, dead clicks, and frustration signals</p>
+        <h1 className="text-2xl font-bold tracking-tight">UX-problemen</h1>
+        <p className="text-sm text-muted-foreground">Rage-klikken, dead-klikken en frustratiesignalen</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Rage Clicks" value={data.total_rage_clicks.toLocaleString()} />
-        <MetricCard title="Dead Clicks" value={data.total_dead_clicks.toLocaleString()} />
-        <MetricCard title="Affected Elements" value={(data.rage_click_elements.length + data.dead_click_elements.length).toString()} />
-        <MetricCard title="Affected Pages" value={data.issue_pages.length.toString()} />
+        <MetricCard title="Rage-klikken" value={data.total_rage_clicks.toLocaleString()} />
+        <MetricCard title="Dead-klikken" value={data.total_dead_clicks.toLocaleString()} />
+        <MetricCard title="Getroffen elementen" value={(data.rage_click_elements.length + data.dead_click_elements.length).toString()} />
+        <MetricCard title="Getroffen pagina's" value={data.issue_pages.length.toString()} />
       </div>
 
       {/* Most-affected pages */}
       <DataTable
-        title="Pages with Most Issues"
+        title="Pagina's met meeste problemen"
         columns={[
-          { key: 'path', label: 'Page' },
-          { key: 'rage_clicks', label: 'Rage Clicks', align: 'right' as const, sortable: true },
-          { key: 'dead_clicks', label: 'Dead Clicks', align: 'right' as const, sortable: true },
-          { key: 'total', label: 'Total', align: 'right' as const, sortable: true },
+          { key: 'path', label: 'Pagina' },
+          { key: 'rage_clicks', label: 'Rage-klikken', align: 'right' as const, sortable: true },
+          { key: 'dead_clicks', label: 'Dead-klikken', align: 'right' as const, sortable: true },
+          { key: 'total', label: 'Totaal', align: 'right' as const, sortable: true },
         ]}
         data={data.issue_pages}
         searchable
@@ -91,7 +91,7 @@ export default function UXIssuesPage({ params }: { params: Promise<{ siteId: str
       {/* Rage click elements */}
       {data.rage_click_elements.length > 0 && (
         <div className="rounded-lg border bg-card p-6">
-          <h2 className="mb-4 text-sm font-medium">Most Rage-Clicked Elements</h2>
+          <h2 className="mb-4 text-sm font-medium">Meest rage-geklikte elementen</h2>
           <div className="space-y-2">
             {data.rage_click_elements.map((el, i) => (
               <div key={i} className="flex items-start justify-between gap-4 rounded-md border p-3">
@@ -112,7 +112,7 @@ export default function UXIssuesPage({ params }: { params: Promise<{ siteId: str
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold">{el.count}x</p>
-                  <p className="text-xs text-muted-foreground">{el.unique_visitors} visitors</p>
+                  <p className="text-xs text-muted-foreground">{el.unique_visitors} bezoekers</p>
                 </div>
               </div>
             ))}
@@ -123,7 +123,7 @@ export default function UXIssuesPage({ params }: { params: Promise<{ siteId: str
       {/* Dead click elements */}
       {data.dead_click_elements.length > 0 && (
         <div className="rounded-lg border bg-card p-6">
-          <h2 className="mb-4 text-sm font-medium">Most Dead-Clicked Elements</h2>
+          <h2 className="mb-4 text-sm font-medium">Meest dead-geklikte elementen</h2>
           <div className="space-y-2">
             {data.dead_click_elements.map((el, i) => (
               <div key={i} className="flex items-start justify-between gap-4 rounded-md border p-3">
@@ -144,7 +144,7 @@ export default function UXIssuesPage({ params }: { params: Promise<{ siteId: str
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold">{el.count}x</p>
-                  <p className="text-xs text-muted-foreground">{el.unique_visitors} visitors</p>
+                  <p className="text-xs text-muted-foreground">{el.unique_visitors} bezoekers</p>
                 </div>
               </div>
             ))}

@@ -48,22 +48,22 @@ export default function PagesPage({ params }: { params: Promise<{ siteId: string
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Pages</h1>
-          <p className="text-sm text-muted-foreground">Top pages, entry pages, and exit pages</p>
+          <h1 className="text-2xl font-bold tracking-tight">Pagina's</h1>
+          <p className="text-sm text-muted-foreground">Toppagina's, instappagina's en uitstappagina's</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <>
           <DataTable
-            title="All Pages"
+            title="Alle pagina's"
             columns={[
-              { key: 'path', label: 'Page' },
-              { key: 'count', label: 'Views', align: 'right' as const },
-              { key: 'unique_visitors', label: 'Unique Visitors', align: 'right' as const },
-              { key: 'avg_time_fmt', label: 'Avg. Time', align: 'right' as const },
+              { key: 'path', label: 'Pagina' },
+              { key: 'count', label: 'Weergaven', align: 'right' as const },
+              { key: 'unique_visitors', label: 'Unieke bezoekers', align: 'right' as const },
+              { key: 'avg_time_fmt', label: 'Gem. tijd', align: 'right' as const },
               { key: 'bounce_rate_fmt', label: 'Bounce %', align: 'right' as const },
             ]}
             data={pages.map((p) => ({
@@ -76,19 +76,19 @@ export default function PagesPage({ params }: { params: Promise<{ siteId: string
 
           <div className="grid gap-6 lg:grid-cols-2">
             <DataTable
-              title="Entry Pages"
+              title="Instappagina's"
               columns={[
-                { key: 'path', label: 'Page' },
-                { key: 'count', label: 'Entries', align: 'right' as const },
+                { key: 'path', label: 'Pagina' },
+                { key: 'count', label: 'Instappen', align: 'right' as const },
               ]}
               data={entryPages}
             />
 
             <DataTable
-              title="Exit Pages"
+              title="Uitstappagina's"
               columns={[
-                { key: 'path', label: 'Page' },
-                { key: 'count', label: 'Exits', align: 'right' as const },
+                { key: 'path', label: 'Pagina' },
+                { key: 'count', label: 'Uitstappen', align: 'right' as const },
               ]}
               data={exitPages}
             />

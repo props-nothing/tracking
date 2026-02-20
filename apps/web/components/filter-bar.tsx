@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { useDashboard, type Filters } from '@/hooks/use-dashboard-context';
 
 const filterFields: { key: keyof Filters; label: string; placeholder: string }[] = [
-  { key: 'page', label: 'Page', placeholder: '/blog/*' },
-  { key: 'country', label: 'Country', placeholder: 'US' },
+  { key: 'page', label: 'Pagina', placeholder: '/blog/*' },
+  { key: 'country', label: 'Land', placeholder: 'US' },
   { key: 'browser', label: 'Browser', placeholder: 'Chrome' },
   { key: 'os', label: 'OS', placeholder: 'macOS' },
-  { key: 'device', label: 'Device', placeholder: 'desktop' },
-  { key: 'referrer', label: 'Referrer', placeholder: 'google.com' },
+  { key: 'device', label: 'Apparaat', placeholder: 'desktop' },
+  { key: 'referrer', label: 'Verwijzer', placeholder: 'google.com' },
 ];
 
 export type { Filters };
@@ -39,7 +39,7 @@ export function FilterBar() {
         </button>
         {activeFilterCount > 0 && (
           <button onClick={() => { clearFilters(); setOpen(false); }} className="text-xs text-muted-foreground hover:text-foreground">
-            Clear all
+            Alles wissen
           </button>
         )}
       </div>

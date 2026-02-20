@@ -40,12 +40,12 @@ export default function RegisterPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-sm space-y-4 p-8 text-center">
-          <h1 className="text-2xl font-bold">Check your email</h1>
+          <h1 className="text-2xl font-bold">Controleer je e-mail</h1>
           <p className="text-sm text-muted-foreground">
-            We&apos;ve sent a confirmation link to <strong>{email}</strong>.
+            We hebben een bevestigingslink gestuurd naar <strong>{email}</strong>.
           </p>
           <Link href="/login" className="text-sm text-primary hover:underline">
-            Back to sign in
+            Terug naar inloggen
           </Link>
         </div>
       </div>
@@ -56,9 +56,9 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 p-8">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">Create account</h1>
+          <h1 className="text-2xl font-bold">Account aanmaken</h1>
           <p className="text-sm text-muted-foreground">
-            Get started with your analytics dashboard
+            Ga aan de slag met je analysedashboard
           </p>
         </div>
 
@@ -71,7 +71,7 @@ export default function RegisterPage() {
 
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
-              Email
+              E-mail
             </label>
             <input
               id="email"
@@ -86,7 +86,7 @@ export default function RegisterPage() {
 
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
-              Password
+              Wachtwoord
             </label>
             <input
               id="password"
@@ -96,7 +96,7 @@ export default function RegisterPage() {
               required
               minLength={8}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="Minimum 8 characters"
+              placeholder="Minimaal 8 tekens"
             />
           </div>
 
@@ -105,14 +105,14 @@ export default function RegisterPage() {
             disabled={loading}
             className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? 'Creating account...' : 'Create account'}
+            {loading ? 'Account aanmaken...' : 'Account aanmaken'}
           </button>
         </form>
 
         <div className="text-center text-sm">
-          Already have an account?{' '}
+          Heb je al een account?{' '}
           <Link href="/login" className="font-medium text-primary hover:underline">
-            Sign in
+            Inloggen
           </Link>
         </div>
       </div>

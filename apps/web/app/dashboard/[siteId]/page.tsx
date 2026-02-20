@@ -60,7 +60,7 @@ export default function SiteDashboardPage({
   }, [period, customFrom, customTo]);
 
   if (siteLoading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+    return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
   }
 
   return (
@@ -68,7 +68,7 @@ export default function SiteDashboardPage({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">{site?.name || 'Site Analytics'}</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{site?.name || 'Site-analyse'}</h1>
           <p className="text-sm text-muted-foreground">{site?.domain}</p>
         </div>
       </div>
@@ -76,51 +76,51 @@ export default function SiteDashboardPage({
       <ExportBar siteId={siteId} period={period} />
 
       {statsLoading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading analytics...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Analyse laden...</div>
       ) : stats ? (
         <>
           {/* Metric Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <MetricCard title="Page Views" value={formatNumber(stats.pageviews)} />
-            <MetricCard title="Unique Visitors" value={formatNumber(stats.unique_visitors)} />
-            <MetricCard title="Sessions" value={formatNumber(stats.sessions)} />
-            <MetricCard title="Bounce Rate" value={`${stats.bounce_rate}%`} />
-            <MetricCard title="Views / Session" value={stats.views_per_session.toString()} />
-            <MetricCard title="Avg. Engaged Time" value={formatDuration(stats.avg_engaged_time)} />
-            <MetricCard title="Avg. Session Duration" value={formatDuration(stats.avg_session_duration)} />
+            <MetricCard title="Paginaweergaven" value={formatNumber(stats.pageviews)} />
+            <MetricCard title="Unieke bezoekers" value={formatNumber(stats.unique_visitors)} />
+            <MetricCard title="Sessies" value={formatNumber(stats.sessions)} />
+            <MetricCard title="Bouncepercentage" value={`${stats.bounce_rate}%`} />
+            <MetricCard title="Weergaven / sessie" value={stats.views_per_session.toString()} />
+            <MetricCard title="Gem. actieve tijd" value={formatDuration(stats.avg_engaged_time)} />
+            <MetricCard title="Gem. sessieduur" value={formatDuration(stats.avg_session_duration)} />
           </div>
 
           {/* Time Series Chart */}
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium">Visitors & Page Views Over Time</h2>
+            <h2 className="mb-4 text-sm font-medium">Bezoekers & paginaweergaven over tijd</h2>
             <TimeSeries data={stats.timeseries} period={period} />
           </div>
 
           {/* Breakdown Tables */}
           <div className="grid gap-6 lg:grid-cols-2">
             <DataTable
-              title="Top Pages"
+              title="Toppagina's"
               columns={[
-                { key: 'path', label: 'Page' },
-                { key: 'count', label: 'Views', align: 'right' },
+                { key: 'path', label: 'Pagina' },
+                { key: 'count', label: 'Weergaven', align: 'right' },
               ]}
               data={stats.top_pages}
             />
 
             <DataTable
-              title="Top Referrers"
+              title="Topverwijzers"
               columns={[
-                { key: 'source', label: 'Source' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'source', label: 'Bron' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={stats.top_referrers}
             />
 
             <DataTable
-              title="Countries"
+              title="Landen"
               columns={[
-                { key: 'country', label: 'Country' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'country', label: 'Land' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={stats.top_countries}
             />
@@ -129,25 +129,25 @@ export default function SiteDashboardPage({
               title="Browsers"
               columns={[
                 { key: 'browser', label: 'Browser' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={stats.top_browsers}
             />
 
             <DataTable
-              title="Operating Systems"
+              title="Besturingssystemen"
               columns={[
                 { key: 'os', label: 'OS' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={stats.top_os}
             />
 
             <DataTable
-              title="Devices"
+              title="Apparaten"
               columns={[
-                { key: 'device', label: 'Device' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'device', label: 'Apparaat' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={stats.top_devices}
             />
@@ -162,9 +162,9 @@ export default function SiteDashboardPage({
 
           {/* Tracking Code */}
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-2 text-sm font-medium">Tracking Code</h2>
+            <h2 className="mb-2 text-sm font-medium">Trackingcode</h2>
             <p className="mb-4 text-xs text-muted-foreground">
-              Add this snippet before the closing &lt;/head&gt; tag on your website.
+              Voeg dit fragment toe vóór de sluitende &lt;/head&gt;-tag op je website.
             </p>
             <pre className="overflow-x-auto rounded-md bg-muted p-4 text-xs">
               {`<script defer src="${typeof window !== 'undefined' ? window.location.origin : ''}/t.js" data-site-id="${siteId}"></script>`}

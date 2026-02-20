@@ -39,19 +39,19 @@ export default function ScrollDepthPage({ params }: { params: Promise<{ siteId: 
       .catch(() => setLoading(false));
   }, [siteId, queryString]);
 
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
 
   if (!data || data.sample_count === 0) {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Scroll Depth</h1>
-          <p className="text-sm text-muted-foreground">How far visitors scroll on your pages</p>
+          <h1 className="text-2xl font-bold tracking-tight">Scrolldiepte</h1>
+          <p className="text-sm text-muted-foreground">Hoe ver bezoekers scrollen op je pagina's</p>
         </div>
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No scroll data yet</h3>
+          <h3 className="text-lg font-medium">Nog geen scrolldata</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Scroll depth is captured automatically on every pageview. Data appears once visitors browse.
+            Scrolldiepte wordt automatisch vastgelegd bij elke paginaweergave. Data verschijnt zodra bezoekers browsen.
           </p>
         </div>
       </div>
@@ -61,23 +61,23 @@ export default function ScrollDepthPage({ params }: { params: Promise<{ siteId: 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Scroll Depth</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Scrolldiepte</h1>
         <p className="text-sm text-muted-foreground">
-          How far visitors scroll — {data.sample_count.toLocaleString()} samples
+          Hoe ver bezoekers scrollen — {data.sample_count.toLocaleString()} metingen
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <MetricCard title="Avg. Scroll Depth" value={`${data.avg_depth}%`} />
-        <MetricCard title="Reached 25%" value={`${data.funnel.reached_25}%`} />
-        <MetricCard title="Reached 50%" value={`${data.funnel.reached_50}%`} />
-        <MetricCard title="Reached 75%" value={`${data.funnel.reached_75}%`} />
-        <MetricCard title="Reached 100%" value={`${data.funnel.reached_100}%`} />
+        <MetricCard title="Gem. scrolldiepte" value={`${data.avg_depth}%`} />
+        <MetricCard title="Bereikt 25%" value={`${data.funnel.reached_25}%`} />
+        <MetricCard title="Bereikt 50%" value={`${data.funnel.reached_50}%`} />
+        <MetricCard title="Bereikt 75%" value={`${data.funnel.reached_75}%`} />
+        <MetricCard title="Bereikt 100%" value={`${data.funnel.reached_100}%`} />
       </div>
 
       {/* Scroll funnel visualization */}
       <div className="rounded-lg border bg-card p-6">
-        <h2 className="mb-4 text-sm font-medium">Scroll Funnel</h2>
+        <h2 className="mb-4 text-sm font-medium">Scrollfunnel</h2>
         <div className="space-y-3">
           {[
             { label: '25%', pct: data.funnel.reached_25 },
@@ -104,13 +104,13 @@ export default function ScrollDepthPage({ params }: { params: Promise<{ siteId: 
 
       {/* Pages sorted by lowest scroll depth */}
       <DataTable
-        title="Pages by Scroll Depth (lowest first)"
+        title="Pagina's op scrolldiepte (laagste eerst)"
         columns={[
-          { key: 'path', label: 'Page' },
-          { key: 'sample_count', label: 'Samples', align: 'right' as const },
-          { key: 'avg_depth', label: 'Avg. Depth', align: 'right' as const, sortable: true },
-          { key: 'pct_reached_50', label: '% Reached 50%', align: 'right' as const },
-          { key: 'pct_reached_100', label: '% Reached 100%', align: 'right' as const },
+          { key: 'path', label: 'Pagina' },
+          { key: 'sample_count', label: 'Metingen', align: 'right' as const },
+          { key: 'avg_depth', label: 'Gem. diepte', align: 'right' as const, sortable: true },
+          { key: 'pct_reached_50', label: '% Bereikt 50%', align: 'right' as const },
+          { key: 'pct_reached_100', label: '% Bereikt 100%', align: 'right' as const },
         ]}
         data={data.pages.map((p) => ({
           ...p,

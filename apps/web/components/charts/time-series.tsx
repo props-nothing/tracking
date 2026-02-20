@@ -35,10 +35,10 @@ function ChartTooltip({ active, payload, label, isHourly }: any) {
       const d = new Date(dateStr + 'T00:00:00');
       const ampm = hour >= 12 ? 'PM' : 'AM';
       const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-      return `${d.toLocaleDateString('en', { month: 'short', day: 'numeric' })} ${h12}:00 ${ampm}`;
+      return `${d.toLocaleDateString('nl', { month: 'short', day: 'numeric' })} ${h12}:00 ${ampm}`;
     }
     const d = new Date(v + 'T00:00:00');
-    return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString('nl', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const row = payload[0]?.payload as TimeSeriesDataPoint | undefined;
@@ -64,7 +64,7 @@ function ChartTooltip({ active, payload, label, isHourly }: any) {
       ))}
       {row?.leads != null && row.leads > 0 && (
         <p style={{ color: '#f59e0b', margin: '4px 0 0', fontWeight: 600 }}>
-          ✦ Leads captured: {row.leads}
+          ✦ Leads vastgelegd: {row.leads}
         </p>
       )}
     </div>
@@ -76,7 +76,7 @@ export function TimeSeries({ data, period }: TimeSeriesProps) {
   if (!data.length) {
     return (
       <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
-        No data for this period
+        Geen data voor deze periode
       </div>
     );
   }
@@ -93,7 +93,7 @@ export function TimeSeries({ data, period }: TimeSeriesProps) {
     }
     const d = new Date(v + 'T00:00:00');
     if (period === 'last_365_days') {
-      return d.toLocaleDateString('en', { month: 'short' });
+      return d.toLocaleDateString('nl', { month: 'short' });
     }
     return `${d.getMonth() + 1}/${d.getDate()}`;
   };
@@ -151,7 +151,7 @@ export function TimeSeries({ data, period }: TimeSeriesProps) {
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorPageviews)"
-          name="Page Views"
+          name="Paginaweergaven"
         />
         <Area
           type="monotone"
@@ -160,7 +160,7 @@ export function TimeSeries({ data, period }: TimeSeriesProps) {
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorVisitors)"
-          name="Visitors"
+          name="Bezoekers"
         />
         {/* Lead capture markers — orange dots on the pageviews line */}
         {leadPoints.map((point) => (
@@ -179,7 +179,7 @@ export function TimeSeries({ data, period }: TimeSeriesProps) {
     {hasLeads && (
       <div className="mt-1 flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
         <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />
-        <span>Lead captured</span>
+        <span>Lead vastgelegd</span>
       </div>
     )}
     </>

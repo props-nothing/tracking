@@ -28,18 +28,18 @@ export default function GeoPage({ params }: { params: Promise<{ siteId: string }
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Geography</h1>
-          <p className="text-sm text-muted-foreground">Visitors by location</p>
+          <h1 className="text-2xl font-bold tracking-tight">Geografie</h1>
+          <p className="text-sm text-muted-foreground">Bezoekers per locatie</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <>
           {/* Country chart */}
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium">Top Countries</h2>
+            <h2 className="mb-4 text-sm font-medium">Toplanden</h2>
             <BarChart
               data={countries.slice(0, 10).map((c) => ({ name: c.country, value: c.count }))}
             />
@@ -47,19 +47,19 @@ export default function GeoPage({ params }: { params: Promise<{ siteId: string }
 
           <div className="grid gap-6 lg:grid-cols-2">
             <DataTable
-              title="Countries"
+              title="Landen"
               columns={[
-                { key: 'country', label: 'Country' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'country', label: 'Land' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={countries}
             />
 
             <DataTable
-              title="Cities"
+              title="Steden"
               columns={[
-                { key: 'city', label: 'City' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'city', label: 'Stad' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={cities}
             />

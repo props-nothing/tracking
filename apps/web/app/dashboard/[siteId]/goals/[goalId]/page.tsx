@@ -42,11 +42,11 @@ export default function GoalDetailPage({
   }, [goalId]);
 
   if (loading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+    return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
   }
 
   if (!goal) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Goal not found</div>;
+    return <div className="py-20 text-center text-sm text-muted-foreground">Doel niet gevonden</div>;
   }
 
   const totalConversions = goal.conversions.length;
@@ -58,25 +58,25 @@ export default function GoalDetailPage({
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{goal.name}</h1>
         <p className="text-sm text-muted-foreground">
-          {goal.goal_type.replace(/_/g, ' ')} &middot; {goal.active ? 'Active' : 'Inactive'}
+          {goal.goal_type.replace(/_/g, ' ')} &middot; {goal.active ? 'Actief' : 'Inactief'}
         </p>
         {goal.description && <p className="mt-1 text-sm">{goal.description}</p>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <MetricCard title="Total Conversions" value={totalConversions.toString()} />
-        <MetricCard title="Total Revenue" value={totalRevenue > 0 ? `$${totalRevenue.toFixed(2)}` : '—'} />
-        <MetricCard title="Unique Paths" value={uniqueVisitors.toString()} />
+        <MetricCard title="Totale conversies" value={totalConversions.toString()} />
+        <MetricCard title="Totale omzet" value={totalRevenue > 0 ? `$${totalRevenue.toFixed(2)}` : '—'} />
+        <MetricCard title="Unieke paden" value={uniqueVisitors.toString()} />
       </div>
 
       <DataTable
-        title="Recent Conversions"
+        title="Recente conversies"
         columns={[
-          { key: 'conversion_path', label: 'Page' },
-          { key: 'referrer_hostname', label: 'Referrer' },
+          { key: 'conversion_path', label: 'Pagina' },
+          { key: 'referrer_hostname', label: 'Verwijzer' },
           { key: 'utm_source', label: 'UTM Source' },
-          { key: 'revenue', label: 'Revenue', align: 'right' },
-          { key: 'converted_at', label: 'Time' },
+          { key: 'revenue', label: 'Omzet', align: 'right' },
+          { key: 'converted_at', label: 'Tijd' },
         ]}
         data={goal.conversions.map((c) => ({
           ...c,

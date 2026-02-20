@@ -55,7 +55,7 @@ function FlowColumn({
       </div>
       <div className="space-y-1.5">
         {items.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">No data yet</p>
+          <p className="py-6 text-center text-xs text-muted-foreground">Nog geen data</p>
         ) : (
           items.map((item, i) => {
             const pct = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
@@ -67,12 +67,12 @@ function FlowColumn({
                       {item.path}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                      <span>{item.count.toLocaleString()} views</span>
+                      <span>{item.count.toLocaleString()} weergaven</span>
                       {showMeta === 'page' && item.unique_visitors != null && (
-                        <span>{item.unique_visitors.toLocaleString()} visitors</span>
+                        <span>{item.unique_visitors.toLocaleString()} bezoekers</span>
                       )}
                       {showMeta === 'page' && item.avg_time != null && item.avg_time > 0 && (
-                        <span>{formatTime(item.avg_time)} avg</span>
+                        <span>{formatTime(item.avg_time)} gem.</span>
                       )}
                       {showMeta === 'page' && item.bounce_rate != null && (
                         <span>{item.bounce_rate}% bounce</span>
@@ -134,21 +134,20 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
   }, [siteId, queryString]);
 
   if (loading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>;
+    return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
   }
 
   if (!stats || (stats.entry_pages.length === 0 && stats.top_pages.length === 0)) {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">User Flow</h1>
-          <p className="text-sm text-muted-foreground">Understand how visitors navigate through your site</p>
+          <h1 className="text-2xl font-bold tracking-tight">Gebruikersstroom</h1>
+          <p className="text-sm text-muted-foreground">Begrijp hoe bezoekers door je site navigeren</p>
         </div>
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Not enough data yet</h3>
+          <h3 className="text-lg font-medium">Nog niet genoeg data</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            The user flow view needs pageview data with entry and exit pages.
-            Keep tracking to see how visitors navigate your site.
+            De gebruikersstroomweergave heeft paginaweergavendata nodig met instap- en uitstappagina's. Blijf volgen om te zien hoe bezoekers door je site navigeren.
           </p>
         </div>
       </div>
@@ -166,28 +165,28 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">User Flow</h1>
-        <p className="text-sm text-muted-foreground">Understand how visitors navigate through your site</p>
+        <h1 className="text-2xl font-bold tracking-tight">Gebruikersstroom</h1>
+        <p className="text-sm text-muted-foreground">Begrijp hoe bezoekers door je site navigeren</p>
       </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Total Sessions</p>
+          <p className="text-xs font-medium text-muted-foreground">Totaal sessies</p>
           <p className="mt-1 text-2xl font-bold">{stats.sessions.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Total Pageviews</p>
+          <p className="text-xs font-medium text-muted-foreground">Totaal paginaweergaven</p>
           <p className="mt-1 text-2xl font-bold">{stats.pageviews.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Pages / Session</p>
+          <p className="text-xs font-medium text-muted-foreground">Pagina's / sessie</p>
           <p className="mt-1 text-2xl font-bold">
             {stats.sessions > 0 ? (stats.pageviews / stats.sessions).toFixed(1) : '0'}
           </p>
         </div>
         <div className="rounded-lg border bg-card p-4">
-          <p className="text-xs font-medium text-muted-foreground">Bounce Rate</p>
+          <p className="text-xs font-medium text-muted-foreground">Bouncepercentage</p>
           <p className="mt-1 text-2xl font-bold">{stats.bounce_rate}%</p>
         </div>
       </div>
@@ -195,8 +194,8 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
       {/* Three-column flow */}
       <div className="grid items-start gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr]">
         <FlowColumn
-          title="Entry Pages"
-          subtitle="Where visitors land"
+          title="Instappagina's"
+          subtitle="Waar bezoekers landen"
           icon="→"
           items={entryItems}
           maxCount={maxEntry}
@@ -205,8 +204,8 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
         />
         <FlowArrow />
         <FlowColumn
-          title="Top Pages"
-          subtitle="Most viewed content"
+          title="Toppagina's"
+          subtitle="Meest bekeken content"
           icon="◆"
           items={pageItems}
           maxCount={maxPage}
@@ -215,8 +214,8 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
         />
         <FlowArrow />
         <FlowColumn
-          title="Exit Pages"
-          subtitle="Where visitors leave"
+          title="Uitstappagina's"
+          subtitle="Waar bezoekers vertrekken"
           icon="←"
           items={exitItems}
           maxCount={maxExit}
@@ -235,10 +234,10 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
         return (
           <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-5">
             <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-              Potential bounce pages
+              Potentiële bouncepagina's
             </h3>
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-              These pages appear in both entry and exit lists — visitors may be landing and leaving without exploring further.
+              Deze pagina's verschijnen in zowel de instap- als uitstaplijsten — bezoekers landen mogelijk en vertrekken zonder verder te kijken.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {bouncePaths.map((path) => (

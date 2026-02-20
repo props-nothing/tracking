@@ -2,56 +2,56 @@ import Link from 'next/link';
 
 const tiers = [
   {
-    name: 'Self-Hosted',
-    price: 'Free',
-    description: 'Host on your own infrastructure',
+    name: 'Zelfgehost',
+    price: 'Gratis',
+    description: 'Draai op je eigen infrastructuur',
     features: [
-      'Unlimited sites',
-      'Unlimited events',
-      'All dashboard features',
-      'Goals & funnels',
+      'Onbeperkt aantal sites',
+      'Onbeperkt aantal events',
+      'Alle dashboardfuncties',
+      'Doelen & funnels',
       'E-commerce tracking',
-      'Shared reports',
-      'API access',
-      'Community support',
+      'Gedeelde rapporten',
+      'API-toegang',
+      'Communityondersteuning',
     ],
-    cta: 'Get Started',
+    cta: 'Aan de slag',
     href: '/register',
     highlighted: false,
   },
   {
     name: 'Managed Cloud',
-    price: '$9/mo',
-    description: 'We host and manage everything',
+    price: '€9/maand',
+    description: 'Wij hosten en beheren alles',
     features: [
-      'Everything in Self-Hosted',
-      'Managed infrastructure',
-      'Automatic updates',
-      'Daily backups',
-      'Priority support',
-      'Custom domain',
-      '99.9% uptime SLA',
-      'Up to 1M events/mo',
+      'Alles uit Zelfgehost',
+      'Beheerde infrastructuur',
+      'Automatische updates',
+      'Dagelijkse back-ups',
+      'Prioriteitsondersteuning',
+      'Eigen domein',
+      '99,9% uptime SLA',
+      'Tot 1M events/maand',
     ],
-    cta: 'Start Free Trial',
+    cta: 'Start gratis proefperiode',
     href: '/register',
     highlighted: true,
   },
   {
     name: 'Enterprise',
-    price: 'Custom',
-    description: 'For large organizations',
+    price: 'Op maat',
+    description: 'Voor grote organisaties',
     features: [
-      'Everything in Cloud',
-      'Unlimited events',
-      'Dedicated infrastructure',
+      'Alles uit Cloud',
+      'Onbeperkt aantal events',
+      'Eigen infrastructuur',
       'SSO / SAML',
-      'Dedicated account manager',
-      'Custom integrations',
-      'On-premise deployment',
-      'SLA with penalties',
+      'Toegewijd accountmanager',
+      'Maatwerkintegraties',
+      'On-premise implementatie',
+      'SLA met boeteclausules',
     ],
-    cta: 'Contact Us',
+    cta: 'Neem contact op',
     href: 'mailto:hello@example.com',
     highlighted: false,
   },
@@ -69,16 +69,16 @@ export default function PricingPage() {
             href="/login"
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Log In
+            Inloggen
           </Link>
         </div>
       </header>
 
       <main className="flex-1 px-4 py-20">
         <div className="mx-auto max-w-5xl text-center">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">Simple, transparent pricing</h1>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">Eenvoudige, transparante prijzen</h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Self-host for free. Or let us manage it for you.
+            Zelfgehost en gratis. Of laat ons het beheer doen.
           </p>
         </div>
 

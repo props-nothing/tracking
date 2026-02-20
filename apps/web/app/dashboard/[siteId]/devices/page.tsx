@@ -30,18 +30,18 @@ export default function DevicesPage({ params }: { params: Promise<{ siteId: stri
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
-          <p className="text-sm text-muted-foreground">Browsers, operating systems, and device types</p>
+          <h1 className="text-2xl font-bold tracking-tight">Apparaten</h1>
+          <p className="text-sm text-muted-foreground">Browsers, besturingssystemen en apparaattypen</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <>
           {/* Device type chart */}
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium">Device Types</h2>
+            <h2 className="mb-4 text-sm font-medium">Apparaattypen</h2>
             <PieChart
               data={devices.map((d) => ({ name: d.device, value: d.count }))}
             />
@@ -52,16 +52,16 @@ export default function DevicesPage({ params }: { params: Promise<{ siteId: stri
               title="Browsers"
               columns={[
                 { key: 'browser', label: 'Browser' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={browsers}
             />
 
             <DataTable
-              title="Operating Systems"
+              title="Besturingssystemen"
               columns={[
                 { key: 'os', label: 'OS' },
-                { key: 'count', label: 'Visits', align: 'right' },
+                { key: 'count', label: 'Bezoeken', align: 'right' },
               ]}
               data={os}
             />

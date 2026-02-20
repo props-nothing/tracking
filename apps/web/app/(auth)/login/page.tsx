@@ -35,9 +35,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 p-8">
         <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold">Sign in</h1>
+          <h1 className="text-2xl font-bold">Inloggen</h1>
           <p className="text-sm text-muted-foreground">
-            Enter your credentials to access the dashboard
+            Voer je inloggegevens in om het dashboard te openen
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export default function LoginPage() {
 
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
-              Email
+              E-mail
             </label>
             <input
               id="email"
@@ -65,7 +65,7 @@ export default function LoginPage() {
 
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium">
-              Password
+              Wachtwoord
             </label>
             <input
               id="password"
@@ -82,19 +82,19 @@ export default function LoginPage() {
             disabled={loading}
             className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? 'Bezig met inloggen...' : 'Inloggen'}
           </button>
         </form>
 
         <div className="text-center text-sm">
           <Link href="/forgot-password" className="text-muted-foreground hover:underline">
-            Forgot password?
+            Wachtwoord vergeten?
           </Link>
         </div>
         <div className="text-center text-sm">
-          Don&apos;t have an account?{' '}
+          Heb je nog geen account?{' '}
           <Link href="/register" className="font-medium text-primary hover:underline">
-            Sign up
+            Registreren
           </Link>
         </div>
       </div>

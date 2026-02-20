@@ -23,7 +23,7 @@ export default function EmbedPage({ params }: { params: Promise<{ token: string 
   if (!data) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-sm text-muted-foreground">Loading...</p>
+        <p className="text-sm text-muted-foreground">Laden...</p>
       </div>
     );
   }
@@ -32,11 +32,11 @@ export default function EmbedPage({ params }: { params: Promise<{ token: string 
     <div className="p-4 space-y-4">
       <div className="flex gap-6">
         <div>
-          <p className="text-xs text-muted-foreground">Visitors</p>
+          <p className="text-xs text-muted-foreground">Bezoekers</p>
           <p className="text-xl font-bold">{data.visitors.toLocaleString()}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Pageviews</p>
+          <p className="text-xs text-muted-foreground">Paginaweergaven</p>
           <p className="text-xl font-bold">{data.pageviews.toLocaleString()}</p>
         </div>
       </div>

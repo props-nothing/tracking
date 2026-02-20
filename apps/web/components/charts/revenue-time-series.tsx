@@ -19,7 +19,7 @@ export function RevenueTimeSeries({ data, currency = 'EUR' }: RevenueTimeSeriesP
   if (!data.length) {
     return (
       <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
-        No revenue data for this period
+        Geen omzetdata voor deze periode
       </div>
     );
   }
@@ -51,7 +51,7 @@ export function RevenueTimeSeries({ data, currency = 'EUR' }: RevenueTimeSeriesP
             fontSize: '12px',
           }}
           labelStyle={{ color: 'var(--color-foreground)' }}
-          formatter={(value: number | undefined) => [`${sym}${(value ?? 0).toFixed(2)}`, 'Revenue']}
+          formatter={(value: number | undefined) => [`${sym}${(value ?? 0).toFixed(2)}`, 'Omzet']}
         />
         <Area
           type="monotone"
@@ -60,7 +60,7 @@ export function RevenueTimeSeries({ data, currency = 'EUR' }: RevenueTimeSeriesP
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorRevenue)"
-          name="Revenue"
+          name="Omzet"
         />
       </AreaChart>
     </ResponsiveContainer>

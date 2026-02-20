@@ -10,8 +10,8 @@ export default function RealtimePage({ params }: { params: Promise<{ siteId: str
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Real-time</h1>
-        <p className="text-sm text-muted-foreground">Live visitor activity</p>
+        <h1 className="text-2xl font-bold tracking-tight">Realtime</h1>
+        <p className="text-sm text-muted-foreground">Live bezoekersactiviteit</p>
       </div>
 
       {/* Active count */}
@@ -22,17 +22,17 @@ export default function RealtimePage({ params }: { params: Promise<{ siteId: str
         </div>
         <div>
           <p className="text-4xl font-bold">{loading ? '—' : count}</p>
-          <p className="text-sm text-muted-foreground">active visitor{count !== 1 ? 's' : ''} right now</p>
+          <p className="text-sm text-muted-foreground">actieve bezoeker{count !== 1 ? 's' : ''} op dit moment</p>
         </div>
       </div>
 
       {/* Active pages */}
       <div className="rounded-lg border bg-card p-6">
-        <h2 className="mb-4 text-sm font-medium">Currently viewing</h2>
+        <h2 className="mb-4 text-sm font-medium">Bekijken momenteel</h2>
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">Laden...</p>
         ) : pages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No active visitors</p>
+          <p className="text-sm text-muted-foreground">Geen actieve bezoekers</p>
         ) : (
           <div className="space-y-2">
             {Object.entries(
@@ -45,7 +45,7 @@ export default function RealtimePage({ params }: { params: Promise<{ siteId: str
               .map(([path, visitors]) => (
                 <div key={path} className="flex items-center justify-between rounded-md bg-muted px-4 py-2">
                   <span className="text-sm font-mono">{path}</span>
-                  <span className="text-sm font-medium">{visitors} visitor{visitors !== 1 ? 's' : ''}</span>
+                  <span className="text-sm font-medium">{visitors} bezoeker{visitors !== 1 ? 's' : ''}</span>
                 </div>
               ))}
           </div>

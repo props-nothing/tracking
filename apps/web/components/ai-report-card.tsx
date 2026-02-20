@@ -51,14 +51,14 @@ export function AIReportCard({
             </svg>
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">Summary</h3>
+            <h3 className="font-semibold text-foreground">Samenvatting</h3>
             <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{analysis.summary}</p>
           </div>
         </div>
         {(generatedAt || modelUsed) && (
           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-            {generatedAt && <span>Generated {new Date(generatedAt).toLocaleString()}</span>}
-            {periodStart && periodEnd && <span>Period: {periodStart} – {periodEnd}</span>}
+            {generatedAt && <span>Gegenereerd {new Date(generatedAt).toLocaleString()}</span>}
+            {periodStart && periodEnd && <span>Periode: {periodStart} – {periodEnd}</span>}
             {comparisonStart && comparisonEnd && <span>vs {comparisonStart} – {comparisonEnd}</span>}
             {modelUsed && <span>Model: {modelUsed}</span>}
             {tokensUsed && <span>{tokensUsed.toLocaleString()} tokens</span>}
@@ -69,7 +69,7 @@ export function AIReportCard({
       {/* Highlights */}
       {analysis.highlights?.length > 0 && (
         <div>
-          <h4 className="mb-3 text-sm font-medium text-foreground">Key Findings</h4>
+          <h4 className="mb-3 text-sm font-medium text-foreground">Belangrijkste bevindingen</h4>
           <div className="grid gap-3 sm:grid-cols-2">
             {analysis.highlights.map((h, i) => {
               const colors = highlightColors[h.type] || highlightColors.neutral;
@@ -98,12 +98,12 @@ export function AIReportCard({
         <>
           {/* Lead Insights */}
           {analysis.lead_insights && (analysis.lead_insights.top_sources || analysis.lead_insights.recommendations?.length > 0) && (
-            <InsightSection title="Lead Insights" icon="👥">
+            <InsightSection title="Leadinzichten" icon="👥">
               {analysis.lead_insights.top_sources && (
                 <p className="text-sm text-muted-foreground">{analysis.lead_insights.top_sources}</p>
               )}
               {analysis.lead_insights.quality_assessment && (
-                <p className="mt-2 text-sm text-muted-foreground"><strong>Quality:</strong> {analysis.lead_insights.quality_assessment}</p>
+                <p className="mt-2 text-sm text-muted-foreground"><strong>Kwaliteit:</strong> {analysis.lead_insights.quality_assessment}</p>
               )}
               {analysis.lead_insights.recommendations?.length > 0 && (
                 <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
@@ -115,16 +115,16 @@ export function AIReportCard({
 
           {/* Campaign Insights */}
           {analysis.campaign_insights && (analysis.campaign_insights.best_performing || analysis.campaign_insights.new_ideas?.length > 0) && (
-            <InsightSection title="Campaign Insights" icon="📊">
+            <InsightSection title="Campagne-inzichten" icon="📊">
               {analysis.campaign_insights.best_performing && (
-                <p className="text-sm text-muted-foreground"><strong>Best:</strong> {analysis.campaign_insights.best_performing}</p>
+                <p className="text-sm text-muted-foreground"><strong>Beste:</strong> {analysis.campaign_insights.best_performing}</p>
               )}
               {analysis.campaign_insights.worst_performing && (
-                <p className="mt-1 text-sm text-muted-foreground"><strong>Worst:</strong> {analysis.campaign_insights.worst_performing}</p>
+                <p className="mt-1 text-sm text-muted-foreground"><strong>Slechtste:</strong> {analysis.campaign_insights.worst_performing}</p>
               )}
               {analysis.campaign_insights.budget_recommendations?.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs font-medium text-foreground">Budget Recommendations:</p>
+                  <p className="text-xs font-medium text-foreground">Budgetaanbevelingen:</p>
                   <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-muted-foreground">
                     {analysis.campaign_insights.budget_recommendations.map((r, i) => <li key={i}>{r}</li>)}
                   </ul>
@@ -132,7 +132,7 @@ export function AIReportCard({
               )}
               {analysis.campaign_insights.new_ideas?.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs font-medium text-foreground">New Ideas:</p>
+                  <p className="text-xs font-medium text-foreground">Nieuwe ideeën:</p>
                   <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-muted-foreground">
                     {analysis.campaign_insights.new_ideas.map((r, i) => <li key={i}>{r}</li>)}
                   </ul>
@@ -143,13 +143,13 @@ export function AIReportCard({
 
           {/* Traffic Insights */}
           {analysis.traffic_insights && (analysis.traffic_insights.trends || analysis.traffic_insights.opportunities?.length > 0) && (
-            <InsightSection title="Traffic Insights" icon="📈">
+            <InsightSection title="Verkeersinzichten" icon="📈">
               {analysis.traffic_insights.trends && (
                 <p className="text-sm text-muted-foreground">{analysis.traffic_insights.trends}</p>
               )}
               {analysis.traffic_insights.anomalies?.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs font-medium text-foreground">Anomalies:</p>
+                  <p className="text-xs font-medium text-foreground">Anomalieën:</p>
                   <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-muted-foreground">
                     {analysis.traffic_insights.anomalies.map((a, i) => <li key={i}>{a}</li>)}
                   </ul>
@@ -157,7 +157,7 @@ export function AIReportCard({
               )}
               {analysis.traffic_insights.opportunities?.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs font-medium text-foreground">Opportunities:</p>
+                  <p className="text-xs font-medium text-foreground">Kansen:</p>
                   <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-muted-foreground">
                     {analysis.traffic_insights.opportunities.map((o, i) => <li key={i}>{o}</li>)}
                   </ul>
@@ -168,12 +168,12 @@ export function AIReportCard({
 
           {/* Page Insights */}
           {analysis.page_insights && (analysis.page_insights.top_performers || analysis.page_insights.optimization_suggestions?.length > 0) && (
-            <InsightSection title="Page Insights" icon="📄">
+            <InsightSection title="Pagina-inzichten" icon="📄">
               {analysis.page_insights.top_performers && (
                 <p className="text-sm text-muted-foreground"><strong>Top:</strong> {analysis.page_insights.top_performers}</p>
               )}
               {analysis.page_insights.underperformers && (
-                <p className="mt-1 text-sm text-muted-foreground"><strong>Needs attention:</strong> {analysis.page_insights.underperformers}</p>
+                <p className="mt-1 text-sm text-muted-foreground"><strong>Heeft aandacht nodig:</strong> {analysis.page_insights.underperformers}</p>
               )}
               {analysis.page_insights.optimization_suggestions?.length > 0 && (
                 <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
@@ -185,11 +185,11 @@ export function AIReportCard({
 
           {/* Comparison */}
           {analysis.comparison && (
-            <InsightSection title="Period Comparison" icon="🔄">
+            <InsightSection title="Periodevergelijking" icon="🔄">
               <p className="text-sm text-muted-foreground">{analysis.comparison.summary}</p>
               {analysis.comparison.improvements?.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs font-medium text-green-600 dark:text-green-400">Improvements:</p>
+                  <p className="text-xs font-medium text-green-600 dark:text-green-400">Verbeteringen:</p>
                   <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-muted-foreground">
                     {analysis.comparison.improvements.map((i, idx) => <li key={idx}>{i}</li>)}
                   </ul>
@@ -197,14 +197,14 @@ export function AIReportCard({
               )}
               {analysis.comparison.regressions?.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-xs font-medium text-red-600 dark:text-red-400">Regressions:</p>
+                  <p className="text-xs font-medium text-red-600 dark:text-red-400">Achteruitgangen:</p>
                   <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-muted-foreground">
                     {analysis.comparison.regressions.map((r, idx) => <li key={idx}>{r}</li>)}
                   </ul>
                 </div>
               )}
               {analysis.comparison.campaign_comparison && (
-                <p className="mt-2 text-sm text-muted-foreground"><strong>Campaign:</strong> {analysis.comparison.campaign_comparison}</p>
+                <p className="mt-2 text-sm text-muted-foreground"><strong>Campagne:</strong> {analysis.comparison.campaign_comparison}</p>
               )}
             </InsightSection>
           )}
@@ -214,7 +214,7 @@ export function AIReportCard({
       {/* Action Items */}
       {analysis.action_items?.length > 0 && (
         <div>
-          <h4 className="mb-3 text-sm font-medium text-foreground">Action Items</h4>
+          <h4 className="mb-3 text-sm font-medium text-foreground">Actiepunten</h4>
           <div className="space-y-2">
             {analysis.action_items.map((item, i) => (
               <div key={i} className="flex items-start gap-3 rounded-lg border bg-card p-3">
@@ -225,7 +225,7 @@ export function AIReportCard({
                   <p className="text-sm font-medium text-foreground">{item.action}</p>
                   <div className="mt-0.5 flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="rounded bg-muted px-1.5 py-0.5">{item.category}</span>
-                    <span>Expected: {item.expected_impact}</span>
+                    <span>Verwacht: {item.expected_impact}</span>
                   </div>
                 </div>
               </div>

@@ -64,20 +64,20 @@ export default function ApiKeysPage({ params }: { params: Promise<{ siteId: stri
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">API Keys</h1>
-          <p className="text-sm text-muted-foreground">Manage API keys for programmatic access</p>
+          <h1 className="text-2xl font-bold tracking-tight">API-sleutels</h1>
+          <p className="text-sm text-muted-foreground">Beheer API-sleutels voor programmatische toegang</p>
         </div>
         <button
           onClick={() => { setShowCreate(!showCreate); setNewKey(null); }}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          Create Key
+          Sleutel aanmaken
         </button>
       </div>
 
       {newKey && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-          <p className="text-sm font-medium text-green-800">API Key Created — copy it now, it won&apos;t be shown again:</p>
+          <p className="text-sm font-medium text-green-800">API-sleutel aangemaakt — kopieer deze nu, hij wordt niet opnieuw getoond:</p>
           <code className="mt-2 block rounded bg-white px-3 py-2 font-mono text-sm break-all">{newKey}</code>
         </div>
       )}
@@ -85,7 +85,7 @@ export default function ApiKeysPage({ params }: { params: Promise<{ siteId: stri
       {showCreate && !newKey && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Key Name</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Sleutelnaam</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -112,18 +112,18 @@ export default function ApiKeysPage({ params }: { params: Promise<{ siteId: stri
             disabled={!name || scopes.length === 0 || creating}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {creating ? 'Creating...' : 'Generate Key'}
+            {creating ? 'Aanmaken...' : 'Sleutel genereren'}
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : keys.length === 0 && !showCreate ? (
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No API keys</h3>
+          <h3 className="text-lg font-medium">Geen API-sleutels</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create API keys to access your analytics data programmatically.
+            Maak API-sleutels aan om programmatisch toegang te krijgen tot je analysegegevens.
           </p>
         </div>
       ) : (
@@ -135,14 +135,14 @@ export default function ApiKeysPage({ params }: { params: Promise<{ siteId: stri
                 <p className="text-xs text-muted-foreground">
                   <code className="rounded bg-muted px-1">{k.prefix}••••••••</code>
                   {' · '}{k.scopes.join(', ')}
-                  {k.last_used_at && ` · Last used ${new Date(k.last_used_at).toLocaleDateString()}`}
+                  {k.last_used_at && ` · Laatst gebruikt ${new Date(k.last_used_at).toLocaleDateString()}`}
                 </p>
               </div>
               <button
                 onClick={() => handleRevoke(k.id)}
                 className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
               >
-                Revoke
+                Intrekken
               </button>
             </div>
           ))}

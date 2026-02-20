@@ -127,7 +127,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
   };
 
   const deleteLead = async (leadId: number) => {
-    if (!confirm('Are you sure you want to delete this lead?')) return;
+    if (!confirm('Weet je zeker dat je deze lead wilt verwijderen?')) return;
     const res = await fetch('/api/leads', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
@@ -149,35 +149,35 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Leads</h1>
           <p className="text-sm text-muted-foreground">
-            Form submissions with source attribution
+            Formulierinzendingen met bronattributie
           </p>
         </div>
       </div>
 
       {loading && leads.length === 0 ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : (
         <>
           {/* Stats cards */}
           <div className="grid gap-4 sm:grid-cols-4">
-            <MetricCard title="Total Leads" value={stats.total_leads.toString()} />
-            <MetricCard title="New (Uncontacted)" value={stats.new_leads.toString()} />
-            <MetricCard title="This Week" value={stats.this_week.toString()} />
-            <MetricCard title="This Month" value={stats.this_month.toString()} />
+            <MetricCard title="Totaal leads" value={stats.total_leads.toString()} />
+            <MetricCard title="Nieuw (niet gecontacteerd)" value={stats.new_leads.toString()} />
+            <MetricCard title="Deze week" value={stats.this_week.toString()} />
+            <MetricCard title="Deze maand" value={stats.this_month.toString()} />
           </div>
 
           {/* Source attribution overview */}
           <div className="grid gap-6 lg:grid-cols-3">
             <DataTable
-              title="Lead Sources"
+              title="Leadbronnen"
               columns={[
-                { key: 'source', label: 'Source' },
+                { key: 'source', label: 'Bron' },
                 { key: 'count', label: 'Leads', align: 'right' },
               ]}
               data={sources}
             />
             <DataTable
-              title="Lead Mediums"
+              title="Lead-media"
               columns={[
                 { key: 'medium', label: 'Medium' },
                 { key: 'count', label: 'Leads', align: 'right' },
@@ -185,9 +185,9 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
               data={mediums}
             />
             <DataTable
-              title="Lead Campaigns"
+              title="Leadcampagnes"
               columns={[
-                { key: 'campaign', label: 'Campaign' },
+                { key: 'campaign', label: 'Campagne' },
                 { key: 'count', label: 'Leads', align: 'right' },
               ]}
               data={campaigns}
@@ -198,7 +198,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
           <div className="flex flex-wrap items-center gap-3">
             <input
               type="text"
-              placeholder="Search name, email, company..."
+              placeholder="Zoek naam, e-mail, bedrijf..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
               className="rounded-md border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary w-64"
@@ -208,7 +208,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
               onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
               className="rounded-md border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="">All statuses</option>
+              <option value="">Alle statussen</option>
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
@@ -218,7 +218,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
               onChange={(e) => { setSourceFilter(e.target.value); setPage(0); }}
               className="rounded-md border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
             >
-              <option value="">All sources</option>
+              <option value="">Alle bronnen</option>
               {sources.map((s) => (
                 <option key={s.source} value={s.source}>{s.source} ({s.count})</option>
               ))}
@@ -228,14 +228,14 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
           {/* Leads table */}
           {leads.length === 0 ? (
             <div className="rounded-lg border bg-card p-12 text-center">
-              <h3 className="text-lg font-medium">No leads yet</h3>
+              <h3 className="text-lg font-medium">Nog geen leads</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Enable lead capture by adding{' '}
+                Schakel leadregistratie in door{' '}
                 <code className="rounded bg-muted px-1 text-xs">data-capture-leads=&quot;true&quot;</code>{' '}
-                to your tracking script or individual forms.
+                toe te voegen aan je trackingscript of individuele formulieren.
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Example: <code className="rounded bg-muted px-1">&lt;script src=&quot;...&quot; data-site-id=&quot;...&quot; data-capture-leads=&quot;true&quot;&gt;&lt;/script&gt;</code>
+                Voorbeeld: <code className="rounded bg-muted px-1">&lt;script src=&quot;...&quot; data-site-id=&quot;...&quot; data-capture-leads=&quot;true&quot;&gt;&lt;/script&gt;</code>
               </p>
             </div>
           ) : (
@@ -244,13 +244,13 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                 <table className="w-full">
                   <thead>
                     <tr className="border-b text-xs text-muted-foreground">
-                      <th className="px-4 py-2.5 text-left font-medium">Name</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Email</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Source</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Campaign</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Form</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Naam</th>
+                      <th className="px-4 py-2.5 text-left font-medium">E-mail</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Bron</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Campagne</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Formulier</th>
                       <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Date</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Datum</th>
                       <th className="px-4 py-2.5 text-right font-medium w-10"></th>
                     </tr>
                   </thead>
@@ -301,7 +301,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                             <button
                               onClick={(e) => { e.stopPropagation(); deleteLead(lead.id); }}
                               className="rounded p-1 text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950 transition-colors"
-                              title="Delete lead"
+                              title="Lead verwijderen"
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
@@ -314,28 +314,28 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                             <td colSpan={8} className="px-6 py-4">
                               <div className="grid gap-4 sm:grid-cols-3 text-sm">
                                 <div>
-                                  <p className="text-xs font-medium text-muted-foreground mb-1">Contact Details</p>
-                                  {lead.lead_name && <p><span className="text-muted-foreground">Name:</span> {lead.lead_name}</p>}
-                                  {lead.lead_email && <p><span className="text-muted-foreground">Email:</span> {lead.lead_email}</p>}
-                                  {lead.lead_phone && <p><span className="text-muted-foreground">Phone:</span> {lead.lead_phone}</p>}
-                                  {lead.lead_company && <p><span className="text-muted-foreground">Company:</span> {lead.lead_company}</p>}
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Contactgegevens</p>
+                                  {lead.lead_name && <p><span className="text-muted-foreground">Naam:</span> {lead.lead_name}</p>}
+                                  {lead.lead_email && <p><span className="text-muted-foreground">E-mail:</span> {lead.lead_email}</p>}
+                                  {lead.lead_phone && <p><span className="text-muted-foreground">Telefoon:</span> {lead.lead_phone}</p>}
+                                  {lead.lead_company && <p><span className="text-muted-foreground">Bedrijf:</span> {lead.lead_company}</p>}
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-muted-foreground mb-1">Attribution</p>
-                                  <p><span className="text-muted-foreground">Source:</span> {lead.utm_source || lead.referrer_hostname || 'Direct'}</p>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Attributie</p>
+                                  <p><span className="text-muted-foreground">Bron:</span> {lead.utm_source || lead.referrer_hostname || 'Direct'}</p>
                                   {lead.utm_medium && <p><span className="text-muted-foreground">Medium:</span> {lead.utm_medium}</p>}
-                                  {lead.utm_campaign && <p><span className="text-muted-foreground">Campaign:</span> {lead.utm_campaign}</p>}
-                                  {lead.page_path && <p><span className="text-muted-foreground">Page:</span> {lead.page_path}</p>}
-                                  {lead.referrer_hostname && <p><span className="text-muted-foreground">Referrer:</span> {lead.referrer_hostname}</p>}
+                                  {lead.utm_campaign && <p><span className="text-muted-foreground">Campagne:</span> {lead.utm_campaign}</p>}
+                                  {lead.page_path && <p><span className="text-muted-foreground">Pagina:</span> {lead.page_path}</p>}
+                                  {lead.referrer_hostname && <p><span className="text-muted-foreground">Verwijzer:</span> {lead.referrer_hostname}</p>}
                                 </div>
                                 <div>
                                   <p className="text-xs font-medium text-muted-foreground mb-1">Context</p>
-                                  {lead.country_code && <p><span className="text-muted-foreground">Location:</span> {lead.city ? `${lead.city}, ` : ''}{lead.country_code}</p>}
-                                  {lead.device_type && <p><span className="text-muted-foreground">Device:</span> {lead.device_type}</p>}
-                                  {lead.form_id && <p><span className="text-muted-foreground">Form:</span> {lead.form_id}</p>}
+                                  {lead.country_code && <p><span className="text-muted-foreground">Locatie:</span> {lead.city ? `${lead.city}, ` : ''}{lead.country_code}</p>}
+                                  {lead.device_type && <p><span className="text-muted-foreground">Apparaat:</span> {lead.device_type}</p>}
+                                  {lead.form_id && <p><span className="text-muted-foreground">Formulier:</span> {lead.form_id}</p>}
                                   {lead.lead_message && (
                                     <div className="mt-2">
-                                      <p className="text-muted-foreground">Message:</p>
+                                      <p className="text-muted-foreground">Bericht:</p>
                                       <p className="mt-0.5 rounded bg-background p-2 text-xs whitespace-pre-wrap">{lead.lead_message}</p>
                                     </div>
                                   )}
@@ -344,7 +344,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                               {/* All form data */}
                               {lead.lead_data && typeof lead.lead_data === 'object' && Object.keys(lead.lead_data).length > 0 && (
                                 <div className="mt-4 border-t pt-3">
-                                  <p className="text-xs font-medium text-muted-foreground mb-2">All Form Data</p>
+                                  <p className="text-xs font-medium text-muted-foreground mb-2">Alle formulierdata</p>
                                   <div className="rounded border bg-background overflow-hidden">
                                     <table className="w-full text-xs">
                                       <tbody>
@@ -372,7 +372,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
                   <span className="text-muted-foreground">
-                    {total} lead{total !== 1 ? 's' : ''} total
+                    {total} lead{total !== 1 ? 's' : ''} totaal
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -380,17 +380,17 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                       onClick={() => setPage(page - 1)}
                       className="rounded px-2 py-1 text-xs hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Previous
+                      Vorige
                     </button>
                     <span className="text-xs text-muted-foreground">
-                      Page {page + 1} of {totalPages}
+                      Pagina {page + 1} van {totalPages}
                     </span>
                     <button
                       disabled={page >= totalPages - 1}
                       onClick={() => setPage(page + 1)}
                       className="rounded px-2 py-1 text-xs hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Next
+                      Volgende
                     </button>
                   </div>
                 </div>

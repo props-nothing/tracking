@@ -37,7 +37,7 @@ interface VisitorStats {
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', {
+  return d.toLocaleDateString('nl-NL', {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -176,24 +176,24 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Visitors</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Bezoekers</h1>
         <p className="text-sm text-muted-foreground">
-          Browse individual visitor profiles and their activity history
+          Bekijk individuele bezoekersprofielen en hun activiteitengeschiedenis
         </p>
       </div>
 
       {/* Metric Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <MetricCard title="Total Visitors" value={stats.total_visitors.toLocaleString()} />
-        <MetricCard title="Returning Visitors" value={stats.returning_visitors.toLocaleString()} />
-        <MetricCard title="New Visitors" value={stats.new_visitors.toLocaleString()} />
+        <MetricCard title="Totaal bezoekers" value={stats.total_visitors.toLocaleString()} />
+        <MetricCard title="Terugkerende bezoekers" value={stats.returning_visitors.toLocaleString()} />
+        <MetricCard title="Nieuwe bezoekers" value={stats.new_visitors.toLocaleString()} />
       </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <input
           type="text"
-          placeholder="Search visitor ID..."
+          placeholder="Zoek bezoeker-ID..."
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(0); }}
           className="rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary w-48"
@@ -203,9 +203,9 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
           onChange={e => { setDeviceFilter(e.target.value); setPage(0); }}
           className="rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary"
         >
-          <option value="">All devices</option>
+          <option value="">Alle apparaten</option>
           <option value="desktop">Desktop</option>
-          <option value="mobile">Mobile</option>
+          <option value="mobile">Mobiel</option>
           <option value="tablet">Tablet</option>
         </select>
         <label className="flex items-center gap-2 text-sm">
@@ -215,7 +215,7 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
             onChange={e => { setReturningOnly(e.target.checked); setPage(0); }}
             className="rounded"
           />
-          Returning only
+          Alleen terugkerend
         </label>
       </div>
 
@@ -225,38 +225,38 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
           <table className="w-full">
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
-                <th className="px-4 py-2 text-left font-medium">Visitor</th>
+                <th className="px-4 py-2 text-left font-medium">Bezoeker</th>
                 <th
                   className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
                   onClick={() => handleSort('total_sessions')}
                 >
-                  Sessions{sortIcon('total_sessions')}
+                  Sessies{sortIcon('total_sessions')}
                 </th>
                 <th
                   className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
                   onClick={() => handleSort('total_pageviews')}
                 >
-                  Pageviews{sortIcon('total_pageviews')}
+                  Paginaweergaven{sortIcon('total_pageviews')}
                 </th>
                 <th
                   className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
                   onClick={() => handleSort('total_revenue')}
                 >
-                  Revenue{sortIcon('total_revenue')}
+                  Omzet{sortIcon('total_revenue')}
                 </th>
-                <th className="px-4 py-2 text-left font-medium">Source</th>
-                <th className="px-4 py-2 text-left font-medium">Location</th>
+                <th className="px-4 py-2 text-left font-medium">Bron</th>
+                <th className="px-4 py-2 text-left font-medium">Locatie</th>
                 <th
                   className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
                   onClick={() => handleSort('first_seen_at')}
                 >
-                  First seen{sortIcon('first_seen_at')}
+                  Eerst gezien{sortIcon('first_seen_at')}
                 </th>
                 <th
                   className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
                   onClick={() => handleSort('last_seen_at')}
                 >
-                  Last seen{sortIcon('last_seen_at')}
+                  Laatst gezien{sortIcon('last_seen_at')}
                 </th>
               </tr>
             </thead>
@@ -264,13 +264,13 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
               {loading ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    Loading visitors...
+                    Bezoekers laden...
                   </td>
                 </tr>
               ) : visitors.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    No visitors found. Visitor profiles are created when users visit your site with the tracking script installed.
+                    Geen bezoekers gevonden. Bezoekersprofielen worden aangemaakt wanneer gebruikers je site bezoeken met het trackingscript geïnstalleerd.
                   </td>
                 </tr>
               ) : (
@@ -344,7 +344,7 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
             <span className="text-muted-foreground">
-              Showing {page * 50 + 1}–{Math.min((page + 1) * 50, total)} of {total}
+              Tonen {page * 50 + 1}–{Math.min((page + 1) * 50, total)} van {total}
             </span>
             <div className="flex gap-2">
               <button
@@ -352,14 +352,14 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
                 disabled={page === 0}
                 className="rounded-md border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Previous
+                Vorige
               </button>
               <button
                 onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
                 disabled={page >= totalPages - 1}
                 className="rounded-md border px-3 py-1 text-xs hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Next
+                Volgende
               </button>
             </div>
           </div>

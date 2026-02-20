@@ -2,11 +2,11 @@ import Link from 'next/link';
 
 const sections = [
   {
-    title: 'Getting Started',
+    title: 'Aan de slag',
     items: [
       {
-        heading: 'Installation',
-        content: `Clone the repo and install dependencies:
+        heading: 'Installatie',
+        content: `Kloon de repository en installeer de afhankelijkheden:
 
 \`\`\`bash
 git clone https://github.com/yourorg/tracking.git
@@ -15,59 +15,59 @@ pnpm install
 \`\`\``,
       },
       {
-        heading: 'Environment Variables',
-        content: `Copy the example env file and fill in your values:
+        heading: 'Omgevingsvariabelen',
+        content: `Kopieer het voorbeeld-envbestand en vul je waarden in:
 
 \`\`\`bash
 cp .env.example .env.local
 \`\`\`
 
-Required variables:
-- \`NEXT_PUBLIC_SUPABASE_URL\` — Your Supabase project URL
-- \`NEXT_PUBLIC_SUPABASE_ANON_KEY\` — Supabase anonymous key
-- \`SUPABASE_SERVICE_ROLE_KEY\` — Supabase service role key`,
+Vereiste variabelen:
+- \`NEXT_PUBLIC_SUPABASE_URL\` — Je Supabase project-URL
+- \`NEXT_PUBLIC_SUPABASE_ANON_KEY\` — Supabase anonieme sleutel
+- \`SUPABASE_SERVICE_ROLE_KEY\` — Supabase service role-sleutel`,
       },
       {
-        heading: 'Running Locally',
-        content: `Start the development server:
+        heading: 'Lokaal draaien',
+        content: `Start de ontwikkelserver:
 
 \`\`\`bash
 pnpm dev
 \`\`\`
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.`,
+Open [http://localhost:3000](http://localhost:3000) in je browser.`,
       },
     ],
   },
   {
-    title: 'Tracking Script',
+    title: 'Trackingscript',
     items: [
       {
-        heading: 'Basic Setup',
-        content: `Add the tracking script to your website's \`<head>\`:
+        heading: 'Basisconfiguratie',
+        content: `Voeg het trackingscript toe aan de \`<head>\` van je website:
 
 \`\`\`html
 <script defer data-site-id="YOUR_SITE_ID" src="https://your-domain.com/t.js"></script>
 \`\`\`
 
-That's it! The script automatically tracks pageviews, sessions, and Web Vitals.`,
+Dat is alles! Het script volgt automatisch paginaweergaven, sessies en Web Vitals.`,
       },
       {
-        heading: 'Configuration Options',
-        content: `Customize via data attributes:
+        heading: 'Configuratieopties',
+        content: `Pas aan via data-attributen:
 
-- \`data-site-id\` — Required. Your site ID from the dashboard.
-- \`data-api\` — Custom collect endpoint (default: script origin + \`/api/collect\`)
-- \`data-track-outbound\` — Track outbound link clicks (\`"true"\`)
-- \`data-track-downloads\` — Track file downloads (\`"true"\`)  
-- \`data-track-forms\` — Track form interactions (\`"true"\`)
-- \`data-track-errors\` — Track JavaScript errors (\`"true"\`)
-- \`data-track-ecommerce\` — Enable e-commerce tracking (\`"true"\`)
-- \`data-hash\` — Hash-based SPA routing (\`"true"\`)`,
+- \`data-site-id\` — Vereist. Je site-ID uit het dashboard.
+- \`data-api\` — Aangepast collect-endpoint (standaard: scriptoorsprong + \`/api/collect\`)
+- \`data-track-outbound\` — Volg uitgaande linkklikken (\`"true"\`)
+- \`data-track-downloads\` — Volg bestandsdownloads (\`"true"\`)  
+- \`data-track-forms\` — Volg formulierinteracties (\`"true"\`)
+- \`data-track-errors\` — Volg JavaScript-fouten (\`"true"\`)
+- \`data-track-ecommerce\` — Schakel e-commerce tracking in (\`"true"\`)
+- \`data-hash\` — Op hash gebaseerde SPA-routing (\`"true"\`)`,
       },
       {
-        heading: 'Custom Events',
-        content: `Track custom events from your code:
+        heading: 'Aangepaste events',
+        content: `Volg aangepaste events vanuit je code:
 
 \`\`\`javascript
 window.tracking('event', {
@@ -78,7 +78,7 @@ window.tracking('event', {
       },
       {
         heading: 'E-commerce',
-        content: `Track purchases:
+        content: `Volg aankopen:
 
 \`\`\`javascript
 window.tracking('ecommerce', {
@@ -95,13 +95,13 @@ window.tracking('ecommerce', {
     ],
   },
   {
-    title: 'API Reference',
+    title: 'API-referentie',
     items: [
       {
-        heading: 'Authentication',
-        content: `API requests require an API key. Generate one from the dashboard under **API Keys**.
+        heading: 'Authenticatie',
+        content: `API-verzoeken vereisen een API-sleutel. Genereer er een via het dashboard onder **API-sleutels**.
 
-Include the key in the \`Authorization\` header:
+Voeg de sleutel toe in de \`Authorization\`-header:
 
 \`\`\`
 Authorization: Bearer your-api-key
@@ -109,9 +109,9 @@ Authorization: Bearer your-api-key
       },
       {
         heading: 'GET /api/stats',
-        content: `Retrieve aggregated analytics data.
+        content: `Haal geaggregeerde analysedata op.
 
-Query parameters:
+Queryparameters:
 - \`site_id\` — Required
 - \`period\` — \`day\`, \`7d\`, \`30d\`, \`month\`, \`year\`, \`custom\`
 - \`metric\` — \`visitors\`, \`pageviews\`, \`events\`, \`ecommerce\`, \`errors\`
@@ -119,7 +119,7 @@ Query parameters:
       },
       {
         heading: 'POST /api/collect',
-        content: `Event collection endpoint used by the tracking script.
+        content: `Event-collectie-endpoint dat door het trackingscript wordt gebruikt.
 
 Body:
 \`\`\`json
@@ -134,28 +134,28 @@ Body:
     ],
   },
   {
-    title: 'Deployment',
+    title: 'Implementatie',
     items: [
       {
         heading: 'Docker',
-        content: `Deploy with Docker Compose:
+        content: `Implementeer met Docker Compose:
 
 \`\`\`bash
 docker compose up -d
 \`\`\`
 
-This starts the web app, PostgreSQL, and Redis.`,
+Dit start de webapp, PostgreSQL en Redis.`,
       },
       {
         heading: 'Vercel',
-        content: `Deploy the Next.js app to Vercel:
+        content: `Implementeer de Next.js-app op Vercel:
 
-1. Push to GitHub
-2. Import in Vercel
-3. Set environment variables
-4. Deploy
+1. Push naar GitHub
+2. Importeer in Vercel
+3. Stel omgevingsvariabelen in
+4. Implementeer
 
-Use Supabase cloud for the database.`,
+Gebruik Supabase cloud voor de database.`,
       },
     ],
   },
@@ -173,15 +173,15 @@ export default function DocsPage() {
             href="/login"
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Log In
+            Inloggen
           </Link>
         </div>
       </header>
 
       <main className="flex-1 px-4 py-12">
         <div className="mx-auto max-w-3xl">
-          <h1 className="text-3xl font-bold tracking-tight">Documentation</h1>
-          <p className="mt-2 text-muted-foreground">Everything you need to get started with Tracking.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Documentatie</h1>
+          <p className="mt-2 text-muted-foreground">Alles wat je nodig hebt om aan de slag te gaan met Tracking.</p>
 
           <div className="mt-12 space-y-16">
             {sections.map((section) => (

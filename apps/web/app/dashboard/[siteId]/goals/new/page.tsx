@@ -4,12 +4,12 @@ import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const GOAL_TYPES = [
-  { value: 'page_visit', label: 'Page Visit', description: 'Trigger when a visitor views a specific page' },
-  { value: 'event', label: 'Custom Event', description: 'Trigger when a specific custom event fires' },
-  { value: 'form_submit', label: 'Form Submission', description: 'Trigger when a form is submitted' },
-  { value: 'scroll_depth', label: 'Scroll Depth', description: 'Trigger when a visitor scrolls past X%' },
-  { value: 'time_on_page', label: 'Time on Page', description: 'Trigger when a visitor spends X+ seconds' },
-  { value: 'revenue', label: 'Revenue', description: 'Track any purchase event' },
+  { value: 'page_visit', label: 'Paginabezoek', description: 'Trigger wanneer een bezoeker een specifieke pagina bekijkt' },
+  { value: 'event', label: 'Aangepast event', description: 'Trigger wanneer een specifiek aangepast event wordt uitgevoerd' },
+  { value: 'form_submit', label: 'Formulierinzending', description: 'Trigger wanneer een formulier wordt ingediend' },
+  { value: 'scroll_depth', label: 'Scrolldiepte', description: 'Trigger wanneer een bezoeker voorbij X% scrollt' },
+  { value: 'time_on_page', label: 'Tijd op pagina', description: 'Trigger wanneer een bezoeker X+ seconden besteedt' },
+  { value: 'revenue', label: 'Omzet', description: 'Volg elk aankoopgebeurtenis' },
 ];
 
 export default function NewGoalPage({ params }: { params: Promise<{ siteId: string }> }) {
@@ -75,13 +75,13 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Create Goal</h1>
-        <p className="text-sm text-muted-foreground">Define a conversion goal for your site</p>
+        <h1 className="text-2xl font-bold tracking-tight">Doel aanmaken</h1>
+        <p className="text-sm text-muted-foreground">Definieer een conversiedoel voor je site</p>
       </div>
 
       <div className="space-y-6 rounded-lg border bg-card p-6">
         <div>
-          <label className="text-sm font-medium">Goal Name</label>
+          <label className="text-sm font-medium">Doelnaam</label>
           <input
             type="text"
             value={name}
@@ -92,7 +92,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
         </div>
 
         <div>
-          <label className="text-sm font-medium">Goal Type</label>
+          <label className="text-sm font-medium">Doeltype</label>
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             {GOAL_TYPES.map((type) => (
               <button
@@ -113,19 +113,19 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
         {goalType === 'page_visit' && (
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Match Type</label>
+              <label className="text-sm font-medium">Matchtype</label>
               <select
                 value={conditionMatch}
                 onChange={(e) => setConditionMatch(e.target.value)}
                 className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
               >
-                <option value="exact">Exact match</option>
-                <option value="contains">Contains</option>
+                <option value="exact">Exacte match</option>
+                <option value="contains">Bevat</option>
                 <option value="regex">Regex</option>
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Page Path</label>
+              <label className="text-sm font-medium">Paginapad</label>
               <input
                 type="text"
                 value={conditionValue}
@@ -139,7 +139,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
 
         {goalType === 'event' && (
           <div>
-            <label className="text-sm font-medium">Event Name</label>
+            <label className="text-sm font-medium">Eventnaam</label>
             <input
               type="text"
               value={eventName}
@@ -152,7 +152,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
 
         {goalType === 'form_submit' && (
           <div>
-            <label className="text-sm font-medium">Form ID (optional)</label>
+            <label className="text-sm font-medium">Formulier-ID (optioneel)</label>
             <input
               type="text"
               value={formId}
@@ -166,7 +166,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
         {goalType === 'scroll_depth' && (
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Minimum Scroll %</label>
+              <label className="text-sm font-medium">Minimale scroll %</label>
               <input
                 type="number"
                 value={minPct}
@@ -177,7 +177,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Page Path (optional, * for all)</label>
+              <label className="text-sm font-medium">Paginapad (optioneel, * voor alles)</label>
               <input
                 type="text"
                 value={conditionValue}
@@ -192,7 +192,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
         {goalType === 'time_on_page' && (
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium">Minimum Seconds</label>
+              <label className="text-sm font-medium">Minimale seconden</label>
               <input
                 type="number"
                 value={minSeconds}
@@ -202,7 +202,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Page Path</label>
+              <label className="text-sm font-medium">Paginapad</label>
               <input
                 type="text"
                 value={conditionValue}
@@ -216,7 +216,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-sm font-medium">Revenue Value (optional)</label>
+            <label className="text-sm font-medium">Omzetwaarde (optioneel)</label>
             <input
               type="number"
               value={revenueValue}
@@ -227,14 +227,14 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Count Mode</label>
+            <label className="text-sm font-medium">Telmodus</label>
             <select
               value={countMode}
               onChange={(e) => setCountMode(e.target.value)}
               className="mt-1 w-full rounded-md border px-3 py-2 text-sm"
             >
-              <option value="once_per_session">Once per session</option>
-              <option value="every_time">Every time</option>
+              <option value="once_per_session">Eén keer per sessie</option>
+              <option value="every_time">Elke keer</option>
             </select>
           </div>
         </div>
@@ -244,7 +244,7 @@ export default function NewGoalPage({ params }: { params: Promise<{ siteId: stri
           disabled={!name || saving}
           className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {saving ? 'Creating...' : 'Create Goal'}
+          {saving ? 'Aanmaken...' : 'Doel aanmaken'}
         </button>
       </div>
     </div>

@@ -9,34 +9,34 @@ import { SiteSwitcher } from '@/components/site-switcher';
 import type { Site } from '@/hooks/use-site';
 
 const navItems = [
-  { href: '', label: 'Overview', icon: '📊' },
+  { href: '', label: 'Overzicht', icon: '📊' },
   { href: '/realtime', label: 'Realtime', icon: '⚡' },
-  { href: '/pages', label: 'Pages', icon: '📄' },
-  { href: '/referrers', label: 'Referrers', icon: '🔗' },
-  { href: '/geo', label: 'Geography', icon: '🌍' },
-  { href: '/devices', label: 'Devices', icon: '📱' },
+  { href: '/pages', label: 'Pagina\'s', icon: '📄' },
+  { href: '/referrers', label: 'Verwijzers', icon: '🔗' },
+  { href: '/geo', label: 'Geografie', icon: '🌍' },
+  { href: '/devices', label: 'Apparaten', icon: '📱' },
   { href: '/events', label: 'Events', icon: '🎯' },
-  { href: '/goals', label: 'Goals', icon: '🏆' },
+  { href: '/goals', label: 'Doelen', icon: '🏆' },
   { href: '/funnels', label: 'Funnels', icon: '🔻' },
-  { href: '/forms', label: 'Forms', icon: '📝' },
+  { href: '/forms', label: 'Formulieren', icon: '📝' },
   { href: '/leads', label: 'Leads', icon: '👤' },
-  { href: '/visitors', label: 'Visitors', icon: '🧑‍💻' },
-  { href: '/flow', label: 'User Flow', icon: '🔀' },
-  { href: '/retention', label: 'Retention', icon: '🔄' },
+  { href: '/visitors', label: 'Bezoekers', icon: '🧑‍💻' },
+  { href: '/flow', label: 'Gebruikersstroom', icon: '🔀' },
+  { href: '/retention', label: 'Retentie', icon: '🔄' },
   { href: '/ecommerce', label: 'E-commerce', icon: '💰' },
-  { href: '/vitals', label: 'Web Vitals', icon: '🩺' },
-  { href: '/time-on-page', label: 'Time on Page', icon: '⏱️' },
-  { href: '/scroll', label: 'Scroll Depth', icon: '📜' },
-  { href: '/outbound', label: 'Outbound & Files', icon: '↗️' },
-  { href: '/ux-issues', label: 'UX Issues', icon: '😤' },
-  { href: '/404s', label: '404 Pages', icon: '🚫' },
-  { href: '/errors', label: 'Errors', icon: '🐛' },
-  { href: '/reports', label: 'Reports', icon: '📑' },
-  { href: '/alerts', label: 'Alerts', icon: '🔔' },
-  { href: '/annotations', label: 'Annotations', icon: '📌' },
-  { href: '/api-keys', label: 'API Keys', icon: '🔑' },
+  { href: '/vitals', label: 'Webprestaties', icon: '🩺' },
+  { href: '/time-on-page', label: 'Tijd op pagina', icon: '⏱️' },
+  { href: '/scroll', label: 'Scrolldiepte', icon: '📜' },
+  { href: '/outbound', label: 'Uitgaand & bestanden', icon: '↗️' },
+  { href: '/ux-issues', label: 'UX-problemen', icon: '😤' },
+  { href: '/404s', label: '404-pagina\'s', icon: '🚫' },
+  { href: '/errors', label: 'Fouten', icon: '🐛' },
+  { href: '/reports', label: 'Rapporten', icon: '📑' },
+  { href: '/alerts', label: 'Meldingen', icon: '🔔' },
+  { href: '/annotations', label: 'Annotaties', icon: '📌' },
+  { href: '/api-keys', label: 'API-sleutels', icon: '🔑' },
   { href: '/team', label: 'Team', icon: '👥' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/settings', label: 'Instellingen', icon: '⚙️' },
 ];
 
 interface DashboardShellProps {
@@ -79,7 +79,7 @@ function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
                 className="shrink-0 lg:hidden rounded-md p-1.5 hover:bg-muted"
-                aria-label="Toggle sidebar"
+                aria-label="Zijbalk wisselen"
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M3 5h14M3 10h14M3 15h14" />
@@ -112,7 +112,7 @@ function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
                 type="submit"
                 className="whitespace-nowrap text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Sign out
+                Uitloggen
               </button>
             </form>
           </div>

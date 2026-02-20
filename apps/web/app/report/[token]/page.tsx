@@ -89,13 +89,13 @@ interface ReportData {
 interface Filter { key: string; label: string; value: string }
 
 const DATE_RANGES = [
-  { value: 'today', label: 'Today' },
-  { value: 'last_7_days', label: 'Last 7 days' },
-  { value: 'last_30_days', label: 'Last 30 days' },
-  { value: 'last_90_days', label: 'Last 90 days' },
-  { value: 'last_365_days', label: 'Last 12 months' },
-  { value: 'this_month', label: 'This month' },
-  { value: 'last_month', label: 'Last month' },
+  { value: 'today', label: 'Vandaag' },
+  { value: 'last_7_days', label: 'Laatste 7 dagen' },
+  { value: 'last_30_days', label: 'Laatste 30 dagen' },
+  { value: 'last_90_days', label: 'Laatste 90 dagen' },
+  { value: 'last_365_days', label: 'Laatste 12 maanden' },
+  { value: 'this_month', label: 'Deze maand' },
+  { value: 'last_month', label: 'Vorige maand' },
 ] as const;
 
 function formatDuration(sec: number) {
@@ -135,8 +135,8 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
     fetch(url)
       .then(async (res) => {
         if (res.status === 401) { setNeedsPassword(true); setLoading(false); return; }
-        if (res.status === 403) { setNeedsPassword(true); setError('Incorrect password'); setLoading(false); return; }
-        if (!res.ok) { setError('Failed to load report'); setLoading(false); return; }
+        if (res.status === 403) { setNeedsPassword(true); setError('Onjuist wachtwoord'); setLoading(false); return; }
+        if (!res.ok) { setError('Rapport laden mislukt'); setLoading(false); return; }
         const d = await res.json();
         setData({
           site_name: d.site_name ?? '',
@@ -176,7 +176,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
         setNeedsPassword(false);
         setLoading(false);
       })
-      .catch(() => { setError('Failed to load report'); setLoading(false); });
+      .catch(() => { setError('Rapport laden mislukt'); setLoading(false); });
   }, [token, range, filters]);
 
   useEffect(() => {
@@ -198,7 +198,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading report...</p>
+          <p className="text-sm text-muted-foreground">Rapport laden...</p>
         </div>
       </div>
     );
@@ -209,14 +209,14 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-8">
-          <h1 className="text-lg font-bold">Password Protected</h1>
-          <p className="text-sm text-muted-foreground">This report requires a password to view.</p>
+          <h1 className="text-lg font-bold">Wachtwoord beveiligd</h1>
+          <p className="text-sm text-muted-foreground">Dit rapport vereist een wachtwoord om te bekijken.</p>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter password"
+            placeholder="Wachtwoord invoeren"
             onKeyDown={(e) => {
               if (e.key === 'Enter') { setSavedPassword(password); setNeedsPassword(false); }
             }}
@@ -226,7 +226,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
             onClick={() => { setSavedPassword(password); setNeedsPassword(false); }}
             className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            View Report
+            Rapport bekijken
           </button>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-sm text-red-600">{error || 'Report not found'}</p>
+        <p className="text-sm text-red-600">{error || 'Rapport niet gevonden'}</p>
       </div>
     );
   }
@@ -285,25 +285,25 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
               onClick={() => setFilters([])}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
-              Clear all
+              Alles wissen
             </button>
           </div>
         )}
 
         {/* Metric cards */}
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-          <MetricCard title="Visitors" value={m.visitors.toLocaleString()} />
-          <MetricCard title="Pageviews" value={m.pageviews.toLocaleString()} />
-          <MetricCard title="Sessions" value={m.sessions.toLocaleString()} />
-          <MetricCard title="Bounce Rate" value={`${m.bounce_rate}%`} />
-          <MetricCard title="Views / Session" value={m.views_per_session.toString()} />
-          <MetricCard title="Avg. Duration" value={formatDuration(m.avg_duration)} />
+          <MetricCard title="Bezoekers" value={m.visitors.toLocaleString()} />
+          <MetricCard title="Paginaweergaven" value={m.pageviews.toLocaleString()} />
+          <MetricCard title="Sessies" value={m.sessions.toLocaleString()} />
+          <MetricCard title="Bouncepercentage" value={`${m.bounce_rate}%`} />
+          <MetricCard title="Weergaven / sessie" value={m.views_per_session.toString()} />
+          <MetricCard title="Gem. duur" value={formatDuration(m.avg_duration)} />
         </div>
 
         {/* Timeseries chart */}
         {data.timeseries.length > 0 && (
           <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium">Visitors &amp; Pageviews Over Time</h2>
+            <h2 className="mb-4 text-sm font-medium">Bezoekers &amp; paginaweergaven in de tijd</h2>
             <TimeSeries data={data.timeseries} period={range} />
           </div>
         )}
@@ -321,7 +321,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                     activeTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  {tab === 'pages' ? 'Top Pages' : tab === 'entry' ? 'Entry Pages' : 'Exit Pages'}
+                  {tab === 'pages' ? 'Toppagina\'s' : tab === 'entry' ? 'Instappagina\'s' : 'Uitstappagina\'s'}
                 </button>
               ))}
             </div>
@@ -330,8 +330,8 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                 <DataTable
                   title=""
                   columns={[
-                    { key: 'path', label: 'Page' },
-                    { key: 'views', label: 'Views', align: 'right' },
+                    { key: 'path', label: 'Pagina' },
+                    { key: 'views', label: 'Weergaven', align: 'right' },
                   ]}
                   data={data.top_pages}
                   pageSize={10}
@@ -343,8 +343,8 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                 <DataTable
                   title=""
                   columns={[
-                    { key: 'path', label: 'Page' },
-                    { key: 'views', label: 'Entries', align: 'right' },
+                    { key: 'path', label: 'Pagina' },
+                    { key: 'views', label: 'Instappen', align: 'right' },
                   ]}
                   data={data.entry_pages}
                   pageSize={10}
@@ -356,8 +356,8 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                 <DataTable
                   title=""
                   columns={[
-                    { key: 'path', label: 'Page' },
-                    { key: 'views', label: 'Exits', align: 'right' },
+                    { key: 'path', label: 'Pagina' },
+                    { key: 'views', label: 'Uitstappen', align: 'right' },
                   ]}
                   data={data.exit_pages}
                   pageSize={10}
@@ -370,10 +370,10 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
 
           {/* Referrers */}
           <DataTable
-            title="Top Referrers"
+            title="Topverwijzers"
             columns={[
-              { key: 'source', label: 'Source' },
-              { key: 'visitors', label: 'Visitors', align: 'right' },
+              { key: 'source', label: 'Bron' },
+              { key: 'visitors', label: 'Bezoekers', align: 'right' },
             ]}
             data={data.top_referrers.map((r) => ({
               ...r,
@@ -390,14 +390,14 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           {data.countries.length > 0 && (
             <div className="rounded-lg border bg-card">
               <div className="border-b px-4 py-3">
-                <h3 className="text-sm font-medium">Countries</h3>
+                <h3 className="text-sm font-medium">Landen</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b text-xs text-muted-foreground">
-                      <th className="px-4 py-2 text-left font-medium">Country</th>
-                      <th className="px-4 py-2 text-right font-medium">Visitors</th>
+                      <th className="px-4 py-2 text-left font-medium">Land</th>
+                      <th className="px-4 py-2 text-right font-medium">Bezoekers</th>
                       <th className="px-4 py-2 text-right font-medium w-32">%</th>
                     </tr>
                   </thead>
@@ -408,7 +408,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                         <tr
                           key={c.code}
                           className="border-b text-sm hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => addFilter('country', 'Country', c.code)}
+                          onClick={() => addFilter('country', 'Land', c.code)}
                         >
                           <td className="px-4 py-2">{c.name}</td>
                           <td className="px-4 py-2 text-right tabular-nums">{c.visitors.toLocaleString()}</td>
@@ -440,7 +440,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                     deviceTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  {tab === 'browsers' ? 'Browsers' : tab === 'os' ? 'OS' : 'Devices'}
+                  {tab === 'browsers' ? 'Browsers' : tab === 'os' ? 'OS' : 'Apparaten'}
                 </button>
               ))}
             </div>
@@ -455,14 +455,14 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
         {/* UTM section */}
         {(data.utm_sources.length > 0 || data.utm_mediums.length > 0 || data.utm_campaigns.length > 0) && (
           <>
-            <h2 className="text-sm font-medium text-muted-foreground pt-2">Campaign Tracking (UTM)</h2>
+            <h2 className="text-sm font-medium text-muted-foreground pt-2">Campagnetracking (UTM)</h2>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {data.utm_sources.length > 0 && (
                 <DataTable
-                  title="UTM Sources"
+                  title="UTM-bronnen"
                   columns={[
-                    { key: 'name', label: 'Source' },
-                    { key: 'visitors', label: 'Visitors', align: 'right' },
+                    { key: 'name', label: 'Bron' },
+                    { key: 'visitors', label: 'Bezoekers', align: 'right' },
                   ]}
                   data={data.utm_sources.map((r) => ({
                     ...r,
@@ -473,10 +473,10 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
               )}
               {data.utm_mediums.length > 0 && (
                 <DataTable
-                  title="UTM Mediums"
+                  title="UTM-media"
                   columns={[
                     { key: 'name', label: 'Medium' },
-                    { key: 'visitors', label: 'Visitors', align: 'right' },
+                    { key: 'visitors', label: 'Bezoekers', align: 'right' },
                   ]}
                   data={data.utm_mediums.map((r) => ({
                     ...r,
@@ -487,10 +487,10 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
               )}
               {data.utm_campaigns.length > 0 && (
                 <DataTable
-                  title="UTM Campaigns"
+                  title="UTM-campagnes"
                   columns={[
-                    { key: 'name', label: 'Campaign' },
-                    { key: 'visitors', label: 'Visitors', align: 'right' },
+                    { key: 'name', label: 'Campagne' },
+                    { key: 'visitors', label: 'Bezoekers', align: 'right' },
                   ]}
                   data={data.utm_campaigns.map((r) => ({
                     ...r,
@@ -512,9 +512,9 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {data.lead_sources.length > 0 && (
                 <DataTable
-                  title="Lead Sources"
+                  title="Leadbronnen"
                   columns={[
-                    { key: 'source', label: 'Source' },
+                    { key: 'source', label: 'Bron' },
                     { key: 'count', label: 'Leads', align: 'right' },
                   ]}
                   data={data.lead_sources}
@@ -523,7 +523,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
               )}
               {data.lead_mediums.length > 0 && (
                 <DataTable
-                  title="Lead Mediums"
+                  title="Lead-media"
                   columns={[
                     { key: 'medium', label: 'Medium' },
                     { key: 'count', label: 'Leads', align: 'right' },
@@ -534,9 +534,9 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
               )}
               {data.lead_campaigns.length > 0 && (
                 <DataTable
-                  title="Lead Campaigns"
+                  title="Leadcampagnes"
                   columns={[
-                    { key: 'campaign', label: 'Campaign' },
+                    { key: 'campaign', label: 'Campagne' },
                     { key: 'count', label: 'Leads', align: 'right' },
                   ]}
                   data={data.lead_campaigns}
@@ -548,19 +548,19 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
             {/* Leads table */}
             <div className="rounded-lg border bg-card overflow-hidden">
               <div className="border-b px-4 py-3">
-                <h3 className="text-sm font-medium">All Leads ({data.leads.length})</h3>
+                <h3 className="text-sm font-medium">Alle leads ({data.leads.length})</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b text-xs text-muted-foreground">
-                      <th className="px-4 py-2.5 text-left font-medium">Name</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Email</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Source</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Campaign</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Form</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Naam</th>
+                      <th className="px-4 py-2.5 text-left font-medium">E-mail</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Bron</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Campagne</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Formulier</th>
                       <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Date</th>
+                      <th className="px-4 py-2.5 text-left font-medium">Datum</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -614,26 +614,26 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                               <td colSpan={7} className="px-6 py-4">
                                 <div className="grid gap-4 sm:grid-cols-3 text-sm">
                                   <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Contact Details</p>
-                                    {lead.lead_name && <p><span className="text-muted-foreground">Name:</span> {lead.lead_name}</p>}
-                                    {lead.lead_email && <p><span className="text-muted-foreground">Email:</span> {lead.lead_email}</p>}
-                                    {lead.lead_phone && <p><span className="text-muted-foreground">Phone:</span> {lead.lead_phone}</p>}
-                                    {lead.lead_company && <p><span className="text-muted-foreground">Company:</span> {lead.lead_company}</p>}
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Contactgegevens</p>
+                                    {lead.lead_name && <p><span className="text-muted-foreground">Naam:</span> {lead.lead_name}</p>}
+                                    {lead.lead_email && <p><span className="text-muted-foreground">E-mail:</span> {lead.lead_email}</p>}
+                                    {lead.lead_phone && <p><span className="text-muted-foreground">Telefoon:</span> {lead.lead_phone}</p>}
+                                    {lead.lead_company && <p><span className="text-muted-foreground">Bedrijf:</span> {lead.lead_company}</p>}
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Attribution</p>
-                                    <p><span className="text-muted-foreground">Source:</span> {lead.utm_source || lead.referrer_hostname || 'Direct'}</p>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">Attributie</p>
+                                    <p><span className="text-muted-foreground">Bron:</span> {lead.utm_source || lead.referrer_hostname || 'Direct'}</p>
                                     {lead.utm_medium && <p><span className="text-muted-foreground">Medium:</span> {lead.utm_medium}</p>}
-                                    {lead.utm_campaign && <p><span className="text-muted-foreground">Campaign:</span> {lead.utm_campaign}</p>}
-                                    {lead.page_path && <p><span className="text-muted-foreground">Page:</span> {lead.page_path}</p>}
+                                    {lead.utm_campaign && <p><span className="text-muted-foreground">Campagne:</span> {lead.utm_campaign}</p>}
+                                    {lead.page_path && <p><span className="text-muted-foreground">Pagina:</span> {lead.page_path}</p>}
                                   </div>
                                   <div>
                                     <p className="text-xs font-medium text-muted-foreground mb-1">Context</p>
-                                    {lead.country_code && <p><span className="text-muted-foreground">Location:</span> {lead.city ? `${lead.city}, ` : ''}{lead.country_code}</p>}
-                                    {lead.device_type && <p><span className="text-muted-foreground">Device:</span> {lead.device_type}</p>}
+                                    {lead.country_code && <p><span className="text-muted-foreground">Locatie:</span> {lead.city ? `${lead.city}, ` : ''}{lead.country_code}</p>}
+                                    {lead.device_type && <p><span className="text-muted-foreground">Apparaat:</span> {lead.device_type}</p>}
                                     {lead.lead_message && (
                                       <div className="mt-2">
-                                        <p className="text-muted-foreground">Message:</p>
+                                        <p className="text-muted-foreground">Bericht:</p>
                                         <p className="mt-0.5 rounded bg-background p-2 text-xs whitespace-pre-wrap">{lead.lead_message}</p>
                                       </div>
                                     )}
@@ -642,7 +642,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                                 {/* All form data */}
                                 {lead.lead_data && typeof lead.lead_data === 'object' && Object.keys(lead.lead_data).length > 0 && (
                                   <div className="mt-4 border-t pt-3">
-                                    <p className="text-xs font-medium text-muted-foreground mb-2">All Form Data</p>
+                                    <p className="text-xs font-medium text-muted-foreground mb-2">Alle formulierdata</p>
                                     <div className="rounded border bg-background overflow-hidden">
                                       <table className="w-full text-xs">
                                         <tbody>
@@ -673,7 +673,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
         {/* AI Insights (if available in shared report) */}
         {data.ai_analysis && (
           <>
-            <h2 className="text-sm font-medium text-muted-foreground pt-2">AI Insights</h2>
+            <h2 className="text-sm font-medium text-muted-foreground pt-2">AI-inzichten</h2>
             <div className="rounded-lg border bg-card p-6">
               <AIReportCard
                 analysis={data.ai_analysis as any}

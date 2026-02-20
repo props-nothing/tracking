@@ -63,14 +63,14 @@ export function ExportBar({ siteId, period }: ExportBarProps) {
         disabled={exporting}
         className="rounded-md border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
       >
-        Export CSV
+        Exporteer CSV
       </button>
       <button
         onClick={() => doExport('json')}
         disabled={exporting}
         className="rounded-md border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
       >
-        Export JSON
+        Exporteer JSON
       </button>
     </div>
   );

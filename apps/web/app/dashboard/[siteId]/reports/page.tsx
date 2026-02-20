@@ -64,36 +64,36 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Shared Reports</h1>
-          <p className="text-sm text-muted-foreground">Create and manage public report links</p>
+          <h1 className="text-2xl font-bold tracking-tight">Gedeelde rapporten</h1>
+          <p className="text-sm text-muted-foreground">Maak en beheer openbare rapportlinks</p>
         </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          New Report
+          Nieuw rapport
         </button>
       </div>
 
       {showCreate && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
-          <h2 className="text-sm font-medium">Create Shared Report</h2>
+          <h2 className="text-sm font-medium">Gedeeld rapport aanmaken</h2>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Report Name</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Rapportnaam</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Monthly overview"
+              placeholder="Maandelijks overzicht"
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Password (optional)</label>
+            <label className="mb-1 block text-xs text-muted-foreground">Wachtwoord (optioneel)</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Leave blank for no password"
+              placeholder="Laat leeg voor geen wachtwoord"
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
           </div>
@@ -104,25 +104,25 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
               onChange={(e) => setShowAI(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
             />
-            Include AI insights
+            AI-inzichten toevoegen
           </label>
           <button
             onClick={handleCreate}
             disabled={!name || creating}
             className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {creating ? 'Creating...' : 'Create Report'}
+            {creating ? 'Aanmaken...' : 'Rapport aanmaken'}
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
       ) : reports.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">No shared reports yet</h3>
+          <h3 className="text-lg font-medium">Nog geen gedeelde rapporten</h3>
           <p className="mt-2 text-sm text-muted-foreground">
-            Create a shared report to give clients or stakeholders a public link.
+            Maak een gedeeld rapport om klanten of stakeholders een openbare link te geven.
           </p>
         </div>
       ) : (
@@ -132,10 +132,10 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
               <div>
                 <p className="text-sm font-medium">{r.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Created {new Date(r.created_at).toLocaleDateString()}
-                  {r.password_protected && ' · 🔒 Password protected'}
-                  {r.show_ai_insights && ' · ✨ AI insights'}
-                  {r.expires_at && ` · Expires ${new Date(r.expires_at).toLocaleDateString()}`}
+                  Aangemaakt {new Date(r.created_at).toLocaleDateString()}
+                  {r.password_protected && ' · 🔒 Wachtwoord beveiligd'}
+                  {r.show_ai_insights && ' · ✨ AI-inzichten'}
+                  {r.expires_at && ` · Verloopt ${new Date(r.expires_at).toLocaleDateString()}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -152,13 +152,13 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
                     r.show_ai_insights ? 'border-purple-300 bg-purple-50 text-purple-700' : ''
                   }`}
                 >
-                  {r.show_ai_insights ? 'AI On' : 'AI Off'}
+                  {r.show_ai_insights ? 'AI aan' : 'AI uit'}
                 </button>
                 <button
                   onClick={() => copyLink(r.token)}
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                 >
-                  Copy Link
+                  Link kopiëren
                 </button>
                 <a
                   href={`/report/${r.token}`}
@@ -166,13 +166,13 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
                   rel="noopener noreferrer"
                   className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
                 >
-                  View
+                  Bekijken
                 </a>
                 <button
                   onClick={() => handleDelete(r.id)}
                   className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
                 >
-                  Delete
+                  Verwijderen
                 </button>
               </div>
             </div>
