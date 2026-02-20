@@ -26,6 +26,11 @@ function formatNumber(n: number): string {
   return n.toString();
 }
 
+function truncatePath(path: string, maxLen = 24): string {
+  if (path.length <= maxLen) return path;
+  return path.slice(0, maxLen - 1) + '…';
+}
+
 export default function SiteDashboardPage({
   params,
 }: {
@@ -88,6 +93,19 @@ export default function SiteDashboardPage({
             <MetricCard title="Weergaven / sessie" value={stats.views_per_session.toString()} />
             <MetricCard title="Gem. actieve tijd" value={formatDuration(stats.avg_engaged_time)} />
             <MetricCard title="Gem. sessieduur" value={formatDuration(stats.avg_session_duration)} />
+            <MetricCard title="Leads" value={formatNumber(stats.total_leads ?? 0)} />
+            <MetricCard title="Conversiepercentage" value={`${stats.conversion_rate ?? 0}%`} />
+            <MetricCard title="Gem. scrolldiepte" value={`${stats.avg_scroll_depth ?? 0}%`} />
+            <MetricCard
+              title="Toppagina"
+              value={stats.top_page ? truncatePath(stats.top_page) : '—'}
+              subtitle={stats.top_page ? `${formatNumber(stats.top_page_count)} weergaven` : undefined}
+            />
+            <MetricCard
+              title="Terugkerend"
+              value={`${stats.returning_visitor_pct ?? 0}%`}
+              subtitle={`${formatNumber(stats.returning_visitor_count ?? 0)} bezoekers`}
+            />
           </div>
 
           {/* Time Series Chart */}

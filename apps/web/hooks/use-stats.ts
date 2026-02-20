@@ -10,6 +10,13 @@ export interface Stats {
   bounce_rate: number;
   views_per_session: number;
   avg_engaged_time: number;
+  total_leads: number;
+  conversion_rate: number;
+  avg_scroll_depth: number;
+  top_page: string | null;
+  top_page_count: number;
+  returning_visitor_pct: number;
+  returning_visitor_count: number;
   top_pages: { path: string; count: number; unique_visitors: number; avg_time: number; bounce_rate: number }[];
   entry_pages: { path: string; count: number }[];
   exit_pages: { path: string; count: number }[];

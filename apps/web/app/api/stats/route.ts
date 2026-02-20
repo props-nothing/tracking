@@ -638,7 +638,7 @@ export async function GET(request: NextRequest) {
   }
 
   // --- Default: overview stats ---
-  const selectFields = 'event_type, event_name, visitor_hash, session_id, path, referrer_hostname, country_code, city, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, utm_source, utm_medium, utm_campaign, time_on_page_ms, timestamp';
+  const selectFields = 'event_type, event_name, visitor_hash, session_id, path, referrer_hostname, country_code, city, browser, os, device_type, engaged_time_ms, scroll_depth_pct, is_bounce, is_entry, is_exit, utm_source, utm_medium, utm_campaign, time_on_page_ms, timestamp';
 
   let eventsQuery = db
     .from('events')
@@ -661,6 +661,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       pageviews: 0, unique_visitors: 0, sessions: 0,
       avg_session_duration: 0, bounce_rate: 0, views_per_session: 0, avg_engaged_time: 0,
+      total_leads: 0, conversion_rate: 0, avg_scroll_depth: 0,
+      top_page: null, top_page_count: 0, returning_visitor_pct: 0, returning_visitor_count: 0,
       top_pages: [], entry_pages: [], exit_pages: [],
       top_referrers: [], utm_sources: [], utm_mediums: [], utm_campaigns: [],
       top_countries: [], top_cities: [],
@@ -822,6 +824,37 @@ export async function GET(request: NextRequest) {
       .map(([date, d]) => ({ date, pageviews: d.pageviews, visitors: d.visitors.size, leads: d.leads }));
   }
 
+  const totalLeads = (leads || []).length;
+  const conversionRate = uniqueVisitors > 0
+    ? Math.round(totalLeads / uniqueVisitors * 1000) / 10
+    : 0;
+
+  // Avg scroll depth
+  const scrollDepths = events.filter((e) => e.scroll_depth_pct != null).map((e) => e.scroll_depth_pct!);
+  const avgScrollDepth = scrollDepths.length > 0
+    ? Math.round(scrollDepths.reduce((a, b) => a + b, 0) / scrollDepths.length)
+    : 0;
+
+  // Top country (single value for overview card)
+  // -- removed: not actionable in overview --
+
+  // Top referrer (single value for overview card)
+  // -- removed: not actionable in overview --
+
+  // Top page (most viewed page)
+  const topPageEntry = topPages.length > 0 ? topPages[0] : null;
+
+  // Returning visitors: visitors with more than one session in this period
+  const visitorSessions: Record<string, Set<string>> = {};
+  for (const e of events) {
+    if (!visitorSessions[e.visitor_hash]) visitorSessions[e.visitor_hash] = new Set();
+    visitorSessions[e.visitor_hash].add(e.session_id);
+  }
+  const returningVisitorCount = Object.values(visitorSessions).filter((s) => s.size > 1).length;
+  const returningVisitorPct = uniqueVisitors > 0
+    ? Math.round(returningVisitorCount / uniqueVisitors * 1000) / 10
+    : 0;
+
   return NextResponse.json({
     pageviews,
     unique_visitors: uniqueVisitors,
@@ -830,6 +863,13 @@ export async function GET(request: NextRequest) {
     bounce_rate: bounceRate,
     views_per_session: viewsPerSession,
     avg_engaged_time: avgEngagedTime,
+    total_leads: totalLeads,
+    conversion_rate: conversionRate,
+    avg_scroll_depth: avgScrollDepth,
+    top_page: topPageEntry ? topPageEntry.path : null,
+    top_page_count: topPageEntry ? topPageEntry.count : 0,
+    returning_visitor_pct: returningVisitorPct,
+    returning_visitor_count: returningVisitorCount,
     top_pages: topPages,
     entry_pages: entryPages,
     exit_pages: exitPages,
