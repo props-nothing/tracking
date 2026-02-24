@@ -187,6 +187,27 @@ export async function POST(request: NextRequest) {
       return new NextResponse(null, { status: 202, headers: corsHeaders });
     }
 
+    // 11b. Deduplicate purchase events by order_id
+    //      If a purchase event with the same order_id already exists for this site,
+    //      skip inserting a duplicate (prevents double-counted revenue from payment
+    //      gateway redirects, page refreshes, or new sessions on the thank-you page).
+    if (data.event_type === 'ecommerce' && data.ecommerce_action === 'purchase' && data.order_id) {
+      const { data: existingPurchase } = await supabase
+        .from('events')
+        .select('id')
+        .eq('site_id', data.site_id)
+        .eq('event_type', 'ecommerce')
+        .eq('ecommerce_action', 'purchase')
+        .eq('order_id', data.order_id)
+        .limit(1)
+        .maybeSingle();
+
+      if (existingPurchase) {
+        // Purchase already recorded — skip duplicate
+        return new NextResponse(null, { status: 202, headers: corsHeaders });
+      }
+    }
+
     // 12. Insert event row
     const eventRow = {
       site_id: data.site_id,

@@ -135,47 +135,71 @@ function detectWooCommerce(
   } catch { /* jQuery not available — OK, form submit still works */ }
 
   // ── Checkout (begin_checkout) ──────────────────────────────
-  if (document.body.classList.contains('woocommerce-checkout')) {
+  // Guard: do NOT fire begin_checkout on the order-received (thank-you) page,
+  // which shares the woocommerce-checkout body class in WooCommerce.
+  const isOrderReceived = document.body.classList.contains('woocommerce-order-received')
+    || window.location.pathname.includes('/order-received/')
+    || window.location.pathname.includes('/bestelling-ontvangen/')
+    || !!document.querySelector('.woocommerce-order-overview');
+
+  if (document.body.classList.contains('woocommerce-checkout') && !isOrderReceived) {
     emitEvent(createEcommercePayload('begin_checkout', {}));
     log(debugMode, 'WooCommerce begin_checkout');
   }
 
   // ── Purchase (order-received / thank-you page) ─────────────
-  if (document.body.classList.contains('woocommerce-order-received')
-    || window.location.pathname.includes('/order-received/')
-    || window.location.pathname.includes('/bestelling-ontvangen/')
-    || document.querySelector('.woocommerce-order-overview')) {
+  if (isOrderReceived) {
     try {
       // Try extracting order data from the thank-you page
       const orderEl = document.querySelector('.woocommerce-order-overview__order strong, .order strong');
       const orderId = orderEl?.textContent?.trim() || '';
-      const totalEl = document.querySelector('.woocommerce-order-overview__total strong .woocommerce-Price-amount, .order-total .woocommerce-Price-amount');
-      const totalText = (totalEl?.textContent || '').replace(/[^\d.,]/g, '').replace(',', '.');
-      const total = parseFloat(totalText) || 0;
 
-      // Collect ordered items from order details table
-      const items: EcommerceData['items'] = [];
-      document.querySelectorAll('.woocommerce-table--order-details .order_item, .woocommerce-table--order-details tbody tr').forEach((row) => {
-        const nameEl = row.querySelector('.product-name');
-        if (!nameEl) return;
-        const name = (nameEl.textContent || '').replace(/\s*×\s*\d+/, '').trim();
-        const qtyMatch = (nameEl.textContent || '').match(/×\s*(\d+)/);
-        const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-        const priceEl = row.querySelector('.product-total .woocommerce-Price-amount');
-        const priceText = (priceEl?.textContent || '').replace(/[^\d.,]/g, '').replace(',', '.');
-        const price = parseFloat(priceText) || 0;
-        items.push({ id: '', name, price: qty > 0 ? price / qty : price, quantity: qty });
-      });
+      // Deduplicate: skip if this order_id was already tracked in this browser
+      const purchaseKey = '_tk_pur';
+      let trackedOrders: string[] = [];
+      try {
+        trackedOrders = JSON.parse(sessionStorage.getItem(purchaseKey) || '[]');
+      } catch { /* ignore */ }
 
-      const payload = createEcommercePayload('purchase', {
-        order_id: orderId,
-        total,
-        revenue: total,
-        currency: (window as any).woocommerce_params?.currency || 'EUR',
-        items: items.length > 0 ? items : undefined,
-      });
-      emitEvent(payload);
-      log(debugMode, 'WooCommerce purchase:', orderId, '€' + total);
+      if (orderId && trackedOrders.includes(orderId)) {
+        log(debugMode, 'WooCommerce purchase already tracked, skipping:', orderId);
+      } else {
+        const totalEl = document.querySelector('.woocommerce-order-overview__total strong .woocommerce-Price-amount, .order-total .woocommerce-Price-amount');
+        const totalText = (totalEl?.textContent || '').replace(/[^\d.,]/g, '').replace(',', '.');
+        const total = parseFloat(totalText) || 0;
+
+        // Collect ordered items from order details table
+        const items: EcommerceData['items'] = [];
+        document.querySelectorAll('.woocommerce-table--order-details .order_item, .woocommerce-table--order-details tbody tr').forEach((row) => {
+          const nameEl = row.querySelector('.product-name');
+          if (!nameEl) return;
+          const name = (nameEl.textContent || '').replace(/\s*×\s*\d+/, '').trim();
+          const qtyMatch = (nameEl.textContent || '').match(/×\s*(\d+)/);
+          const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+          const priceEl = row.querySelector('.product-total .woocommerce-Price-amount');
+          const priceText = (priceEl?.textContent || '').replace(/[^\d.,]/g, '').replace(',', '.');
+          const price = parseFloat(priceText) || 0;
+          items.push({ id: '', name, price: qty > 0 ? price / qty : price, quantity: qty });
+        });
+
+        const payload = createEcommercePayload('purchase', {
+          order_id: orderId,
+          total,
+          revenue: total,
+          currency: (window as any).woocommerce_params?.currency || 'EUR',
+          items: items.length > 0 ? items : undefined,
+        });
+        emitEvent(payload);
+        log(debugMode, 'WooCommerce purchase:', orderId, '€' + total);
+
+        // Mark this order as tracked
+        if (orderId) {
+          try {
+            trackedOrders.push(orderId);
+            sessionStorage.setItem(purchaseKey, JSON.stringify(trackedOrders));
+          } catch { /* ignore */ }
+        }
+      }
     } catch { /* ignore errors parsing thank you page */ }
   }
 

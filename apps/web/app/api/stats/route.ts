@@ -380,11 +380,23 @@ export async function GET(request: NextRequest) {
       q = applyDbFilters(q, filters);
       return q;
     });
-    const purchases = evts.filter((e) => e.ecommerce_action === 'purchase');
     const addToCarts = evts.filter((e) => e.ecommerce_action === 'add_to_cart');
     const checkouts = evts.filter((e) => e.ecommerce_action === 'begin_checkout');
+
+    // Deduplicate purchases by order_id to prevent double-counted revenue
+    // (e.g. from payment gateway redirects creating duplicate events)
+    const allPurchases = evts.filter((e) => e.ecommerce_action === 'purchase');
+    const seenOrderIds = new Set<string>();
+    const purchases = allPurchases.filter((e) => {
+      if (e.order_id) {
+        if (seenOrderIds.has(e.order_id)) return false;
+        seenOrderIds.add(e.order_id);
+      }
+      return true;
+    });
+
     const totalRevenue = purchases.reduce((s, e) => s + (e.revenue || 0), 0);
-    const totalOrders = new Set(purchases.map((e) => e.order_id).filter(Boolean)).size || purchases.length;
+    const totalOrders = purchases.length;
     const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
     // Determine predominant currency from events

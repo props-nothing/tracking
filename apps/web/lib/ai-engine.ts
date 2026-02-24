@@ -216,7 +216,19 @@ export async function buildDataPayload(
 
   // Form submissions count
   const formSubmissions = evts.filter(e => e.event_type === 'form_submit').length;
-  const totalRevenue = evts.reduce((sum, e) => sum + (e.revenue || 0), 0);
+
+  // Deduplicate purchase revenue by order_id
+  const purchaseEvents = evts.filter(e => e.event_type === 'ecommerce' && (e as any).ecommerce_action === 'purchase');
+  const seenOrderIds = new Set<string>();
+  const dedupedPurchases = purchaseEvents.filter(e => {
+    const oid = (e as any).order_id;
+    if (oid) {
+      if (seenOrderIds.has(oid)) return false;
+      seenOrderIds.add(oid);
+    }
+    return true;
+  });
+  const totalRevenue = dedupedPurchases.reduce((sum, e) => sum + (e.revenue || 0), 0);
 
   // Daily trend
   const dailyMap: Record<string, { visitors: Set<string>; pageviews: number; sessions: Set<string> }> = {};
