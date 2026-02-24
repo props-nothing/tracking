@@ -36,7 +36,7 @@ export async function upsertSession(data: SessionData): Promise<{
   const { data: existing } = await supabase
     .from("sessions")
     .select(
-      "id, started_at, pageviews, events_count, entry_path, total_revenue, engaged_time_ms, referrer_hostname",
+      "id, started_at, pageviews, events_count, entry_path, total_revenue, engaged_time_ms, referrer_hostname, utm_source",
     )
     .eq("id", data.session_id)
     .single();
