@@ -1,7 +1,17 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
+import { useMetric } from '@/hooks/use-metric';
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import type { OverviewStats } from '@/types';
+
+function formatTime(ms: number): string {
+  if (!ms || ms <= 0) return '0s';
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}m ${s % 60}s`;
+}
 
 interface PageData {
   path: string;
@@ -9,22 +19,6 @@ interface PageData {
   unique_visitors?: number;
   avg_time?: number;
   bounce_rate?: number;
-}
-
-interface FlowStats {
-  entry_pages: PageData[];
-  top_pages: PageData[];
-  exit_pages: PageData[];
-  pageviews: number;
-  sessions: number;
-  bounce_rate: number;
-}
-
-function formatTime(ms: number): string {
-  if (!ms || ms <= 0) return '0s';
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 
 function FlowColumn({
@@ -83,7 +77,6 @@ function FlowColumn({
                     {pct.toFixed(0)}%
                   </span>
                 </div>
-                {/* Bar */}
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full transition-all"
@@ -112,51 +105,29 @@ function FlowArrow() {
 export default function FlowPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [stats, setStats] = useState<FlowStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useMetric<OverviewStats>(siteId, queryString);
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&${queryString}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setStats({
-          entry_pages: data.entry_pages || [],
-          top_pages: data.top_pages || [],
-          exit_pages: data.exit_pages || [],
-          pageviews: data.pageviews || 0,
-          sessions: data.sessions || 0,
-          bounce_rate: data.bounce_rate || 0,
-        });
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [siteId, queryString]);
+  if (loading) return <LoadingState />;
 
-  if (loading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
-  }
+  const entryPages = data?.entry_pages || [];
+  const topPages = data?.top_pages || [];
+  const exitPages = data?.exit_pages || [];
 
-  if (!stats || (stats.entry_pages.length === 0 && stats.top_pages.length === 0)) {
+  if (entryPages.length === 0 && topPages.length === 0) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gebruikersstroom</h1>
-          <p className="text-sm text-muted-foreground">Begrijp hoe bezoekers door je site navigeren</p>
-        </div>
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog niet genoeg data</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            De gebruikersstroomweergave heeft paginaweergavendata nodig met instap- en uitstappagina's. Blijf volgen om te zien hoe bezoekers door je site navigeren.
-          </p>
-        </div>
+        <PageHeader title="Gebruikersstroom" description="Begrijp hoe bezoekers door je site navigeren" />
+        <EmptyState
+          title="Nog niet genoeg data"
+          description="De gebruikersstroomweergave heeft paginaweergavendata nodig met instap- en uitstappagina's. Blijf volgen om te zien hoe bezoekers door je site navigeren."
+        />
       </div>
     );
   }
 
-  const entryItems = stats.entry_pages.slice(0, 8);
-  const pageItems = stats.top_pages.slice(0, 8);
-  const exitItems = stats.exit_pages.slice(0, 8);
+  const entryItems = entryPages.slice(0, 8);
+  const pageItems = topPages.slice(0, 8);
+  const exitItems = exitPages.slice(0, 8);
 
   const maxEntry = Math.max(...entryItems.map((p) => p.count), 1);
   const maxPage = Math.max(...pageItems.map((p) => p.count), 1);
@@ -164,30 +135,27 @@ export default function FlowPage({ params }: { params: Promise<{ siteId: string 
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Gebruikersstroom</h1>
-        <p className="text-sm text-muted-foreground">Begrijp hoe bezoekers door je site navigeren</p>
-      </div>
+      <PageHeader title="Gebruikersstroom" description="Begrijp hoe bezoekers door je site navigeren" />
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium text-muted-foreground">Totaal sessies</p>
-          <p className="mt-1 text-2xl font-bold">{stats.sessions.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-bold">{(data?.sessions ?? 0).toLocaleString()}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium text-muted-foreground">Totaal paginaweergaven</p>
-          <p className="mt-1 text-2xl font-bold">{stats.pageviews.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-bold">{(data?.pageviews ?? 0).toLocaleString()}</p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium text-muted-foreground">Pagina's / sessie</p>
           <p className="mt-1 text-2xl font-bold">
-            {stats.sessions > 0 ? (stats.pageviews / stats.sessions).toFixed(1) : '0'}
+            {data && data.sessions > 0 ? (data.pageviews / data.sessions).toFixed(1) : '0'}
           </p>
         </div>
         <div className="rounded-lg border bg-card p-4">
           <p className="text-xs font-medium text-muted-foreground">Bouncepercentage</p>
-          <p className="mt-1 text-2xl font-bold">{stats.bounce_rate}%</p>
+          <p className="mt-1 text-2xl font-bold">{data?.bounce_rate ?? 0}%</p>
         </div>
       </div>
 

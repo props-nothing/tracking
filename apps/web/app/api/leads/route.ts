@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { getDateRange } from '@/lib/query-helpers';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -22,14 +23,21 @@ export async function GET(request: NextRequest) {
   const status = request.nextUrl.searchParams.get('status'); // filter by status
   const source = request.nextUrl.searchParams.get('source'); // filter by source
   const search = request.nextUrl.searchParams.get('search'); // search name/email
-  const from = request.nextUrl.searchParams.get('from'); // date range start
-  const to = request.nextUrl.searchParams.get('to'); // date range end
+  const referrer = request.nextUrl.searchParams.get('referrer'); // dashboard referrer filter
+
+  // Period handling — convert period param to date range
+  const period = request.nextUrl.searchParams.get('period') || 'last_30_days';
+  const customFrom = request.nextUrl.searchParams.get('from');
+  const customTo = request.nextUrl.searchParams.get('to');
+  const { fromStr, toStr } = getDateRange(period, customFrom, customTo);
 
   // Build query for leads list
   let query = db
     .from('leads')
     .select('*', { count: 'exact' })
     .eq('site_id', siteId)
+    .gte('created_at', fromStr)
+    .lte('created_at', toStr)
     .order('created_at', { ascending: false })
     .range(page * pageSize, (page + 1) * pageSize - 1);
 
@@ -45,27 +53,54 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (referrer) {
+    query = query.or(`referrer_hostname.ilike.%${referrer}%,utm_source.ilike.%${referrer}%`);
+  }
+
   if (search) {
     query = query.or(`lead_name.ilike.%${search}%,lead_email.ilike.%${search}%,lead_company.ilike.%${search}%`);
   }
 
-  if (from) {
-    query = query.gte('created_at', from);
-  }
-  if (to) {
-    query = query.lte('created_at', to);
-  }
-
   const { data: leads, count } = await query;
 
-  // Aggregated stats
-  const { data: stats } = await db.rpc('get_lead_stats', { p_site_id: siteId }).single();
+  // Aggregated stats (period-aware)
+  let statsQuery = db
+    .from('leads')
+    .select('id, status, created_at')
+    .eq('site_id', siteId)
+    .gte('created_at', fromStr)
+    .lte('created_at', toStr);
 
-  // Source breakdown (from materialized view or live query)
-  const { data: sourceBreakdown } = await db
+  if (referrer) {
+    statsQuery = statsQuery.or(`referrer_hostname.ilike.%${referrer}%,utm_source.ilike.%${referrer}%`);
+  }
+
+  const { data: periodLeads } = await statsQuery;
+
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 86400000);
+  const monthAgo = new Date(now.getTime() - 30 * 86400000);
+
+  const stats = {
+    total_leads: periodLeads?.length || 0,
+    new_leads: periodLeads?.filter((l) => l.status === 'new').length || 0,
+    this_week: periodLeads?.filter((l) => new Date(l.created_at) >= weekAgo).length || 0,
+    this_month: periodLeads?.filter((l) => new Date(l.created_at) >= monthAgo).length || 0,
+  };
+
+  // Source breakdown (period-aware)
+  let breakdownQuery = db
     .from('leads')
     .select('utm_source, utm_medium, utm_campaign, referrer_hostname')
-    .eq('site_id', siteId);
+    .eq('site_id', siteId)
+    .gte('created_at', fromStr)
+    .lte('created_at', toStr);
+
+  if (referrer) {
+    breakdownQuery = breakdownQuery.or(`referrer_hostname.ilike.%${referrer}%,utm_source.ilike.%${referrer}%`);
+  }
+
+  const { data: sourceBreakdown } = await breakdownQuery;
 
   // Compute source summary
   const sourceCounts: Record<string, number> = {};
@@ -104,7 +139,7 @@ export async function GET(request: NextRequest) {
     total: count || 0,
     page,
     page_size: pageSize,
-    stats: stats || { total_leads: 0, new_leads: 0, this_week: 0, this_month: 0 },
+    stats,
     sources,
     mediums,
     campaigns,

@@ -2,14 +2,8 @@
 
 import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
-
-interface Funnel {
-  id: string;
-  name: string;
-  description: string;
-  steps: { name: string }[];
-  created_at: string;
-}
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import type { Funnel } from '@/types';
 
 export default function FunnelsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
@@ -24,36 +18,30 @@ export default function FunnelsPage({ params }: { params: Promise<{ siteId: stri
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId]);
+  }, [siteId, queryString]);
+
+  if (loading) return <LoadingState />;
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Funnels</h1>
-          <p className="text-sm text-muted-foreground">Meerstaps-conversiefunnels</p>
-        </div>
-        <Link
-          href={`/dashboard/${siteId}/funnels/new`}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Nieuwe funnel
-        </Link>
-      </div>
-
-      {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
-      ) : funnels.length === 0 ? (
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog geen funnels</h3>
-          <p className="mt-2 text-sm text-muted-foreground">Maak een funnel om meerstaps-conversiestromen te analyseren.</p>
+      <PageHeader
+        title="Funnels"
+        description="Meerstaps-conversiefunnels"
+        action={
           <Link
             href={`/dashboard/${siteId}/funnels/new`}
-            className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Funnel aanmaken
+            Nieuwe funnel
           </Link>
-        </div>
+        }
+      />
+
+      {funnels.length === 0 ? (
+        <EmptyState
+          title="Nog geen funnels"
+          description="Maak een funnel om meerstaps-conversiestromen te analyseren."
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {funnels.map((funnel) => (

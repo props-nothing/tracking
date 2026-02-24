@@ -1,104 +1,12 @@
 'use client';
 
-import { use, useEffect, useState, useCallback } from 'react';
+import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
 import { MetricCard } from '@/components/metric-card';
+import { PageHeader } from '@/components/shared';
+import { formatDate, formatDuration, timeAgo, getDeviceIcon, getCountryFlag } from '@/lib/formatters';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-
-interface Visitor {
-  id: string;
-  visitor_id: string;
-  site_id: string;
-  first_seen_at: string;
-  last_seen_at: string;
-  total_sessions: number;
-  total_pageviews: number;
-  total_events: number;
-  total_revenue: number;
-  total_engaged_time_ms: number;
-  first_referrer_hostname: string | null;
-  first_utm_source: string | null;
-  first_utm_medium: string | null;
-  first_utm_campaign: string | null;
-  first_entry_path: string | null;
-  last_country_code: string | null;
-  last_city: string | null;
-  last_device_type: string | null;
-  last_browser: string | null;
-  last_os: string | null;
-}
-
-interface VisitorStats {
-  total_visitors: number;
-  returning_visitors: number;
-  new_visitors: number;
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('nl-NL', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function formatDuration(ms: number): string {
-  if (!ms || ms < 1000) return '0s';
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  if (minutes < 60) return `${minutes}m ${remainingSeconds}s`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return `${hours}h ${remainingMinutes}m`;
-}
-
-function timeAgo(dateStr: string): string {
-  const now = Date.now();
-  const then = new Date(dateStr).getTime();
-  const diffMs = now - then;
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 30) return `${diffDays}d ago`;
-  const diffMonths = Math.floor(diffDays / 30);
-  return `${diffMonths}mo ago`;
-}
-
-function getDeviceIcon(device: string | null): string {
-  switch (device) {
-    case 'mobile': return '📱';
-    case 'tablet': return '📲';
-    default: return '🖥️';
-  }
-}
-
-function getBrowserIcon(browser: string | null): string {
-  if (!browser) return '🌐';
-  const b = browser.toLowerCase();
-  if (b.includes('chrome')) return '🟢';
-  if (b.includes('firefox')) return '🟠';
-  if (b.includes('safari')) return '🔵';
-  if (b.includes('edge')) return '🔷';
-  return '🌐';
-}
-
-function getCountryFlag(code: string | null): string {
-  if (!code || code.length !== 2) return '🌍';
-  const codePoints = code
-    .toUpperCase()
-    .split('')
-    .map(c => 0x1F1E6 - 65 + c.charCodeAt(0));
-  return String.fromCodePoint(...codePoints);
-}
+import type { Visitor, VisitorStats } from '@/types';
 
 function getSourceLabel(visitor: Visitor): string {
   if (visitor.first_utm_source) {
@@ -113,7 +21,6 @@ function getSourceLabel(visitor: Visitor): string {
 export default function VisitorsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const pathname = usePathname();
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [stats, setStats] = useState<VisitorStats>({ total_visitors: 0, returning_visitors: 0, new_visitors: 0 });
   const [total, setTotal] = useState(0);
@@ -122,25 +29,34 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
   const [sort, setSort] = useState('last_seen_at');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [deviceFilter, setDeviceFilter] = useState('');
   const [countryFilter, setCountryFilter] = useState('');
   const [returningOnly, setReturningOnly] = useState(false);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchVisitors = useCallback(() => {
     setLoading(true);
-    const params = new URLSearchParams({
-      site_id: siteId,
-      page: page.toString(),
-      page_size: '50',
-      sort,
-      order,
-    });
-    if (search) params.set('search', search);
-    if (deviceFilter) params.set('device', deviceFilter);
-    if (countryFilter) params.set('country', countryFilter);
-    if (returningOnly) params.set('returning', 'true');
+    const p = new URLSearchParams(queryString);
+    p.set('site_id', siteId);
+    p.set('page', page.toString());
+    p.set('page_size', '50');
+    p.set('sort', sort);
+    p.set('order', order);
+    if (debouncedSearch) p.set('search', debouncedSearch);
+    if (deviceFilter) p.set('device', deviceFilter);
+    if (countryFilter) p.set('country', countryFilter);
+    if (returningOnly) p.set('returning', 'true');
 
-    fetch(`/api/visitors?${params}`)
+    fetch(`/api/visitors?${p}`)
       .then(r => r.json())
       .then(data => {
         setVisitors(data.visitors || []);
@@ -149,7 +65,7 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [siteId, page, sort, order, search, deviceFilter, countryFilter, returningOnly]);
+  }, [siteId, queryString, page, sort, order, debouncedSearch, deviceFilter, countryFilter, returningOnly]);
 
   useEffect(() => {
     fetchVisitors();
@@ -174,15 +90,8 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Bezoekers</h1>
-        <p className="text-sm text-muted-foreground">
-          Bekijk individuele bezoekersprofielen en hun activiteitengeschiedenis
-        </p>
-      </div>
+      <PageHeader title="Bezoekers" description="Bekijk individuele bezoekersprofielen en hun activiteitengeschiedenis" />
 
-      {/* Metric Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard title="Totaal bezoekers" value={stats.total_visitors.toLocaleString()} />
         <MetricCard title="Terugkerende bezoekers" value={stats.returning_visitors.toLocaleString()} />
@@ -195,7 +104,7 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
           type="text"
           placeholder="Zoek bezoeker-ID..."
           value={search}
-          onChange={e => { setSearch(e.target.value); setPage(0); }}
+          onChange={e => setSearch(e.target.value)}
           className="rounded-md border bg-background px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary w-48"
         />
         <select
@@ -226,36 +135,21 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
             <thead>
               <tr className="border-b text-xs text-muted-foreground">
                 <th className="px-4 py-2 text-left font-medium">Bezoeker</th>
-                <th
-                  className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
-                  onClick={() => handleSort('total_sessions')}
-                >
+                <th className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => handleSort('total_sessions')}>
                   Sessies{sortIcon('total_sessions')}
                 </th>
-                <th
-                  className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
-                  onClick={() => handleSort('total_pageviews')}
-                >
+                <th className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => handleSort('total_pageviews')}>
                   Paginaweergaven{sortIcon('total_pageviews')}
                 </th>
-                <th
-                  className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
-                  onClick={() => handleSort('total_revenue')}
-                >
+                <th className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => handleSort('total_revenue')}>
                   Omzet{sortIcon('total_revenue')}
                 </th>
                 <th className="px-4 py-2 text-left font-medium">Bron</th>
                 <th className="px-4 py-2 text-left font-medium">Locatie</th>
-                <th
-                  className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
-                  onClick={() => handleSort('first_seen_at')}
-                >
+                <th className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => handleSort('first_seen_at')}>
                   Eerst gezien{sortIcon('first_seen_at')}
                 </th>
-                <th
-                  className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none"
-                  onClick={() => handleSort('last_seen_at')}
-                >
+                <th className="px-4 py-2 text-right font-medium cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => handleSort('last_seen_at')}>
                   Laatst gezien{sortIcon('last_seen_at')}
                 </th>
               </tr>
@@ -270,20 +164,14 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
               ) : visitors.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                    Geen bezoekers gevonden. Bezoekersprofielen worden aangemaakt wanneer gebruikers je site bezoeken met het trackingscript geïnstalleerd.
+                    Geen bezoekers gevonden.
                   </td>
                 </tr>
               ) : (
                 visitors.map(v => (
-                  <tr
-                    key={v.id}
-                    className="border-b last:border-0 hover:bg-muted/50 transition-colors"
-                  >
+                  <tr key={v.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
                     <td className="px-4 py-3">
-                      <Link
-                        href={`/dashboard/${siteId}/visitors/${v.visitor_id}`}
-                        className="group flex items-center gap-2"
-                      >
+                      <Link href={`/dashboard/${siteId}/visitors/${v.visitor_id}`} className="group flex items-center gap-2">
                         <span className="text-lg">{getDeviceIcon(v.last_device_type)}</span>
                         <div>
                           <div className="text-sm font-medium group-hover:text-primary transition-colors">
@@ -300,9 +188,7 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
                         {v.total_sessions}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm tabular-nums">
-                      {v.total_pageviews}
-                    </td>
+                    <td className="px-4 py-3 text-right text-sm tabular-nums">{v.total_pageviews}</td>
                     <td className="px-4 py-3 text-right text-sm tabular-nums">
                       {v.total_revenue > 0 ? (
                         <span className="text-green-600 dark:text-green-400 font-medium">
@@ -327,12 +213,8 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                      {formatDate(v.first_seen_at)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">
-                      {timeAgo(v.last_seen_at)}
-                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{formatDate(v.first_seen_at)}</td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground">{timeAgo(v.last_seen_at)}</td>
                   </tr>
                 ))
               )}
@@ -340,7 +222,6 @@ export default function VisitorsPage({ params }: { params: Promise<{ siteId: str
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
             <span className="text-muted-foreground">

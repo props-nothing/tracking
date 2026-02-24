@@ -1,18 +1,9 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-
-interface Alert {
-  id: string;
-  type: 'traffic_drop' | 'traffic_spike' | 'goal_not_met' | 'error_spike' | 'uptime';
-  name: string;
-  threshold: number;
-  notify_email: string;
-  notify_slack_url: string | null;
-  enabled: boolean;
-  last_triggered_at: string | null;
-  created_at: string;
-}
+import { use, useState } from 'react';
+import { useCrud } from '@/hooks/use-crud';
+import { LoadingState, EmptyState, PageHeader, PrimaryButton, DeleteButton } from '@/components/shared';
+import type { Alert } from '@/types';
 
 const alertTypes = [
   { value: 'traffic_drop', label: 'Verkeersdaling', description: 'Melding wanneer verkeer onder drempel % daalt' },
@@ -24,57 +15,31 @@ const alertTypes = [
 
 export default function AlertsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: alerts, loading, createItem, deleteItem } = useCrud<Alert>('/api/alerts', siteId, 'alerts');
+
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ type: 'traffic_drop', name: '', threshold: 50, notify_email: '', notify_slack_url: '' });
   const [creating, setCreating] = useState(false);
 
-  const fetchAlerts = () => {
-    setLoading(true);
-    fetch(`/api/alerts?site_id=${siteId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setAlerts(d.alerts || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(fetchAlerts, [siteId]);
-
   const handleCreate = async () => {
     setCreating(true);
-    await fetch('/api/alerts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, site_id: siteId, notify_slack_url: form.notify_slack_url || undefined }),
-    });
+    await createItem({ ...form, notify_slack_url: form.notify_slack_url || undefined });
     setShowCreate(false);
     setForm({ type: 'traffic_drop', name: '', threshold: 50, notify_email: '', notify_slack_url: '' });
     setCreating(false);
-    fetchAlerts();
-  };
-
-  const handleDelete = async (id: string) => {
-    await fetch(`/api/alerts?id=${id}`, { method: 'DELETE' });
-    fetchAlerts();
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Meldingen</h1>
-          <p className="text-sm text-muted-foreground">Ontvang meldingen wanneer statistieken veranderen</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Nieuwe melding
-        </button>
-      </div>
+      <PageHeader
+        title="Meldingen"
+        description="Ontvang meldingen wanneer statistieken veranderen"
+        action={
+          <PrimaryButton onClick={() => setShowCreate(!showCreate)}>
+            Nieuwe melding
+          </PrimaryButton>
+        }
+      />
 
       {showCreate && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
@@ -127,25 +92,19 @@ export default function AlertsPage({ params }: { params: Promise<{ siteId: strin
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
           </div>
-          <button
-            onClick={handleCreate}
-            disabled={!form.name || !form.notify_email || creating}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <PrimaryButton onClick={handleCreate} disabled={!form.name || !form.notify_email || creating}>
             {creating ? 'Aanmaken...' : 'Melding aanmaken'}
-          </button>
+          </PrimaryButton>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
+        <LoadingState />
       ) : alerts.length === 0 ? (
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Geen meldingen geconfigureerd</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Maak meldingen aan om op de hoogte te worden gebracht van verkeersdalingen, foutpieken en meer.
-          </p>
-        </div>
+        <EmptyState
+          title="Geen meldingen geconfigureerd"
+          description="Maak meldingen aan om op de hoogte te worden gebracht van verkeersdalingen, foutpieken en meer."
+        />
       ) : (
         <div className="space-y-3">
           {alerts.map((a) => (
@@ -161,12 +120,7 @@ export default function AlertsPage({ params }: { params: Promise<{ siteId: strin
                 <span className={`rounded px-2 py-0.5 text-xs font-medium ${a.enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
                   {a.enabled ? 'Actief' : 'Uitgeschakeld'}
                 </span>
-                <button
-                  onClick={() => handleDelete(a.id)}
-                  className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Verwijderen
-                </button>
+                <DeleteButton onClick={() => deleteItem(a.id)} />
               </div>
             </div>
           ))}

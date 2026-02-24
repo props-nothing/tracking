@@ -1,57 +1,27 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
+import { useCrud } from '@/hooks/use-crud';
+import { LoadingState, EmptyState, PageHeader, PrimaryButton } from '@/components/shared';
+import type { ApiKey } from '@/types';
 
-interface ApiKey {
-  id: string;
-  name: string;
-  prefix: string;
-  scopes: string[];
-  last_used_at: string | null;
-  created_at: string;
-}
+const availableScopes = ['read:stats', 'read:events', 'write:events', 'read:sites', 'write:sites', 'read:goals', 'write:goals'];
 
 export default function ApiKeysPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const [keys, setKeys] = useState<ApiKey[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: keys, loading, createItem, deleteItem } = useCrud<ApiKey>('/api/api-keys', siteId, 'keys');
+
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [scopes, setScopes] = useState<string[]>(['read:stats']);
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
 
-  const availableScopes = ['read:stats', 'read:events', 'write:events', 'read:sites', 'write:sites', 'read:goals', 'write:goals'];
-
-  const fetchKeys = () => {
-    setLoading(true);
-    fetch(`/api/api-keys?site_id=${siteId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setKeys(d.keys || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(fetchKeys, [siteId]);
-
   const handleCreate = async () => {
     setCreating(true);
-    const res = await fetch('/api/api-keys', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site_id: siteId, name, scopes }),
-    });
-    const data = await res.json();
-    setNewKey(data.key || null);
+    const data = await createItem({ name, scopes }) as Record<string, unknown>;
+    setNewKey((data?.key as string) || null);
     setCreating(false);
-    fetchKeys();
-  };
-
-  const handleRevoke = async (id: string) => {
-    await fetch(`/api/api-keys?id=${id}`, { method: 'DELETE' });
-    fetchKeys();
   };
 
   const toggleScope = (scope: string) => {
@@ -62,18 +32,15 @@ export default function ApiKeysPage({ params }: { params: Promise<{ siteId: stri
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">API-sleutels</h1>
-          <p className="text-sm text-muted-foreground">Beheer API-sleutels voor programmatische toegang</p>
-        </div>
-        <button
-          onClick={() => { setShowCreate(!showCreate); setNewKey(null); }}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Sleutel aanmaken
-        </button>
-      </div>
+      <PageHeader
+        title="API-sleutels"
+        description="Beheer API-sleutels voor programmatische toegang"
+        action={
+          <PrimaryButton onClick={() => { setShowCreate(!showCreate); setNewKey(null); }}>
+            Sleutel aanmaken
+          </PrimaryButton>
+        }
+      />
 
       {newKey && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4">
@@ -107,25 +74,19 @@ export default function ApiKeysPage({ params }: { params: Promise<{ siteId: stri
               ))}
             </div>
           </div>
-          <button
-            onClick={handleCreate}
-            disabled={!name || scopes.length === 0 || creating}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <PrimaryButton onClick={handleCreate} disabled={!name || scopes.length === 0 || creating}>
             {creating ? 'Aanmaken...' : 'Sleutel genereren'}
-          </button>
+          </PrimaryButton>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
+        <LoadingState />
       ) : keys.length === 0 && !showCreate ? (
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Geen API-sleutels</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Maak API-sleutels aan om programmatisch toegang te krijgen tot je analysegegevens.
-          </p>
-        </div>
+        <EmptyState
+          title="Geen API-sleutels"
+          description="Maak API-sleutels aan om programmatisch toegang te krijgen tot je analysegegevens."
+        />
       ) : (
         <div className="space-y-3">
           {keys.map((k) => (
@@ -139,7 +100,7 @@ export default function ApiKeysPage({ params }: { params: Promise<{ siteId: stri
                 </p>
               </div>
               <button
-                onClick={() => handleRevoke(k.id)}
+                onClick={() => deleteItem(k.id)}
                 className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
               >
                 Intrekken

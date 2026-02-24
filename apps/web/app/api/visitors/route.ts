@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getDateRange } from '@/lib/query-helpers';
 
 /**
  * GET /api/visitors — List visitors for a site with pagination and filtering
  *
  * Query params:
  *   site_id (required)
+ *   period (default: last_30_days)
+ *   from / to (for custom period)
  *   page (default: 0)
  *   page_size (default: 50)
  *   sort (default: last_seen_at) — last_seen_at, first_seen_at, total_sessions, total_pageviews, total_revenue
@@ -15,6 +18,7 @@ import { createClient } from '@/lib/supabase/server';
  *   browser — filter by last_browser
  *   os — filter by last_os
  *   device — filter by last_device_type
+ *   referrer — filter by first_referrer_hostname / first_utm_source
  *   returning — 'true' to only show visitors with > 1 session
  */
 export async function GET(request: NextRequest) {
@@ -31,6 +35,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'site_id required' }, { status: 400 });
   }
 
+  const period = searchParams.get('period') || 'last_30_days';
+  const customFrom = searchParams.get('from');
+  const customTo = searchParams.get('to');
+  const { fromStr, toStr } = getDateRange(period, customFrom, customTo);
+
   const page = parseInt(searchParams.get('page') || '0', 10);
   const pageSize = Math.min(parseInt(searchParams.get('page_size') || '50', 10), 100);
   const sort = searchParams.get('sort') || 'last_seen_at';
@@ -40,6 +49,7 @@ export async function GET(request: NextRequest) {
   const browser = searchParams.get('browser');
   const os = searchParams.get('os');
   const device = searchParams.get('device');
+  const referrer = searchParams.get('referrer');
   const returning = searchParams.get('returning');
 
   try {
@@ -47,7 +57,9 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('visitors')
       .select('*', { count: 'exact' })
-      .eq('site_id', siteId);
+      .eq('site_id', siteId)
+      .gte('last_seen_at', fromStr)
+      .lte('last_seen_at', toStr);
 
     // Apply filters
     if (search) {
@@ -57,6 +69,7 @@ export async function GET(request: NextRequest) {
     if (browser) query = query.ilike('last_browser', `%${browser}%`);
     if (os) query = query.ilike('last_os', `%${os}%`);
     if (device) query = query.eq('last_device_type', device);
+    if (referrer) query = query.or(`first_referrer_hostname.ilike.%${referrer}%,first_utm_source.ilike.%${referrer}%`);
     if (returning === 'true') query = query.gt('total_sessions', 1);
 
     // Sort
@@ -74,21 +87,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch visitors' }, { status: 500 });
     }
 
-    // Also return aggregate stats
-    const { data: statsData } = await supabase
+    // Also return aggregate stats (period-aware)
+    let statsQuery = supabase
       .from('visitors')
-      .select('id')
-      .eq('site_id', siteId);
+      .select('id, total_sessions')
+      .eq('site_id', siteId)
+      .gte('last_seen_at', fromStr)
+      .lte('last_seen_at', toStr);
+
+    if (country) statsQuery = statsQuery.eq('last_country_code', country);
+    if (browser) statsQuery = statsQuery.ilike('last_browser', `%${browser}%`);
+    if (os) statsQuery = statsQuery.ilike('last_os', `%${os}%`);
+    if (device) statsQuery = statsQuery.eq('last_device_type', device);
+    if (referrer) statsQuery = statsQuery.or(`first_referrer_hostname.ilike.%${referrer}%,first_utm_source.ilike.%${referrer}%`);
+
+    const { data: statsData } = await statsQuery;
 
     const totalVisitors = statsData?.length || 0;
-
-    const { data: returningData } = await supabase
-      .from('visitors')
-      .select('id')
-      .eq('site_id', siteId)
-      .gt('total_sessions', 1);
-
-    const returningVisitors = returningData?.length || 0;
+    const returningVisitors = statsData?.filter((v) => v.total_sessions > 1).length || 0;
 
     return NextResponse.json({
       visitors: visitors || [],

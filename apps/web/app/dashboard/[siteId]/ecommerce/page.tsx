@@ -1,73 +1,34 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
+import { useMetric } from '@/hooks/use-metric';
 import { MetricCard } from '@/components/metric-card';
 import { DataTable } from '@/components/tables/data-table';
 import { RevenueTimeSeries } from '@/components/charts/revenue-time-series';
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  EUR: '€', USD: '$', GBP: '£', JPY: '¥', CNY: '¥', KRW: '₩',
-  INR: '₹', BRL: 'R$', RUB: '₽', TRY: '₺', PLN: 'zł', CHF: 'CHF',
-  SEK: 'kr', NOK: 'kr', DKK: 'kr', CZK: 'Kč', AUD: 'A$', CAD: 'C$',
-};
-
-function formatMoney(amount: number, currency: string): string {
-  const sym = CURRENCY_SYMBOLS[currency] || currency + ' ';
-  return `${sym}${amount.toFixed(2)}`;
-}
-
-interface EcommerceData {
-  currency: string;
-  total_revenue: number;
-  total_orders: number;
-  avg_order_value: number;
-  add_to_cart_count: number;
-  checkout_count: number;
-  purchase_count: number;
-  top_products: { name: string; revenue: number; quantity: number }[];
-  revenue_timeseries: { date: string; revenue: number }[];
-}
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import { formatMoney } from '@/lib/formatters';
+import type { EcommerceData } from '@/types';
 
 export default function EcommercePage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [data, setData] = useState<EcommerceData | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=ecommerce`)
-      .then((res) => res.json())
-      .then((d) => {
-        setData(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [siteId, queryString]);
+  const { data, loading } = useMetric<EcommerceData>(siteId, queryString, 'ecommerce');
 
   const currency = data?.currency || 'EUR';
   const hasData = data && (data.total_orders > 0 || data.add_to_cart_count > 0 || data.checkout_count > 0);
 
+  if (loading) return <LoadingState />;
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">E-commerce</h1>
-          <p className="text-sm text-muted-foreground">Omzet, bestellingen, conversiefunnel en productanalyse</p>
-        </div>
-      </div>
+      <PageHeader title="E-commerce" description="Omzet, bestellingen, conversiefunnel en productanalyse" />
 
-      {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
-      ) : !hasData ? (
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog geen e-commercedata</h3>
-          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            E-commerce-events worden automatisch gevolgd voor WooCommerce- en Shopify-winkels.
-            Data verschijnt hier zodra klanten items aan het winkelwagentje toevoegen en bestellingen plaatsen.
-          </p>
-        </div>
+      {!hasData ? (
+        <EmptyState
+          title="Nog geen e-commercedata"
+          description="E-commerce-events worden automatisch gevolgd voor WooCommerce- en Shopify-winkels. Data verschijnt hier zodra klanten items aan het winkelwagentje toevoegen en bestellingen plaatsen."
+        />
       ) : (
         <>
           {/* Revenue metrics */}

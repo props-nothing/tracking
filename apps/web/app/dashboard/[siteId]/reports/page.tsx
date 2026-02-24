@@ -1,59 +1,39 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { use } from 'react';
-
-interface SharedReport {
-  id: string;
-  name: string;
-  token: string;
-  password_protected: boolean;
-  show_ai_insights: boolean;
-  created_at: string;
-  expires_at: string | null;
-}
+import { use, useState } from 'react';
+import { useCrud } from '@/hooks/use-crud';
+import { api } from '@/lib/api';
+import { LoadingState, EmptyState, PageHeader, PrimaryButton, DeleteButton } from '@/components/shared';
+import type { SharedReport } from '@/types';
 
 export default function ReportsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const [reports, setReports] = useState<SharedReport[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: reports, loading, createItem, fetchItems } = useCrud<SharedReport>('/api/reports', siteId, 'reports');
+
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [creating, setCreating] = useState(false);
   const [showAI, setShowAI] = useState(false);
-
-  const fetchReports = () => {
-    setLoading(true);
-    fetch(`/api/reports?site_id=${siteId}`)
-      .then((res) => res.json())
-      .then((d) => {
-        setReports(d.reports || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(fetchReports, [siteId]);
+  const [creating, setCreating] = useState(false);
 
   const handleCreate = async () => {
     setCreating(true);
-    await fetch('/api/reports', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site_id: siteId, name, password: password || undefined, show_ai_insights: showAI }),
-    });
+    await createItem({ name, password: password || undefined, show_ai_insights: showAI });
     setName('');
     setPassword('');
     setShowAI(false);
     setShowCreate(false);
     setCreating(false);
-    fetchReports();
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/reports/${id}`, { method: 'DELETE' });
-    fetchReports();
+    await api.delete(`/api/reports/${id}`);
+    fetchItems();
+  };
+
+  const toggleAI = async (report: SharedReport) => {
+    await api.patch(`/api/reports/${report.id}`, { show_ai_insights: !report.show_ai_insights });
+    fetchItems();
   };
 
   const copyLink = (token: string) => {
@@ -62,18 +42,15 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gedeelde rapporten</h1>
-          <p className="text-sm text-muted-foreground">Maak en beheer openbare rapportlinks</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Nieuw rapport
-        </button>
-      </div>
+      <PageHeader
+        title="Gedeelde rapporten"
+        description="Maak en beheer openbare rapportlinks"
+        action={
+          <PrimaryButton onClick={() => setShowCreate(!showCreate)}>
+            Nieuw rapport
+          </PrimaryButton>
+        }
+      />
 
       {showCreate && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
@@ -106,25 +83,19 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
             />
             AI-inzichten toevoegen
           </label>
-          <button
-            onClick={handleCreate}
-            disabled={!name || creating}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <PrimaryButton onClick={handleCreate} disabled={!name || creating}>
             {creating ? 'Aanmaken...' : 'Rapport aanmaken'}
-          </button>
+          </PrimaryButton>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
+        <LoadingState />
       ) : reports.length === 0 ? (
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog geen gedeelde rapporten</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Maak een gedeeld rapport om klanten of stakeholders een openbare link te geven.
-          </p>
-        </div>
+        <EmptyState
+          title="Nog geen gedeelde rapporten"
+          description="Maak een gedeeld rapport om klanten of stakeholders een openbare link te geven."
+        />
       ) : (
         <div className="space-y-3">
           {reports.map((r) => (
@@ -140,14 +111,7 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={async () => {
-                    await fetch(`/api/reports/${r.id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ show_ai_insights: !r.show_ai_insights }),
-                    });
-                    fetchReports();
-                  }}
+                  onClick={() => toggleAI(r)}
                   className={`rounded-md border px-3 py-1.5 text-xs hover:bg-muted ${
                     r.show_ai_insights ? 'border-purple-300 bg-purple-50 text-purple-700' : ''
                   }`}
@@ -168,12 +132,7 @@ export default function ReportsPage({ params }: { params: Promise<{ siteId: stri
                 >
                   Bekijken
                 </a>
-                <button
-                  onClick={() => handleDelete(r.id)}
-                  className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-                >
-                  Verwijderen
-                </button>
+                <DeleteButton onClick={() => handleDelete(r.id)} />
               </div>
             </div>
           ))}

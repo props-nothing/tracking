@@ -2,18 +2,11 @@
 
 import { createContext, useContext, useCallback, useMemo, type ReactNode } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import type { Period, Filters } from '@/types';
+import { FILTER_KEYS } from '@/types';
 
-// ── Types ─────────────────────────────────────────────────────
-export type Period = 'today' | 'yesterday' | 'last_7_days' | 'last_30_days' | 'last_90_days' | 'last_365_days' | 'custom';
-
-export interface Filters {
-  page?: string;
-  country?: string;
-  browser?: string;
-  os?: string;
-  device?: string;
-  referrer?: string;
-}
+// Re-export types for backward compatibility
+export type { Period, Filters } from '@/types';
 
 interface DashboardContextValue {
   // Date range
@@ -38,7 +31,7 @@ interface DashboardContextValue {
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 // ── Filter key mapping to URL params ──────────────────────────
-const FILTER_PARAMS: (keyof Filters)[] = ['page', 'country', 'browser', 'os', 'device', 'referrer'];
+const FILTER_PARAMS = FILTER_KEYS;
 
 // ── Provider ──────────────────────────────────────────────────
 export function DashboardProvider({ children }: { children: ReactNode }) {

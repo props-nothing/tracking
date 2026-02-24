@@ -9,27 +9,9 @@ import { TimeSeries } from '@/components/charts/time-series';
 import { DataTable } from '@/components/tables/data-table';
 import { ExportBar } from '@/components/export-bar';
 import { AIInsightsPanel } from '@/components/ai-insights-panel';
-
-function formatDuration(ms: number): string {
-  if (!ms || ms < 1000) return `${ms ?? 0}ms`;
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-}
-
-function formatNumber(n: number): string {
-  if (n == null) return '0';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toString();
-}
-
-function truncatePath(path: string, maxLen = 24): string {
-  if (path.length <= maxLen) return path;
-  return path.slice(0, maxLen - 1) + '…';
-}
+import { LoadingState } from '@/components/shared';
+import { formatDuration, formatNumber, truncatePath } from '@/lib/formatters';
+import { getPeriodDateRange } from '@/lib/query-helpers';
 
 export default function SiteDashboardPage({
   params,
@@ -42,30 +24,13 @@ export default function SiteDashboardPage({
   const { stats, loading: statsLoading } = useStats(siteId, queryString);
 
   // Compute date range for AI insights
-  const { periodStart, periodEnd } = useMemo(() => {
-    const now = new Date();
-    let from: Date;
-    const to = customTo ? new Date(customTo) : now;
-    if (period === 'custom' && customFrom) {
-      from = new Date(customFrom);
-    } else {
-      switch (period) {
-        case 'today': from = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-        case 'yesterday': from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1); break;
-        case 'last_7_days': from = new Date(now.getTime() - 7 * 86400000); break;
-        case 'last_90_days': from = new Date(now.getTime() - 90 * 86400000); break;
-        case 'last_365_days': from = new Date(now.getTime() - 365 * 86400000); break;
-        default: from = new Date(now.getTime() - 30 * 86400000);
-      }
-    }
-    return {
-      periodStart: from.toISOString().slice(0, 10),
-      periodEnd: to.toISOString().slice(0, 10),
-    };
-  }, [period, customFrom, customTo]);
+  const { periodStart, periodEnd } = useMemo(
+    () => getPeriodDateRange(period, customFrom, customTo),
+    [period, customFrom, customTo]
+  );
 
   if (siteLoading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
+    return <LoadingState />;
   }
 
   return (

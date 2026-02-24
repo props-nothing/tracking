@@ -1,15 +1,9 @@
 'use client';
 
 import { use, useEffect, useState, useCallback } from 'react';
-
-interface SiteSettings {
-  id: string;
-  name: string;
-  domain: string;
-  timezone: string;
-  public: boolean;
-  allowed_origins: string[];
-}
+import { api } from '@/lib/api';
+import { LoadingState, PageHeader, PrimaryButton } from '@/components/shared';
+import type { SiteSettings } from '@/types';
 
 export default function SettingsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
@@ -20,8 +14,7 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
 
   const fetchSite = useCallback(() => {
     setLoading(true);
-    fetch(`/api/sites/${siteId}`)
-      .then((r) => r.json())
+    api.get<SiteSettings>(`/api/sites/${siteId}`)
       .then((d) => {
         setSite(d);
         setLoading(false);
@@ -35,30 +28,28 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
     if (!site) return;
     setSaving(true);
     setMessage('');
-    const res = await fetch(`/api/sites/${siteId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      await api.patch(`/api/sites/${siteId}`, {
         name: site.name,
         domain: site.domain,
         timezone: site.timezone,
         public: site.public,
         allowed_origins: site.allowed_origins,
-      }),
-    });
+      });
+      setMessage('Instellingen opgeslagen!');
+    } catch {
+      setMessage('Instellingen opslaan mislukt.');
+    }
     setSaving(false);
-    setMessage(res.ok ? 'Instellingen opgeslagen!' : 'Instellingen opslaan mislukt.');
   };
 
   const handleDelete = async () => {
     if (!confirm('Weet je zeker dat je deze site wilt verwijderen? Deze actie is onomkeerbaar.')) return;
-    await fetch(`/api/sites/${siteId}`, { method: 'DELETE' });
+    await api.delete(`/api/sites/${siteId}`);
     window.location.href = '/dashboard';
   };
 
-  if (loading) {
-    return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
-  }
+  if (loading) return <LoadingState />;
 
   if (!site) {
     return <div className="py-20 text-center text-sm text-muted-foreground">Site niet gevonden</div>;
@@ -68,10 +59,7 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Instellingen</h1>
-        <p className="text-sm text-muted-foreground">Beheer siteconfiguratie</p>
-      </div>
+      <PageHeader title="Instellingen" description="Beheer siteconfiguratie" />
 
       <div className="rounded-lg border bg-card p-6 space-y-5">
         <h2 className="text-sm font-medium">Algemeen</h2>
@@ -125,13 +113,9 @@ export default function SettingsPage({ params }: { params: Promise<{ siteId: str
           />
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <PrimaryButton onClick={handleSave} disabled={saving}>
             {saving ? 'Opslaan...' : 'Instellingen opslaan'}
-          </button>
+          </PrimaryButton>
           {message && <span className="text-sm text-green-600">{message}</span>}
         </div>
       </div>

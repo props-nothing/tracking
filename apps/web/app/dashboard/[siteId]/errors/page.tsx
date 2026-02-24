@@ -1,64 +1,38 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
+import { useMetric } from '@/hooks/use-metric';
 import { MetricCard } from '@/components/metric-card';
-
-interface ErrorRow {
-  error_message: string;
-  error_source: string;
-  error_line: number | null;
-  count: number;
-  last_seen: string;
-}
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import type { ErrorsData } from '@/types';
 
 export default function ErrorsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [errors, setErrors] = useState<ErrorRow[]>([]);
-  const [totalErrors, setTotalErrors] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=errors`)
-      .then((res) => res.json())
-      .then((data) => {
-        setErrors(data.errors || []);
-        setTotalErrors(data.total_errors || 0);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [siteId, queryString]);
+  const { data, loading } = useMetric<ErrorsData>(siteId, queryString, 'errors');
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">JS-fouten</h1>
-          <p className="text-sm text-muted-foreground">JavaScript-foutopsporing</p>
-        </div>
-      </div>
+      <PageHeader title="JS-fouten" description="JavaScript-foutopsporing" />
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
+        <LoadingState />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <MetricCard title="Totaal fouten" value={totalErrors.toString()} />
-            <MetricCard title="Unieke fouten" value={errors.length.toString()} />
+            <MetricCard title="Totaal fouten" value={(data?.total_errors ?? 0).toString()} />
+            <MetricCard title="Unieke fouten" value={(data?.errors?.length ?? 0).toString()} />
           </div>
 
-          {errors.length === 0 ? (
-            <div className="rounded-lg border bg-card p-12 text-center">
-              <h3 className="text-lg font-medium">Geen fouten vastgelegd</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Schakel foutopsporing in met <code className="rounded bg-muted px-1 text-xs">data-track-errors=&quot;true&quot;</code>
-              </p>
-            </div>
+          {!data?.errors?.length ? (
+            <EmptyState
+              title="Geen fouten vastgelegd"
+              description="Schakel foutopsporing in met data-track-errors=&quot;true&quot;"
+            />
           ) : (
             <div className="space-y-3">
-              {errors.map((err, i) => (
+              {data.errors.map((err, i) => (
                 <div key={i} className="rounded-lg border bg-card p-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">

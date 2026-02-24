@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDashboard, type Filters } from '@/hooks/use-dashboard-context';
 
 const filterFields: { key: keyof Filters; label: string; placeholder: string }[] = [
@@ -15,8 +15,50 @@ const filterFields: { key: keyof Filters; label: string; placeholder: string }[]
 export type { Filters };
 
 export function FilterBar() {
-  const { filters, updateFilter, clearFilters, activeFilterCount } = useDashboard();
+  const { filters, setFilters, clearFilters, activeFilterCount } = useDashboard();
   const [open, setOpen] = useState(false);
+  // Local draft state so typing is instant — only syncs to URL after a delay
+  const [draft, setDraft] = useState<Filters>(filters);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync draft ← URL when filters change externally (e.g. "clear all", back/forward)
+  useEffect(() => {
+    setDraft(filters);
+  }, [filters]);
+
+  const commitFilters = useCallback(
+    (next: Filters) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setFilters(next);
+      }, 500);
+    },
+    [setFilters]
+  );
+
+  // Cleanup on unmount
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const handleChange = (key: keyof Filters, value: string) => {
+    const next = { ...draft, [key]: value };
+    setDraft(next);
+    commitFilters(next);
+  };
+
+  const handleClear = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setDraft({});
+    clearFilters();
+    setOpen(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      // Commit immediately on Enter
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setFilters(draft);
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -38,7 +80,7 @@ export function FilterBar() {
           )}
         </button>
         {activeFilterCount > 0 && (
-          <button onClick={() => { clearFilters(); setOpen(false); }} className="text-xs text-muted-foreground hover:text-foreground">
+          <button onClick={handleClear} className="text-xs text-muted-foreground hover:text-foreground">
             Alles wissen
           </button>
         )}
@@ -53,8 +95,9 @@ export function FilterBar() {
               </label>
               <input
                 type="text"
-                value={filters[f.key] || ''}
-                onChange={(e) => updateFilter(f.key, e.target.value)}
+                value={draft[f.key] || ''}
+                onChange={(e) => handleChange(f.key, e.target.value)}
+                onKeyDown={handleKeyDown}
                 placeholder={f.placeholder}
                 className="w-full rounded-md border bg-transparent px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-primary"
               />

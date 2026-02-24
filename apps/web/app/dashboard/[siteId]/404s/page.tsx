@@ -1,53 +1,28 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
+import { useMetric } from '@/hooks/use-metric';
 import { MetricCard } from '@/components/metric-card';
 import { DataTable } from '@/components/tables/data-table';
-
-interface NotFoundPage {
-  path: string;
-  hits: number;
-  unique_visitors: number;
-  referrers: string[];
-  last_seen: string;
-}
-
-interface Data404 {
-  total_404s: number;
-  unique_pages: number;
-  pages: NotFoundPage[];
-}
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import type { Data404 } from '@/types';
 
 export default function NotFoundPagesPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [data, setData] = useState<Data404 | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useMetric<Data404>(siteId, queryString, '404s');
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=404s`)
-      .then((res) => res.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [siteId, queryString]);
-
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
+  if (loading) return <LoadingState />;
 
   if (!data || data.total_404s === 0) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">404-pagina's</h1>
-          <p className="text-sm text-muted-foreground">Pagina's die een "Niet gevonden"-fout gaven</p>
-        </div>
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Geen 404-fouten gevonden</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            404-pagina's worden automatisch gevolgd wanneer je site een aangepast "404"-event verstuurt.
-          </p>
-        </div>
+        <PageHeader title="404-pagina's" description="Pagina's die een &quot;Niet gevonden&quot;-fout gaven" />
+        <EmptyState
+          title="Geen 404-fouten gevonden"
+          description="404-pagina's worden automatisch gevolgd wanneer je site een aangepast &quot;404&quot;-event verstuurt."
+        />
       </div>
     );
   }
@@ -60,17 +35,14 @@ export default function NotFoundPagesPage({ params }: { params: Promise<{ siteId
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">404-pagina's</h1>
-        <p className="text-sm text-muted-foreground">Gebroken links en ontbrekende pagina's</p>
-      </div>
+      <PageHeader title="404-pagina's" description="Gebroken links en ontbrekende pagina's" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <MetricCard title="Totaal 404-hits" value={data.total_404s.toLocaleString()} />
-        <MetricCard title="Unieke 404-pagina's" value={data.unique_pages.toLocaleString()} />
+        <MetricCard title="Unieke 404-pagina's" value={(data.unique_404_pages ?? data.pages.length).toLocaleString()} />
         <MetricCard
           title="Gem. hits per pagina"
-          value={data.unique_pages > 0 ? (data.total_404s / data.unique_pages).toFixed(1) : '0'}
+          value={data.pages.length > 0 ? (data.total_404s / data.pages.length).toFixed(1) : '0'}
         />
       </div>
 
@@ -87,7 +59,6 @@ export default function NotFoundPagesPage({ params }: { params: Promise<{ siteId
         searchable
       />
 
-      {/* Quick fix suggestions */}
       <div className="rounded-lg border bg-card p-6">
         <h2 className="mb-3 text-sm font-medium">Hersteltips</h2>
         <ul className="space-y-2 text-sm text-muted-foreground">

@@ -1,38 +1,12 @@
 'use client';
 
-import { use, useEffect, useState, useCallback } from 'react';
+import { Fragment, use, useEffect, useState, useCallback, useRef } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
 import { MetricCard } from '@/components/metric-card';
 import { DataTable } from '@/components/tables/data-table';
-
-interface Lead {
-  id: number;
-  lead_name: string | null;
-  lead_email: string | null;
-  lead_phone: string | null;
-  lead_company: string | null;
-  lead_message: string | null;
-  lead_data: Record<string, string> | null;
-  form_id: string | null;
-  page_path: string | null;
-  referrer_hostname: string | null;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
-  country_code: string | null;
-  city: string | null;
-  device_type: string | null;
-  status: string;
-  notes: string | null;
-  created_at: string;
-}
-
-interface LeadStats {
-  total_leads: number;
-  new_leads: number;
-  this_week: number;
-  this_month: number;
-}
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import { formatDate } from '@/lib/formatters';
+import type { Lead, LeadStats } from '@/types';
 
 const STATUS_OPTIONS = ['new', 'contacted', 'qualified', 'converted', 'archived'] as const;
 const STATUS_COLORS: Record<string, string> = {
@@ -65,11 +39,6 @@ function getSourceBadgeColor(lead: Lead): string {
   return 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300';
 }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
 export default function LeadsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
@@ -82,20 +51,29 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [expandedLead, setExpandedLead] = useState<number | null>(null);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchLeads = useCallback(() => {
     setLoading(true);
-    const params = new URLSearchParams({
-      site_id: siteId,
-      page: page.toString(),
-      page_size: '25',
-    });
+    const params = new URLSearchParams(queryString);
+    params.set('site_id', siteId);
+    params.set('page', page.toString());
+    params.set('page_size', '25');
     if (statusFilter) params.set('status', statusFilter);
     if (sourceFilter) params.set('source', sourceFilter);
-    if (search) params.set('search', search);
+    if (debouncedSearch) params.set('search', debouncedSearch);
 
     fetch(`/api/leads?${params}`)
       .then((res) => res.json())
@@ -109,7 +87,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, page, statusFilter, sourceFilter, search]);
+  }, [siteId, queryString, page, statusFilter, sourceFilter, debouncedSearch]);
 
   useEffect(() => {
     fetchLeads();
@@ -144,21 +122,12 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Leads</h1>
-          <p className="text-sm text-muted-foreground">
-            Formulierinzendingen met bronattributie
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Leads" description="Formulierinzendingen met bronattributie" />
 
       {loading && leads.length === 0 ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
+        <LoadingState />
       ) : (
         <>
-          {/* Stats cards */}
           <div className="grid gap-4 sm:grid-cols-4">
             <MetricCard title="Totaal leads" value={stats.total_leads.toString()} />
             <MetricCard title="Nieuw (niet gecontacteerd)" value={stats.new_leads.toString()} />
@@ -166,7 +135,6 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
             <MetricCard title="Deze maand" value={stats.this_month.toString()} />
           </div>
 
-          {/* Source attribution overview */}
           <div className="grid gap-6 lg:grid-cols-3">
             <DataTable
               title="Leadbronnen"
@@ -200,7 +168,7 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
               type="text"
               placeholder="Zoek naam, e-mail, bedrijf..."
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              onChange={(e) => setSearch(e.target.value)}
               className="rounded-md border bg-transparent px-3 py-1.5 text-sm outline-none focus:ring-1 focus:ring-primary w-64"
             />
             <select
@@ -225,19 +193,11 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
             </select>
           </div>
 
-          {/* Leads table */}
           {leads.length === 0 ? (
-            <div className="rounded-lg border bg-card p-12 text-center">
-              <h3 className="text-lg font-medium">Nog geen leads</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Schakel leadregistratie in door{' '}
-                <code className="rounded bg-muted px-1 text-xs">data-capture-leads=&quot;true&quot;</code>{' '}
-                toe te voegen aan je trackingscript of individuele formulieren.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Voorbeeld: <code className="rounded bg-muted px-1">&lt;script src=&quot;...&quot; data-site-id=&quot;...&quot; data-capture-leads=&quot;true&quot;&gt;&lt;/script&gt;</code>
-              </p>
-            </div>
+            <EmptyState
+              title="Nog geen leads"
+              description='Schakel leadregistratie in door data-capture-leads="true" toe te voegen aan je trackingscript.'
+            />
           ) : (
             <div className="rounded-lg border bg-card overflow-hidden">
               <div className="overflow-x-auto">
@@ -256,36 +216,26 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                   </thead>
                   <tbody>
                     {leads.map((lead) => (
-                      <>
+                      <Fragment key={lead.id}>
                         <tr
-                          key={lead.id}
                           className="border-b hover:bg-muted/50 cursor-pointer transition-colors text-sm"
                           onClick={() => setExpandedLead(expandedLead === lead.id ? null : lead.id)}
                         >
                           <td className="px-4 py-3 font-medium">
                             {lead.lead_name || <span className="text-muted-foreground italic">—</span>}
                           </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {lead.lead_email || '—'}
-                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{lead.lead_email || '—'}</td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getSourceBadgeColor(lead)}`}>
                               {getSourceLabel(lead)}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-muted-foreground text-xs">
-                            {lead.utm_campaign || '—'}
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground text-xs">
-                            {lead.form_id || '—'}
-                          </td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{lead.utm_campaign || '—'}</td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{lead.form_id || '—'}</td>
                           <td className="px-4 py-3">
                             <select
                               value={lead.status}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                updateLeadStatus(lead.id, e.target.value);
-                              }}
+                              onChange={(e) => { e.stopPropagation(); updateLeadStatus(lead.id, e.target.value); }}
                               onClick={(e) => e.stopPropagation()}
                               className={`rounded-full px-2 py-0.5 text-xs font-medium border-0 cursor-pointer ${STATUS_COLORS[lead.status] || ''}`}
                             >
@@ -341,7 +291,6 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                                   )}
                                 </div>
                               </div>
-                              {/* All form data */}
                               {lead.lead_data && typeof lead.lead_data === 'object' && Object.keys(lead.lead_data).length > 0 && (
                                 <div className="mt-4 border-t pt-3">
                                   <p className="text-xs font-medium text-muted-foreground mb-2">Alle formulierdata</p>
@@ -362,13 +311,12 @@ export default function LeadsPage({ params }: { params: Promise<{ siteId: string
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t px-4 py-3 text-sm">
                   <span className="text-muted-foreground">

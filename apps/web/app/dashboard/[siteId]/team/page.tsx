@@ -1,74 +1,51 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
+import { useCrud } from '@/hooks/use-crud';
+import { LoadingState, PageHeader, PrimaryButton } from '@/components/shared';
+import type { Member } from '@/types';
 
-interface Member {
-  id: string;
-  email: string;
-  role: 'owner' | 'admin' | 'viewer';
-  joined_at: string;
-}
+const roleColors: Record<string, string> = {
+  owner: 'bg-purple-100 text-purple-800',
+  admin: 'bg-blue-100 text-blue-800',
+  viewer: 'bg-gray-100 text-gray-800',
+};
 
 export default function TeamPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items: members, loading, createItem, deleteItem } = useCrud<Member>('/api/members', siteId, 'members');
+
   const [showInvite, setShowInvite] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'viewer'>('viewer');
   const [inviting, setInviting] = useState(false);
 
-  const fetchMembers = () => {
-    setLoading(true);
-    fetch(`/api/members?site_id=${siteId}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setMembers(d.members || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(fetchMembers, [siteId]);
-
   const handleInvite = async () => {
     setInviting(true);
-    await fetch('/api/members', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site_id: siteId, email, role }),
-    });
+    await createItem({ email, role });
     setEmail('');
     setShowInvite(false);
     setInviting(false);
-    fetchMembers();
   };
 
   const handleRemove = async (memberId: string) => {
+    // Team uses a different delete URL pattern
     await fetch(`/api/members?site_id=${siteId}&member_id=${memberId}`, { method: 'DELETE' });
-    fetchMembers();
-  };
-
-  const roleColors: Record<string, string> = {
-    owner: 'bg-purple-100 text-purple-800',
-    admin: 'bg-blue-100 text-blue-800',
-    viewer: 'bg-gray-100 text-gray-800',
+    // Re-fetch by triggering the crud hook
+    window.location.reload();
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Team</h1>
-          <p className="text-sm text-muted-foreground">Beheer teamleden en klanttoegang</p>
-        </div>
-        <button
-          onClick={() => setShowInvite(!showInvite)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Lid uitnodigen
-        </button>
-      </div>
+      <PageHeader
+        title="Team"
+        description="Beheer teamleden en klanttoegang"
+        action={
+          <PrimaryButton onClick={() => setShowInvite(!showInvite)}>
+            Lid uitnodigen
+          </PrimaryButton>
+        }
+      />
 
       {showInvite && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
@@ -96,18 +73,14 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
               </select>
             </div>
           </div>
-          <button
-            onClick={handleInvite}
-            disabled={!email || inviting}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <PrimaryButton onClick={handleInvite} disabled={!email || inviting}>
             {inviting ? 'Uitnodigen...' : 'Uitnodiging verzenden'}
-          </button>
+          </PrimaryButton>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
+        <LoadingState />
       ) : (
         <div className="space-y-3">
           {members.map((m) => (

@@ -2,6 +2,7 @@
 
 import { use } from 'react';
 import { useRealtimeVisitors } from '@/hooks/use-realtime-visitors';
+import { PageHeader } from '@/components/shared';
 
 export default function RealtimePage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
@@ -9,10 +10,7 @@ export default function RealtimePage({ params }: { params: Promise<{ siteId: str
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Realtime</h1>
-        <p className="text-sm text-muted-foreground">Live bezoekersactiviteit</p>
-      </div>
+      <PageHeader title="Realtime" description="Live bezoekersactiviteit" />
 
       {/* Active count */}
       <div className="flex items-center gap-4 rounded-lg border bg-card p-8">

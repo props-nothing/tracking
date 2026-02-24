@@ -1,71 +1,40 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useState } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
-
-interface Annotation {
-  id: string;
-  text: string;
-  date: string;
-  created_by: string;
-  created_at: string;
-}
+import { useCrud } from '@/hooks/use-crud';
+import { LoadingState, EmptyState, PageHeader, PrimaryButton, DeleteButton } from '@/components/shared';
+import type { Annotation } from '@/types';
 
 export default function AnnotationsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { period, queryString } = useDashboard();
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { queryString } = useDashboard();
+  const { items: annotations, loading, createItem, deleteItem } = useCrud<Annotation>('/api/annotations', siteId, 'annotations', queryString);
+
   const [showCreate, setShowCreate] = useState(false);
   const [text, setText] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [creating, setCreating] = useState(false);
 
-  const fetchAnnotations = () => {
-    setLoading(true);
-    fetch(`/api/annotations?site_id=${siteId}&${queryString}`)
-      .then((r) => r.json())
-      .then((d) => {
-        setAnnotations(d.annotations || []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  };
-
-  useEffect(fetchAnnotations, [siteId, queryString]);
-
   const handleCreate = async () => {
     setCreating(true);
-    await fetch('/api/annotations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site_id: siteId, text, date }),
-    });
+    await createItem({ text, date });
     setText('');
     setShowCreate(false);
     setCreating(false);
-    fetchAnnotations();
-  };
-
-  const handleDelete = async (id: string) => {
-    await fetch(`/api/annotations?id=${id}`, { method: 'DELETE' });
-    fetchAnnotations();
   };
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Annotaties</h1>
-          <p className="text-sm text-muted-foreground">Markeer belangrijke gebeurtenissen op je analysetijdlijn</p>
-        </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Annotatie toevoegen
-        </button>
-      </div>
+      <PageHeader
+        title="Annotaties"
+        description="Markeer belangrijke gebeurtenissen op je analysetijdlijn"
+        action={
+          <PrimaryButton onClick={() => setShowCreate(!showCreate)}>
+            Annotatie toevoegen
+          </PrimaryButton>
+        }
+      />
 
       {showCreate && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
@@ -89,25 +58,19 @@ export default function AnnotationsPage({ params }: { params: Promise<{ siteId: 
               />
             </div>
           </div>
-          <button
-            onClick={handleCreate}
-            disabled={!text || creating}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
+          <PrimaryButton onClick={handleCreate} disabled={!text || creating}>
             {creating ? 'Opslaan...' : 'Annotatie opslaan'}
-          </button>
+          </PrimaryButton>
         </div>
       )}
 
       {loading ? (
-        <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>
+        <LoadingState />
       ) : annotations.length === 0 ? (
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog geen annotaties</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Voeg annotaties toe om implementaties, campagnes of andere gebeurtenissen op je grafieken te markeren.
-          </p>
-        </div>
+        <EmptyState
+          title="Nog geen annotaties"
+          description="Voeg annotaties toe om implementaties, campagnes of andere gebeurtenissen op je grafieken te markeren."
+        />
       ) : (
         <div className="space-y-3">
           {annotations.map((a) => (
@@ -123,12 +86,7 @@ export default function AnnotationsPage({ params }: { params: Promise<{ siteId: 
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => handleDelete(a.id)}
-                className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-              >
-                Verwijderen
-              </button>
+              <DeleteButton onClick={() => deleteItem(a.id)} />
             </div>
           ))}
         </div>

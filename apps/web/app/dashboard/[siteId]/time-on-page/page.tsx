@@ -1,63 +1,29 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
+import { useMetric } from '@/hooks/use-metric';
 import { MetricCard } from '@/components/metric-card';
 import { DataTable } from '@/components/tables/data-table';
-
-interface PageTime {
-  path: string;
-  avg_time_on_page: number;
-  avg_engaged_time: number;
-  unique_visitors: number;
-}
-
-interface TimeOnPageData {
-  avg_time_on_page: number;
-  avg_engaged_time: number;
-  pages: PageTime[];
-}
-
-function formatDuration(ms: number): string {
-  if (!ms || ms <= 0) return '0s';
-  const secs = Math.round(ms / 1000);
-  if (secs < 60) return `${secs}s`;
-  const mins = Math.floor(secs / 60);
-  const rem = secs % 60;
-  if (mins < 60) return `${mins}m ${rem}s`;
-  const hrs = Math.floor(mins / 60);
-  return `${hrs}h ${mins % 60}m`;
-}
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import { formatDuration } from '@/lib/formatters';
+import type { TimeOnPageData } from '@/types';
 
 export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [data, setData] = useState<TimeOnPageData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useMetric<TimeOnPageData>(siteId, queryString, 'time_on_page');
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=time_on_page`)
-      .then((res) => res.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [siteId, queryString]);
-
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
+  if (loading) return <LoadingState />;
 
   if (!data || data.pages.length === 0) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tijd op pagina</h1>
-          <p className="text-sm text-muted-foreground">Hoe lang bezoekers op elke pagina doorbrengen</p>
-        </div>
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog geen data</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Tijd op pagina wordt automatisch bijgehouden wanneer bezoekers tussen pagina's navigeren.
-          </p>
-        </div>
+        <PageHeader title="Tijd op pagina" description="Hoe lang bezoekers op elke pagina doorbrengen" />
+        <EmptyState
+          title="Nog geen data"
+          description="Tijd op pagina wordt automatisch bijgehouden wanneer bezoekers tussen pagina's navigeren."
+        />
       </div>
     );
   }
@@ -78,10 +44,7 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Tijd op pagina</h1>
-        <p className="text-sm text-muted-foreground">Totale tijd, actieve betrokkenheid en uitsplitsing per pagina</p>
-      </div>
+      <PageHeader title="Tijd op pagina" description="Totale tijd, actieve betrokkenheid en uitsplitsing per pagina" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard title="Gem. tijd op pagina" value={formatDuration(data.avg_time_on_page)} />
@@ -90,7 +53,6 @@ export default function TimeOnPagePage({ params }: { params: Promise<{ siteId: s
         <MetricCard title="Gevolgde pagina's" value={data.pages.length.toString()} />
       </div>
 
-      {/* Visual engagement bar */}
       <div className="rounded-lg border bg-card p-6">
         <h2 className="mb-3 text-sm font-medium">Algehele betrokkenheid</h2>
         <div className="flex items-center gap-4">

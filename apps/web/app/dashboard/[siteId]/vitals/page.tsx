@@ -1,36 +1,11 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
-import { MetricCard } from '@/components/metric-card';
+import { useMetric } from '@/hooks/use-metric';
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
 import { DataTable } from '@/components/tables/data-table';
-
-interface VitalMetric {
-  p50: number | null;
-  p75: number | null;
-}
-
-interface VitalsData {
-  overall: {
-    sample_count: number;
-    ttfb: VitalMetric;
-    fcp: VitalMetric;
-    lcp: VitalMetric;
-    cls: VitalMetric;
-    inp: VitalMetric;
-    fid: VitalMetric;
-  };
-  pages: {
-    path: string;
-    sample_count: number;
-    lcp_p75: number | null;
-    fcp_p75: number | null;
-    cls_p75: number | null;
-    inp_p75: number | null;
-    ttfb_p75: number | null;
-  }[];
-  timeseries: { date: string; lcp_p75: number | null }[];
-}
+import type { VitalsData } from '@/types';
 
 function getVitalRating(metric: string, value: number | null): { label: string; color: string } {
   if (value == null) return { label: '—', color: 'text-muted-foreground' };
@@ -58,32 +33,18 @@ function formatVital(metric: string, value: number | null): string {
 export default function VitalsPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [data, setData] = useState<VitalsData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useMetric<VitalsData>(siteId, queryString, 'vitals');
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=vitals`)
-      .then((res) => res.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [siteId, queryString]);
-
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
+  if (loading) return <LoadingState />;
 
   if (!data || data.overall.sample_count === 0) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Web Vitals</h1>
-          <p className="text-sm text-muted-foreground">Core Web Vitals prestatiemetrieken</p>
-        </div>
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog geen vitals-data</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Web Vitals worden automatisch vastgelegd bij elke paginaweergave. Data verschijnt zodra bezoekers beginnen met browsen.
-          </p>
-        </div>
+        <PageHeader title="Web Vitals" description="Core Web Vitals prestatiemetrieken" />
+        <EmptyState
+          title="Nog geen vitals-data"
+          description="Web Vitals worden automatisch vastgelegd bij elke paginaweergave. Data verschijnt zodra bezoekers beginnen met browsen."
+        />
       </div>
     );
   }
@@ -100,14 +61,10 @@ export default function VitalsPage({ params }: { params: Promise<{ siteId: strin
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Web Vitals</h1>
-          <p className="text-sm text-muted-foreground">
-            Core Web Vitals prestaties — {o.sample_count.toLocaleString()} metingen
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Web Vitals"
+        description={`Core Web Vitals prestaties — ${o.sample_count.toLocaleString()} metingen`}
+      />
 
       {/* Vital Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

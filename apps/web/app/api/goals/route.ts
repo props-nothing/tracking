@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { goalSchema } from '@/lib/validators';
+import { getDateRange } from '@/lib/query-helpers';
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -10,15 +11,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const siteId = request.nextUrl.searchParams.get('site_id');
+  const { searchParams } = request.nextUrl;
+  const siteId = searchParams.get('site_id');
   if (!siteId) {
     return NextResponse.json({ error: 'site_id required' }, { status: 400 });
   }
 
+  const period = searchParams.get('period') || 'last_30_days';
+  const customFrom = searchParams.get('from');
+  const customTo = searchParams.get('to');
+  const { fromStr, toStr } = getDateRange(period, customFrom, customTo);
+
   const db = await createServiceClient();
-  const { data, error } = await db
+
+  // Fetch goals
+  const { data: goals, error } = await db
     .from('goals')
-    .select('*, goal_conversions(count)')
+    .select('*')
     .eq('site_id', siteId)
     .order('created_at', { ascending: false });
 
@@ -26,7 +35,27 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json(data);
+  // Fetch period-aware conversion counts
+  const { data: conversionCounts } = await db
+    .from('goal_conversions')
+    .select('goal_id')
+    .eq('site_id', siteId)
+    .gte('converted_at', fromStr)
+    .lte('converted_at', toStr);
+
+  // Count conversions per goal
+  const countsByGoal: Record<string, number> = {};
+  for (const c of conversionCounts || []) {
+    countsByGoal[c.goal_id] = (countsByGoal[c.goal_id] || 0) + 1;
+  }
+
+  // Attach counts in the same shape the frontend expects
+  const result = (goals || []).map((goal) => ({
+    ...goal,
+    goal_conversions: [{ count: countsByGoal[goal.id] || 0 }],
+  }));
+
+  return NextResponse.json(result);
 }
 
 export async function POST(request: NextRequest) {

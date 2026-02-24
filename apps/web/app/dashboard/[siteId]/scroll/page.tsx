@@ -1,71 +1,38 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import { useDashboard } from '@/hooks/use-dashboard-context';
+import { useMetric } from '@/hooks/use-metric';
 import { MetricCard } from '@/components/metric-card';
 import { DataTable } from '@/components/tables/data-table';
-
-interface ScrollPage {
-  path: string;
-  sample_count: number;
-  avg_depth: number;
-  pct_reached_50: number;
-  pct_reached_100: number;
-}
-
-interface ScrollData {
-  avg_depth: number;
-  sample_count: number;
-  funnel: {
-    reached_25: number;
-    reached_50: number;
-    reached_75: number;
-    reached_100: number;
-  };
-  pages: ScrollPage[];
-}
+import { LoadingState, EmptyState, PageHeader } from '@/components/shared';
+import type { ScrollData } from '@/types';
 
 export default function ScrollDepthPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
   const { queryString } = useDashboard();
-  const [data, setData] = useState<ScrollData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useMetric<ScrollData>(siteId, queryString, 'scroll_depth');
 
-  useEffect(() => {
-    setLoading(true);
-    fetch(`/api/stats?site_id=${siteId}&${queryString}&metric=scroll_depth`)
-      .then((res) => res.json())
-      .then((d) => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [siteId, queryString]);
-
-  if (loading) return <div className="py-20 text-center text-sm text-muted-foreground">Laden...</div>;
+  if (loading) return <LoadingState />;
 
   if (!data || data.sample_count === 0) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Scrolldiepte</h1>
-          <p className="text-sm text-muted-foreground">Hoe ver bezoekers scrollen op je pagina's</p>
-        </div>
-        <div className="rounded-lg border bg-card p-12 text-center">
-          <h3 className="text-lg font-medium">Nog geen scrolldata</h3>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Scrolldiepte wordt automatisch vastgelegd bij elke paginaweergave. Data verschijnt zodra bezoekers browsen.
-          </p>
-        </div>
+        <PageHeader title="Scrolldiepte" description="Hoe ver bezoekers scrollen op je pagina's" />
+        <EmptyState
+          title="Nog geen scrolldata"
+          description="Scrolldiepte wordt automatisch vastgelegd bij elke paginaweergave. Data verschijnt zodra bezoekers browsen."
+        />
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Scrolldiepte</h1>
-        <p className="text-sm text-muted-foreground">
-          Hoe ver bezoekers scrollen — {data.sample_count.toLocaleString()} metingen
-        </p>
-      </div>
+      <PageHeader
+        title="Scrolldiepte"
+        description={`Hoe ver bezoekers scrollen — ${data.sample_count.toLocaleString()} metingen`}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard title="Gem. scrolldiepte" value={`${data.avg_depth}%`} />
@@ -102,7 +69,6 @@ export default function ScrollDepthPage({ params }: { params: Promise<{ siteId: 
         </div>
       </div>
 
-      {/* Pages sorted by lowest scroll depth */}
       <DataTable
         title="Pagina's op scrolldiepte (laagste eerst)"
         columns={[

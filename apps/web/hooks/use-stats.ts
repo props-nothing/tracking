@@ -1,36 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import type { OverviewStats } from '@/types';
 
-export interface Stats {
-  pageviews: number;
-  unique_visitors: number;
-  sessions: number;
-  avg_session_duration: number;
-  bounce_rate: number;
-  views_per_session: number;
-  avg_engaged_time: number;
-  total_leads: number;
-  conversion_rate: number;
-  avg_scroll_depth: number;
-  top_page: string | null;
-  top_page_count: number;
-  returning_visitor_pct: number;
-  returning_visitor_count: number;
-  top_pages: { path: string; count: number; unique_visitors: number; avg_time: number; bounce_rate: number }[];
-  entry_pages: { path: string; count: number }[];
-  exit_pages: { path: string; count: number }[];
-  top_referrers: { source: string; count: number }[];
-  utm_sources: { source: string; count: number }[];
-  utm_mediums: { medium: string; count: number }[];
-  utm_campaigns: { campaign: string; count: number }[];
-  top_countries: { country: string; count: number }[];
-  top_cities: { city: string; count: number }[];
-  top_browsers: { browser: string; count: number }[];
-  top_os: { os: string; count: number }[];
-  top_devices: { device: string; count: number }[];
-  timeseries: { date: string; pageviews: number; visitors: number; leads?: number }[];
-}
+// Re-export for backward compatibility
+export type Stats = OverviewStats;
 
 /**
  * Fetch stats using the full query string from DashboardContext.

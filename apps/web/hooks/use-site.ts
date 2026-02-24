@@ -1,18 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import type { Site } from '@/types';
 
-export interface Site {
-  id: string;
-  name: string;
-  domain: string;
-  timezone: string;
-  logo_url: string | null;
-  brand_color: string;
-  role: string;
-  created_at: string;
-}
+// Re-export for backward compatibility
+export type { Site } from '@/types';
 
 export function useSites() {
   const [sites, setSites] = useState<Site[]>([]);

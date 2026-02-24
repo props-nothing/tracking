@@ -16,6 +16,8 @@ export async function GET(request: NextRequest) {
   }
 
   const db = await createServiceClient();
+  // Funnels are configuration objects — listing is not period-dependent.
+  // Period filtering applies when viewing funnel analysis (detail page).
   const { data, error } = await db
     .from('funnels')
     .select('*')
