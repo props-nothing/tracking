@@ -84,6 +84,7 @@ export interface OverviewStats {
 export interface EcommerceData {
   currency: string;
   total_revenue: number;
+  product_revenue: number;
   total_orders: number;
   avg_order_value: number;
   add_to_cart_count: number;

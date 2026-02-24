@@ -371,7 +371,7 @@ export async function GET(request: NextRequest) {
     const evts = await fetchAll((from, to) => {
       let q = db
         .from('events')
-        .select('event_type, ecommerce_action, order_id, revenue, currency, ecommerce_items, timestamp')
+        .select('event_type, ecommerce_action, order_id, revenue, currency, ecommerce_items, timestamp, session_id')
         .eq('site_id', siteId)
         .eq('event_type', 'ecommerce')
         .gte('timestamp', fromStr)
@@ -381,7 +381,20 @@ export async function GET(request: NextRequest) {
       return q;
     });
     const addToCarts = evts.filter((e) => e.ecommerce_action === 'add_to_cart');
-    const checkouts = evts.filter((e) => e.ecommerce_action === 'begin_checkout');
+
+    // Deduplicate begin_checkout by session_id — WooCommerce's order-received page
+    // shares the woocommerce-checkout body class, so the tracker could fire
+    // begin_checkout multiple times per session (e.g. on checkout + thank-you page).
+    const allCheckouts = evts.filter((e) => e.ecommerce_action === 'begin_checkout');
+    const seenCheckoutSessions = new Set<string>();
+    const checkouts = allCheckouts.filter((e) => {
+      const sid = (e as any).session_id;
+      if (sid) {
+        if (seenCheckoutSessions.has(sid)) return false;
+        seenCheckoutSessions.add(sid);
+      }
+      return true;
+    });
 
     // Deduplicate purchases by order_id to prevent double-counted revenue
     // (e.g. from payment gateway redirects creating duplicate events)
@@ -409,13 +422,16 @@ export async function GET(request: NextRequest) {
 
     // Top products from ecommerce_items
     const productMap: Record<string, { revenue: number; quantity: number }> = {};
+    let productRevenue = 0;
     for (const e of purchases) {
       const items = Array.isArray(e.ecommerce_items) ? e.ecommerce_items : [];
       for (const item of items) {
         const name = item.name || item.id || 'Unknown';
         if (!productMap[name]) productMap[name] = { revenue: 0, quantity: 0 };
-        productMap[name].revenue += (item.price || 0) * (item.quantity || 1);
+        const itemTotal = (item.price || 0) * (item.quantity || 1);
+        productMap[name].revenue += itemTotal;
         productMap[name].quantity += item.quantity || 1;
+        productRevenue += itemTotal;
       }
     }
     const topProducts = Object.entries(productMap)
@@ -436,6 +452,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       currency,
       total_revenue: totalRevenue,
+      product_revenue: productRevenue,
       total_orders: totalOrders,
       avg_order_value: avgOrderValue,
       add_to_cart_count: addToCarts.length,

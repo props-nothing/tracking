@@ -32,8 +32,9 @@ export default function EcommercePage({ params }: { params: Promise<{ siteId: st
       ) : (
         <>
           {/* Revenue metrics */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <MetricCard title="Totale omzet" value={formatMoney(data.total_revenue, currency)} />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard title="Totale omzet" value={formatMoney(data.total_revenue, currency)} subtitle="Incl. verzending & BTW" />
+            <MetricCard title="Productomzet" value={formatMoney(data.product_revenue ?? 0, currency)} subtitle="Excl. verzending & BTW" />
             <MetricCard title="Totaal bestellingen" value={data.total_orders.toString()} />
             <MetricCard title="Gem. bestelwaarde" value={formatMoney(data.avg_order_value, currency)} />
           </div>
