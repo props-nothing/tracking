@@ -3,29 +3,33 @@
  * Ultra-lightweight, privacy-friendly analytics tracker (< 3 KB gzipped)
  */
 
-import { readConfig, TrackerConfig } from './config';
-import { sendEvent, sendBeacon, setDebugMode, EventPayload } from './collect';
-import { getSessionId, touchSession } from './session';
-import { parseUTM } from './utm';
-import { observeVitals, getVitals } from './performance';
-import { trackScroll, getScrollDepth, resetScrollDepth } from './scroll';
-import { trackEngagement, getEngagedTime, resetEngagement } from './engagement';
-import { onSPANavigation } from './spa';
-import { trackOutbound } from './outbound';
-import { trackDownloads } from './downloads';
-import { trackForms } from './forms';
-import { trackVisibility } from './visibility';
-import { trackRageClicks } from './rage-click';
-import { trackDeadClicks } from './dead-click';
-import { trackClipboard } from './clipboard';
-import { trackPrint } from './print';
-import { trackErrors } from './errors';
-import { createEcommercePayload, EcommerceAction, EcommerceData } from './ecommerce';
-import { autoDetectEcommerce } from './ecommerce-auto';
-import { setConsent, hasConsent } from './consent';
-import { setCustomProps, getCustomProps } from './custom-props';
-import { getVisitorId, clearVisitorId } from './visitor';
-import { isBot, isDNTEnabled, debug } from './utils';
+import { readConfig, TrackerConfig } from "./config";
+import { sendEvent, sendBeacon, setDebugMode, EventPayload } from "./collect";
+import { getSessionId, touchSession } from "./session";
+import { parseUTM } from "./utm";
+import { observeVitals, getVitals } from "./performance";
+import { trackScroll, getScrollDepth, resetScrollDepth } from "./scroll";
+import { trackEngagement, getEngagedTime, resetEngagement } from "./engagement";
+import { onSPANavigation } from "./spa";
+import { trackOutbound } from "./outbound";
+import { trackDownloads } from "./downloads";
+import { trackForms } from "./forms";
+import { trackVisibility } from "./visibility";
+import { trackRageClicks } from "./rage-click";
+import { trackDeadClicks } from "./dead-click";
+import { trackClipboard } from "./clipboard";
+import { trackPrint } from "./print";
+import { trackErrors } from "./errors";
+import {
+  createEcommercePayload,
+  EcommerceAction,
+  EcommerceData,
+} from "./ecommerce";
+import { autoDetectEcommerce } from "./ecommerce-auto";
+import { setConsent, hasConsent } from "./consent";
+import { setCustomProps, getCustomProps } from "./custom-props";
+import { getVisitorId, clearVisitorId } from "./visitor";
+import { isBot, isDNTEnabled, debug } from "./utils";
 
 export interface LeadInput {
   name?: string;
@@ -53,7 +57,7 @@ declare global {
 }
 
 (function () {
-  'use strict';
+  "use strict";
 
   // ── Read configuration ──────────────────────────────────────
   const config = readConfig();
@@ -62,24 +66,56 @@ declare global {
   let debugEnabled = config.debug;
   setDebugMode(debugEnabled);
 
-  debug(debugEnabled, 'Config loaded:', config);
+  debug(debugEnabled, "Config loaded:", config);
 
   // ── Check consent / DNT / bots ──────────────────────────────
   if (config.respectDNT && isDNTEnabled()) {
-    debug(debugEnabled, 'DNT/GPC detected — tracking disabled');
+    debug(debugEnabled, "DNT/GPC detected — tracking disabled");
     return;
   }
 
   if (isBot()) {
-    debug(debugEnabled, 'Bot detected — tracking disabled');
+    debug(debugEnabled, "Bot detected — tracking disabled");
     return;
   }
 
   // ── Session ─────────────────────────────────────────────────
   const sessionId = getSessionId();
-  debug(debugEnabled, 'Session ID:', sessionId);
+  debug(debugEnabled, "Session ID:", sessionId);
 
   // ── Collect page data ───────────────────────────────────────
+
+  // Persist the session's entry referrer in sessionStorage, similar to UTMs.
+  // This prevents losing the referrer when a client-side redirect or route guard
+  // fires immediately after landing, causing document.referrer on the redirected
+  // page to resolve to the same hostname (and be filtered as self-referral).
+  const REFERRER_KEY = "_tk_ref";
+
+  function storeEntryReferrer(ref: string, refHost: string): void {
+    try {
+      if (!sessionStorage.getItem(REFERRER_KEY)) {
+        sessionStorage.setItem(
+          REFERRER_KEY,
+          JSON.stringify({ referrer: ref, referrer_hostname: refHost }),
+        );
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function getStoredEntryReferrer(): {
+    referrer: string;
+    referrer_hostname: string;
+  } | null {
+    try {
+      const raw = sessionStorage.getItem(REFERRER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
   function buildBasePayload(): EventPayload {
     const utm = parseUTM();
     const loc = window.location;
@@ -95,9 +131,25 @@ declare global {
           referrerHostname = null;
         } else {
           referrerHostname = refHost;
+          // Persist this as the session's entry referrer so subsequent pages
+          // (full reloads where document.referrer becomes an internal URL) can
+          // still attribute back to the correct external source.
+          storeEntryReferrer(referrer, refHost);
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
+
+    // If current navigation has no external referrer, fall back to the session's
+    // stored entry referrer (captures the case where a redirect fires on landing).
+    if (!referrer) {
+      const stored = getStoredEntryReferrer();
+      if (stored) {
+        referrer = stored.referrer;
+        referrerHostname = stored.referrer_hostname;
+      }
+    }
 
     return {
       site_id: config!.siteId,
@@ -123,7 +175,7 @@ declare global {
 
   function emitEvent(overrides: Partial<EventPayload>): void {
     if (!hasConsent()) {
-      debug(debugEnabled, 'No consent — event skipped');
+      debug(debugEnabled, "No consent — event skipped");
       return;
     }
     touchSession();
@@ -138,25 +190,27 @@ declare global {
   }
 
   // ── Send initial pageview ───────────────────────────────────
-  emitEvent({ event_type: 'pageview' });
+  emitEvent({ event_type: "pageview" });
 
   // ── Detect 404 pages ────────────────────────────────────────
   // Client-side heuristic: check title, meta tags, and common 404 indicators
   (function detect404() {
-    const title = (document.title || '').toLowerCase();
-    const metaStatus = document.querySelector('meta[name="status-code"]')?.getAttribute('content');
-    const body = document.body?.innerText?.slice(0, 500).toLowerCase() || '';
+    const title = (document.title || "").toLowerCase();
+    const metaStatus = document
+      .querySelector('meta[name="status-code"]')
+      ?.getAttribute("content");
+    const body = document.body?.innerText?.slice(0, 500).toLowerCase() || "";
 
     const is404 =
-      metaStatus === '404' ||
+      metaStatus === "404" ||
       /\b404\b/.test(title) ||
       /page not found|not found|pagina niet gevonden/.test(title) ||
-      (document.querySelector('[data-404]') !== null);
+      document.querySelector("[data-404]") !== null;
 
     if (is404) {
       emitEvent({
-        event_type: 'custom',
-        event_name: '404',
+        event_type: "custom",
+        event_name: "404",
         event_data: {
           path: window.location.pathname,
           referrer: document.referrer || null,
@@ -185,7 +239,7 @@ declare global {
     // Send unload data for previous page
     const vitals = getVitals();
     emitBeacon({
-      event_type: 'pageleave',
+      event_type: "pageleave",
       path: oldPath,
       scroll_depth_pct: getScrollDepth(),
       engaged_time_ms: getEngagedTime(),
@@ -199,7 +253,7 @@ declare global {
     lastUrl = url;
 
     // Send new pageview
-    emitEvent({ event_type: 'pageview' });
+    emitEvent({ event_type: "pageview" });
   });
 
   // ── Outbound links ─────────────────────────────────────────
@@ -243,10 +297,10 @@ declare global {
   autoDetectEcommerce(emitEvent, debugEnabled);
 
   // ── Page unload — send final data ───────────────────────────
-  window.addEventListener('beforeunload', () => {
+  window.addEventListener("beforeunload", () => {
     const vitals = getVitals();
     emitBeacon({
-      event_type: 'pageleave',
+      event_type: "pageleave",
       scroll_depth_pct: getScrollDepth(),
       engaged_time_ms: getEngagedTime(),
       time_on_page_ms: getEngagedTime(),
@@ -258,7 +312,7 @@ declare global {
   window.tracking = {
     event(name: string, data?: Record<string, any>) {
       emitEvent({
-        event_type: 'custom',
+        event_type: "custom",
         event_name: name,
         event_data: data || {},
       });
@@ -266,7 +320,7 @@ declare global {
 
     set(props: Record<string, any>) {
       setCustomProps(props);
-      debug(debugEnabled, 'Custom props updated:', getCustomProps());
+      debug(debugEnabled, "Custom props updated:", getCustomProps());
     },
 
     ecommerce(action: EcommerceAction, data: EcommerceData) {
@@ -276,9 +330,9 @@ declare global {
 
     lead(data: LeadInput) {
       const payload: Partial<EventPayload> = {
-        event_type: 'form_submit',
-        event_name: 'form_submit',
-        form_id: data.form_id || 'manual',
+        event_type: "form_submit",
+        event_name: "form_submit",
+        form_id: data.form_id || "manual",
         lead_name: data.name || null,
         lead_email: data.email || null,
         lead_phone: data.phone || null,
@@ -287,21 +341,21 @@ declare global {
         lead_data: data.data || null,
       };
       emitEvent(payload);
-      debug(debugEnabled, 'Lead tracked:', data);
+      debug(debugEnabled, "Lead tracked:", data);
     },
 
     consent(granted: boolean) {
       setConsent(granted);
       if (!granted) clearVisitorId();
-      debug(debugEnabled, 'Consent:', granted ? 'granted' : 'revoked');
+      debug(debugEnabled, "Consent:", granted ? "granted" : "revoked");
     },
 
     debug(enabled: boolean) {
       debugEnabled = enabled;
       setDebugMode(enabled);
-      debug(enabled, 'Debug mode:', enabled ? 'ON' : 'OFF');
+      debug(enabled, "Debug mode:", enabled ? "ON" : "OFF");
     },
   };
 
-  debug(debugEnabled, 'Tracking initialized');
+  debug(debugEnabled, "Tracking initialized");
 })();

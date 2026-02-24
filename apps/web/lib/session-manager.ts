@@ -1,4 +1,4 @@
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient } from "@/lib/supabase/server";
 
 interface SessionData {
   session_id: string;
@@ -34,14 +34,16 @@ export async function upsertSession(data: SessionData): Promise<{
 
   // Check if session already exists
   const { data: existing } = await supabase
-    .from('sessions')
-    .select('id, started_at, pageviews, events_count, entry_path, total_revenue, engaged_time_ms')
-    .eq('id', data.session_id)
+    .from("sessions")
+    .select(
+      "id, started_at, pageviews, events_count, entry_path, total_revenue, engaged_time_ms, referrer_hostname",
+    )
+    .eq("id", data.session_id)
     .single();
 
   if (!existing) {
     // New session
-    await supabase.from('sessions').insert({
+    await supabase.from("sessions").insert({
       id: data.session_id,
       site_id: data.site_id,
       visitor_hash: data.visitor_hash,
@@ -50,7 +52,7 @@ export async function upsertSession(data: SessionData): Promise<{
       ended_at: now,
       duration_ms: 0,
       engaged_time_ms: data.engaged_time_ms || 0,
-      pageviews: data.event_type === 'pageview' ? 1 : 0,
+      pageviews: data.event_type === "pageview" ? 1 : 0,
       events_count: 1,
       is_bounce: true,
       entry_path: data.path,
@@ -72,34 +74,58 @@ export async function upsertSession(data: SessionData): Promise<{
   }
 
   // Update existing session
-  const newPageviews = existing.pageviews + (data.event_type === 'pageview' ? 1 : 0);
+  const newPageviews =
+    existing.pageviews + (data.event_type === "pageview" ? 1 : 0);
   const newEventsCount = existing.events_count + 1;
-  const durationMs = new Date(now).getTime() - new Date(existing.started_at).getTime();
+  const durationMs =
+    new Date(now).getTime() - new Date(existing.started_at).getTime();
   const isBounce = newPageviews <= 1;
 
+  // If the session previously had no referrer (e.g., direct landing) but the
+  // current event carries one (visitor returned from an external source within
+  // the same 30-min session window), update the session's attribution fields.
+  const attributionUpdate: Record<string, string | null> = {};
+  if (!existing.referrer_hostname && data.referrer_hostname) {
+    attributionUpdate.referrer_hostname = data.referrer_hostname;
+  }
+  if (!existing.utm_source && data.utm_source) {
+    attributionUpdate.utm_source = data.utm_source;
+    attributionUpdate.utm_medium = data.utm_medium ?? null;
+    attributionUpdate.utm_campaign = data.utm_campaign ?? null;
+  }
+
   await supabase
-    .from('sessions')
+    .from("sessions")
     .update({
       ended_at: now,
       duration_ms: durationMs,
-      engaged_time_ms: (existing.engaged_time_ms || 0) + (data.engaged_time_ms || 0),
+      engaged_time_ms:
+        (existing.engaged_time_ms || 0) + (data.engaged_time_ms || 0),
       pageviews: newPageviews,
       events_count: newEventsCount,
       is_bounce: isBounce,
       exit_path: data.path,
       total_revenue: (existing.total_revenue || 0) + (data.revenue || 0),
       custom_props: data.custom_props || {},
+      ...attributionUpdate,
     })
-    .eq('id', data.session_id);
+    .eq("id", data.session_id);
 
   // Un-mark older events in this session as is_exit
   // (the new event being inserted will be is_exit = true)
   supabase
-    .from('events')
+    .from("events")
     .update({ is_exit: false })
-    .eq('session_id', data.session_id)
-    .eq('is_exit', true)
-    .then(() => { /* fire and forget */ }, () => { /* ignore */ });
+    .eq("session_id", data.session_id)
+    .eq("is_exit", true)
+    .then(
+      () => {
+        /* fire and forget */
+      },
+      () => {
+        /* ignore */
+      },
+    );
 
   return { is_entry: false, is_bounce: isBounce };
 }
