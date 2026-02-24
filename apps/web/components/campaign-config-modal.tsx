@@ -204,8 +204,11 @@ export function CampaignConfigModal({ siteId, open, onClose }: CampaignConfigMod
         body.credentials = editCredentials[provider];
         body.credential_set_id = null;
       } else {
-        // Clear direct credentials when using a set
-        body.credentials = {};
+        // When using a credential set, still include any extra fields the user filled in
+        // (e.g. customer_id for Google Ads) — these override the set at sync time
+        const extraCreds = editCredentials[provider];
+        const hasExtraCreds = Object.values(extraCreds).some((v) => v && v.length > 0);
+        body.credentials = hasExtraCreds ? extraCreds : {};
       }
 
       await api.post('/api/campaign-integrations', body);
@@ -447,6 +450,30 @@ export function CampaignConfigModal({ siteId, open, onClose }: CampaignConfigMod
                           ))}
                         </select>
                       </>
+                    )}
+
+                    {/* Show extra per-site fields (e.g. customer_id for Google Ads) when using a credential set */}
+                    {CREDENTIAL_FIELDS[activeTab].length > 0 && (
+                      <div className="space-y-3 border-t pt-3 mt-2">
+                        <p className="text-xs text-muted-foreground">Vul de onderstaande velden aan voor deze site:</p>
+                        {CREDENTIAL_FIELDS[activeTab].map((field) => (
+                          <div key={field.key}>
+                            <label className="mb-1 block text-xs text-muted-foreground">{field.label}</label>
+                            <input
+                              type={field.type || 'text'}
+                              value={editCredentials[activeTab][field.key] || ''}
+                              onChange={(e) =>
+                                setEditCredentials((prev) => ({
+                                  ...prev,
+                                  [activeTab]: { ...prev[activeTab], [field.key]: e.target.value },
+                                }))
+                              }
+                              placeholder={field.placeholder}
+                              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}
