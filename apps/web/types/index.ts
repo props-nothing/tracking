@@ -397,6 +397,96 @@ export interface VisitorStats {
   new_visitors: number;
 }
 
+// ── Campaign Integrations ─────────────────────────────────────
+export type CampaignProvider = 'google_ads' | 'meta_ads' | 'mailchimp';
+
+export interface CampaignCredentialSet {
+  id: string;
+  user_id: string;
+  provider: CampaignProvider;
+  name: string;
+  credentials: Record<string, string>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignIntegration {
+  id: string;
+  site_id: string;
+  provider: CampaignProvider;
+  enabled: boolean;
+  credentials: Record<string, string>;
+  credential_set_id: string | null;
+  credential_set?: CampaignCredentialSet | null;
+  campaign_filter: string | null;
+  sync_frequency: 'hourly' | 'daily' | 'weekly' | 'manual';
+  last_synced_at: string | null;
+  last_sync_status: 'success' | 'error' | 'syncing' | null;
+  last_sync_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignRow {
+  campaign_id: string;
+  campaign_name: string;
+  campaign_status: string | null;
+  provider: CampaignProvider;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  conversion_value: number;
+  ctr: number;
+  avg_cpc: number;
+  currency: string;
+  extra_metrics: Record<string, unknown>;
+}
+
+export interface CampaignDailySummary {
+  date: string;
+  provider: CampaignProvider;
+  active_campaigns: number;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  conversion_value: number;
+  ctr: number;
+  avg_cpc: number;
+  cost_per_conversion: number;
+  roas: number;
+}
+
+export interface CampaignOverview {
+  providers: {
+    provider: CampaignProvider;
+    enabled: boolean;
+    last_synced_at: string | null;
+    last_sync_status: string | null;
+  }[];
+  totals: {
+    impressions: number;
+    clicks: number;
+    cost: number;
+    conversions: number;
+    conversion_value: number;
+    results: number;
+    reach: number;
+    link_clicks: number;
+    ctr: number;
+    avg_cpc: number;
+    cost_per_conversion: number;
+    cost_per_result: number;
+    roas: number;
+    frequency: number;
+    cpm: number;
+  };
+  by_provider: CampaignDailySummary[];
+  campaigns: CampaignRow[];
+  timeseries: CampaignDailySummary[];
+}
+
 // ── Realtime ──────────────────────────────────────────────────
 export interface ActiveVisitor {
   path: string;

@@ -18,7 +18,7 @@ export default function FunnelsPage({ params }: { params: Promise<{ siteId: stri
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, [siteId, queryString]);
+  }, [siteId]);
 
   if (loading) return <LoadingState />;
 

@@ -20,6 +20,7 @@ const navItems = [
   { href: '/funnels', label: 'Funnels', icon: '🔻' },
   { href: '/forms', label: 'Formulieren', icon: '📝' },
   { href: '/leads', label: 'Leads', icon: '👤' },
+  { href: '/campaigns', label: 'Campagnes', icon: '📣' },
   { href: '/visitors', label: 'Bezoekers', icon: '🧑‍💻' },
   { href: '/flow', label: 'Gebruikersstroom', icon: '🔀' },
   { href: '/retention', label: 'Retentie', icon: '🔄' },
