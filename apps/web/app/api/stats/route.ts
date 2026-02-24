@@ -1,12 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 
+const PAGE_SIZE = 1000;
+
+/**
+ * Paginated fetch — Supabase PostgREST caps responses at max_rows (default 1000).
+ * This fetches all matching rows in batches using .range().
+ */
+async function fetchAll<T = any>(
+  buildQuery: (from: number, to: number) => any
+): Promise<T[]> {
+  const all: T[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
+    if (error) break;
+    if (!data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
 function getDateRange(period: string, customFrom?: string | null, customTo?: string | null) {
   const now = new Date();
 
   // Custom date range
   if (period === 'custom' && customFrom) {
-    const from = new Date(customFrom);
+    const from = new Date(customFrom + 'T00:00:00Z');
     const to = customTo ? new Date(customTo + 'T23:59:59.999Z') : now;
     return { fromStr: from.toISOString(), toStr: to.toISOString() };
   }
@@ -14,28 +36,28 @@ function getDateRange(period: string, customFrom?: string | null, customTo?: str
   let fromDate: Date;
   switch (period) {
     case 'today':
-      fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
       break;
     case 'yesterday': {
-      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
       fromDate = new Date(startOfToday.getTime() - 86400000);
       const endOfYesterday = new Date(startOfToday.getTime() - 1);
       return { fromStr: fromDate.toISOString(), toStr: endOfYesterday.toISOString() };
     }
     case 'last_7_days':
-      fromDate = new Date(now.getTime() - 7 * 86400000);
+      fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 7));
       break;
     case 'last_30_days':
-      fromDate = new Date(now.getTime() - 30 * 86400000);
+      fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30));
       break;
     case 'last_90_days':
-      fromDate = new Date(now.getTime() - 90 * 86400000);
+      fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 90));
       break;
     case 'last_365_days':
-      fromDate = new Date(now.getTime() - 365 * 86400000);
+      fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 365));
       break;
     default:
-      fromDate = new Date(now.getTime() - 30 * 86400000);
+      fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30));
   }
   return { fromStr: fromDate.toISOString(), toStr: now.toISOString() };
 }
@@ -118,17 +140,19 @@ export async function GET(request: NextRequest) {
 
   // --- Web Vitals metric ---
   if (metric === 'vitals') {
-    let vitalsQuery = db
-      .from('events')
-      .select('path, ttfb_ms, fcp_ms, lcp_ms, cls, inp_ms, fid_ms, timestamp')
-      .eq('site_id', siteId)
-      .eq('event_type', 'pageview')
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr)
-      .not('ttfb_ms', 'is', null);
-    vitalsQuery = applyDbFilters(vitalsQuery, filters);
-    const { data: events } = await vitalsQuery;
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('path, ttfb_ms, fcp_ms, lcp_ms, cls, inp_ms, fid_ms, timestamp')
+        .eq('site_id', siteId)
+        .eq('event_type', 'pageview')
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .not('ttfb_ms', 'is', null)
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
 
     // Overall aggregation
     const vals = (arr: (number | null)[]): number[] => arr.filter((v): v is number => v != null);
@@ -164,7 +188,7 @@ export async function GET(request: NextRequest) {
     // Timeseries (daily LCP p75)
     const tsMap: Record<string, number[]> = {};
     for (const e of evts) {
-      const day = e.timestamp.split('T')[0];
+      const day = e.timestamp.slice(0, 10);
       (tsMap[day] ||= []).push(e.lcp_ms ?? 0);
     }
     const timeseries = Object.entries(tsMap)
@@ -176,16 +200,18 @@ export async function GET(request: NextRequest) {
 
   // --- Outbound links & downloads metric ---
   if (metric === 'outbound_downloads') {
-    let obQuery = db
-      .from('events')
-      .select('event_type, event_data, visitor_hash, path, timestamp')
-      .eq('site_id', siteId)
-      .in('event_type', ['outbound_click', 'file_download'])
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr);
-    obQuery = applyDbFilters(obQuery, filters);
-    const { data: events } = await obQuery;
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('event_type, event_data, visitor_hash, path, timestamp')
+        .eq('site_id', siteId)
+        .in('event_type', ['outbound_click', 'file_download'])
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
 
     const outbound = evts.filter(e => e.event_type === 'outbound_click');
     const downloads = evts.filter(e => e.event_type === 'file_download');
@@ -240,17 +266,19 @@ export async function GET(request: NextRequest) {
 
   // --- Scroll depth metric ---
   if (metric === 'scroll_depth') {
-    let scrollQuery = db
-      .from('events')
-      .select('path, scroll_depth_pct, visitor_hash, timestamp')
-      .eq('site_id', siteId)
-      .eq('event_type', 'pageview')
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr)
-      .not('scroll_depth_pct', 'is', null);
-    scrollQuery = applyDbFilters(scrollQuery, filters);
-    const { data: events } = await scrollQuery;
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('path, scroll_depth_pct, visitor_hash, timestamp')
+        .eq('site_id', siteId)
+        .eq('event_type', 'pageview')
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .not('scroll_depth_pct', 'is', null)
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
 
     // Overall
     const depths = evts.map(e => e.scroll_depth_pct!);
@@ -290,16 +318,18 @@ export async function GET(request: NextRequest) {
 
   // --- UX issues (rage clicks + dead clicks) metric ---
   if (metric === 'ux_issues') {
-    let uxQuery = db
-      .from('events')
-      .select('event_type, event_data, path, visitor_hash, timestamp')
-      .eq('site_id', siteId)
-      .in('event_type', ['rage_click', 'dead_click'])
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr);
-    uxQuery = applyDbFilters(uxQuery, filters);
-    const { data: events } = await uxQuery;
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('event_type, event_data, path, visitor_hash, timestamp')
+        .eq('site_id', siteId)
+        .in('event_type', ['rage_click', 'dead_click'])
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
 
     const rageClicks = evts.filter(e => e.event_type === 'rage_click');
     const deadClicks = evts.filter(e => e.event_type === 'dead_click');
@@ -349,17 +379,19 @@ export async function GET(request: NextRequest) {
 
   // --- 404 pages metric ---
   if (metric === '404s') {
-    let query404 = db
-      .from('events')
-      .select('event_data, path, referrer, referrer_hostname, visitor_hash, timestamp')
-      .eq('site_id', siteId)
-      .eq('event_type', 'custom')
-      .eq('event_name', '404')
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr);
-    query404 = applyDbFilters(query404, filters);
-    const { data: events } = await query404;
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('event_data, path, referrer, referrer_hostname, visitor_hash, timestamp')
+        .eq('site_id', siteId)
+        .eq('event_type', 'custom')
+        .eq('event_name', '404')
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
 
     // Aggregate by path
     const pathMap: Record<string, { count: number; visitors: Set<string>; referrers: Set<string>; last_seen: string }> = {};
@@ -391,16 +423,19 @@ export async function GET(request: NextRequest) {
 
   // --- Time on page metric ---
   if (metric === 'time_on_page') {
-    let topQuery = db
-      .from('events')
-      .select('path, time_on_page_ms, engaged_time_ms, visitor_hash, timestamp')
-      .eq('site_id', siteId)
-      .eq('event_type', 'pageview')
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr);
-    topQuery = applyDbFilters(topQuery, filters);
-    const { data: events } = await topQuery;
-    const evts = (events || []).filter(e => e.time_on_page_ms || e.engaged_time_ms);
+    const rawEvts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('path, time_on_page_ms, engaged_time_ms, visitor_hash, timestamp')
+        .eq('site_id', siteId)
+        .eq('event_type', 'pageview')
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
+    const evts = rawEvts.filter(e => e.time_on_page_ms || e.engaged_time_ms);
 
     // Per-page breakdown
     const pageMap: Record<string, { times: number[]; engaged: number[]; visitors: Set<string> }> = {};
@@ -437,17 +472,18 @@ export async function GET(request: NextRequest) {
 
   // --- Ecommerce metric ---
   if (metric === 'ecommerce') {
-    let ecomQuery = db
-      .from('events')
-      .select('event_type, ecommerce_action, order_id, revenue, currency, ecommerce_items, timestamp')
-      .eq('site_id', siteId)
-      .eq('event_type', 'ecommerce')
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr);
-    ecomQuery = applyDbFilters(ecomQuery, filters);
-    const { data: events } = await ecomQuery;
-
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('event_type, ecommerce_action, order_id, revenue, currency, ecommerce_items, timestamp')
+        .eq('site_id', siteId)
+        .eq('event_type', 'ecommerce')
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
     const purchases = evts.filter((e) => e.ecommerce_action === 'purchase');
     const addToCarts = evts.filter((e) => e.ecommerce_action === 'add_to_cart');
     const checkouts = evts.filter((e) => e.ecommerce_action === 'begin_checkout');
@@ -482,7 +518,7 @@ export async function GET(request: NextRequest) {
     // Revenue timeseries
     const revMap: Record<string, number> = {};
     for (const e of purchases) {
-      const day = e.timestamp.split('T')[0];
+      const day = e.timestamp.slice(0, 10);
       revMap[day] = (revMap[day] || 0) + (e.revenue || 0);
     }
     const revenueTimeseries = Object.entries(revMap)
@@ -504,18 +540,19 @@ export async function GET(request: NextRequest) {
 
   // --- Errors metric ---
   if (metric === 'errors') {
-    let errQuery = db
-      .from('events')
-      .select('error_message, error_source, error_line, timestamp')
-      .eq('site_id', siteId)
-      .eq('event_type', 'error')
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr)
-      .order('timestamp', { ascending: false });
-    errQuery = applyDbFilters(errQuery, filters);
-    const { data: events } = await errQuery;
-
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('error_message, error_source, error_line, timestamp')
+        .eq('site_id', siteId)
+        .eq('event_type', 'error')
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .order('timestamp', { ascending: false })
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
     const errorMap: Record<string, { error_message: string; error_source: string; error_line: number | null; count: number; last_seen: string }> = {};
     for (const e of evts) {
       const key = `${e.error_message || ''}|${e.error_source || ''}|${e.error_line || ''}`;
@@ -540,18 +577,19 @@ export async function GET(request: NextRequest) {
 
   // --- Events (custom) metric ---
   if (metric === 'events') {
-    let evtQuery = db
-      .from('events')
-      .select('event_name, event_data, visitor_hash, path, timestamp')
-      .eq('site_id', siteId)
-      .eq('event_type', 'custom')
-      .gte('timestamp', fromStr)
-      .lte('timestamp', toStr)
-      .order('timestamp', { ascending: false });
-    evtQuery = applyDbFilters(evtQuery, filters);
-    const { data: events } = await evtQuery;
-
-    const evts = events || [];
+    const evts = await fetchAll((from, to) => {
+      let q = db
+        .from('events')
+        .select('event_name, event_data, visitor_hash, path, timestamp')
+        .eq('site_id', siteId)
+        .eq('event_type', 'custom')
+        .gte('timestamp', fromStr)
+        .lte('timestamp', toStr)
+        .order('timestamp', { ascending: false })
+        .range(from, to);
+      q = applyDbFilters(q, filters);
+      return q;
+    });
     const eventMap: Record<string, { count: number; visitors: Set<string> }> = {};
     for (const e of evts) {
       const name = e.event_name || 'unnamed';
@@ -583,15 +621,17 @@ export async function GET(request: NextRequest) {
   // --- Retention metric ---
   if (metric === 'retention') {
     // Build weekly cohorts from sessions
-    const { data: sessions } = await db
-      .from('sessions')
-      .select('visitor_hash, started_at')
-      .eq('site_id', siteId)
-      .gte('started_at', fromStr)
-      .lte('started_at', toStr)
-      .order('started_at', { ascending: true });
+    const sess = await fetchAll((from, to) =>
+      db
+        .from('sessions')
+        .select('visitor_hash, started_at')
+        .eq('site_id', siteId)
+        .gte('started_at', fromStr)
+        .lte('started_at', toStr)
+        .order('started_at', { ascending: true })
+        .range(from, to)
+    );
 
-    const sess = sessions || [];
     if (sess.length === 0) {
       return NextResponse.json({ cohorts: [] });
     }
@@ -640,24 +680,38 @@ export async function GET(request: NextRequest) {
   // --- Default: overview stats ---
   const selectFields = 'event_type, event_name, visitor_hash, session_id, path, referrer_hostname, country_code, city, browser, os, device_type, engaged_time_ms, scroll_depth_pct, is_bounce, is_entry, is_exit, utm_source, utm_medium, utm_campaign, time_on_page_ms, timestamp';
 
-  let eventsQuery = db
+  let baseEventsQuery = db
     .from('events')
     .select(selectFields)
     .eq('site_id', siteId)
     .gte('timestamp', fromStr)
     .lte('timestamp', toStr);
-  eventsQuery = applyDbFilters(eventsQuery, filters);
-  const { data: events } = await eventsQuery;
+  baseEventsQuery = applyDbFilters(baseEventsQuery, filters);
+
+  const events = await fetchAll((from, to) => {
+    let q = db
+      .from('events')
+      .select(selectFields)
+      .eq('site_id', siteId)
+      .gte('timestamp', fromStr)
+      .lte('timestamp', toStr)
+      .range(from, to);
+    q = applyDbFilters(q, filters);
+    return q;
+  });
 
   // Also fetch sessions for reliable exit_path and duration
-  const { data: sessions } = await db
-    .from('sessions')
-    .select('id, exit_path, duration_ms, is_bounce')
-    .eq('site_id', siteId)
-    .gte('started_at', fromStr)
-    .lte('started_at', toStr);
+  const sessions = await fetchAll((from, to) =>
+    db
+      .from('sessions')
+      .select('id, exit_path, duration_ms, is_bounce')
+      .eq('site_id', siteId)
+      .gte('started_at', fromStr)
+      .lte('started_at', toStr)
+      .range(from, to)
+  );
 
-  if (!events) {
+  if (!events || events.length === 0) {
     return NextResponse.json({
       pageviews: 0, unique_visitors: 0, sessions: 0,
       avg_session_duration: 0, bounce_rate: 0, views_per_session: 0, avg_engaged_time: 0,
@@ -766,12 +820,15 @@ export async function GET(request: NextRequest) {
     .map(([device, count]) => ({ device, count }));
 
   // Fetch leads for timeseries markers
-  const { data: leads } = await db
-    .from('leads')
-    .select('created_at')
-    .eq('site_id', siteId)
-    .gte('created_at', fromStr)
-    .lte('created_at', toStr);
+  const leads = await fetchAll((from, to) =>
+    db
+      .from('leads')
+      .select('created_at')
+      .eq('site_id', siteId)
+      .gte('created_at', fromStr)
+      .lte('created_at', toStr)
+      .range(from, to)
+  );
 
   // Time series — use hourly buckets for today/yesterday, daily for everything else
   const isHourly = period === 'today' || period === 'yesterday';
@@ -780,20 +837,20 @@ export async function GET(request: NextRequest) {
     const bucketMap: Record<string, { pageviews: number; visitors: Set<string>; leads: number }> = {};
     // Generate all hour slots
     const startHour = new Date(fromStr);
-    startHour.setMinutes(0, 0, 0);
+    startHour.setUTCMinutes(0, 0, 0);
     const endHour = new Date(toStr);
     for (let h = new Date(startHour); h <= endHour; h = new Date(h.getTime() + 3600000)) {
       const key = h.toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
       bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
     }
     for (const e of pvEvents) {
-      const key = e.timestamp.slice(0, 13);
+      const key = new Date(e.timestamp).toISOString().slice(0, 13);
       if (!bucketMap[key]) bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
       bucketMap[key].pageviews++;
       bucketMap[key].visitors.add(e.visitor_hash);
     }
     for (const l of leads || []) {
-      const key = l.created_at.slice(0, 13);
+      const key = new Date(l.created_at).toISOString().slice(0, 13);
       if (bucketMap[key]) bucketMap[key].leads++;
     }
     var timeseries = Object.entries(bucketMap)
@@ -803,20 +860,20 @@ export async function GET(request: NextRequest) {
     const bucketMap: Record<string, { pageviews: number; visitors: Set<string>; leads: number }> = {};
     // Fill all day slots in range
     const startDay = new Date(fromStr);
-    startDay.setHours(0, 0, 0, 0);
+    startDay.setUTCHours(0, 0, 0, 0);
     const endDay = new Date(toStr);
     for (let d = new Date(startDay); d <= endDay; d = new Date(d.getTime() + 86400000)) {
       const key = d.toISOString().slice(0, 10);
       bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
     }
     for (const e of pvEvents) {
-      const key = e.timestamp.split('T')[0];
+      const key = e.timestamp.slice(0, 10);
       if (!bucketMap[key]) bucketMap[key] = { pageviews: 0, visitors: new Set(), leads: 0 };
       bucketMap[key].pageviews++;
       bucketMap[key].visitors.add(e.visitor_hash);
     }
     for (const l of leads || []) {
-      const key = l.created_at.split('T')[0];
+      const key = l.created_at.slice(0, 10);
       if (bucketMap[key]) bucketMap[key].leads++;
     }
     var timeseries = Object.entries(bucketMap)

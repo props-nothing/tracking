@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase/server';
 
+const PAGE_SIZE = 1000;
+
+async function fetchAll<T = any>(
+  buildQuery: (from: number, to: number) => any
+): Promise<T[]> {
+  const all: T[] = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await buildQuery(offset, offset + PAGE_SIZE - 1);
+    if (error) break;
+    if (!data || data.length === 0) break;
+    all.push(...(data as T[]));
+    if (data.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+  return all;
+}
+
 // Public endpoint — shared report data
 export async function GET(
   request: NextRequest,
@@ -54,26 +72,26 @@ export async function GET(
     fromDate = new Date(qFrom + 'T00:00:00Z');
   } else if (qRange) {
     switch (qRange) {
-      case 'today': fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-      case 'last_7_days': fromDate = new Date(now.getTime() - 7 * 86400000); break;
-      case 'last_30_days': fromDate = new Date(now.getTime() - 30 * 86400000); break;
-      case 'last_90_days': fromDate = new Date(now.getTime() - 90 * 86400000); break;
-      case 'last_365_days': fromDate = new Date(now.getTime() - 365 * 86400000); break;
-      case 'this_month': fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
-      case 'last_month': fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); toDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59); break;
-      default: fromDate = new Date(now.getTime() - 30 * 86400000);
+      case 'today': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); break;
+      case 'last_7_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 7)); break;
+      case 'last_30_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30)); break;
+      case 'last_90_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 90)); break;
+      case 'last_365_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 365)); break;
+      case 'this_month': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); break;
+      case 'last_month': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)); toDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999)); break;
+      default: fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30));
     }
   } else {
     // Use report default
     switch (report.date_range_mode) {
-      case 'last_7_days': fromDate = new Date(now.getTime() - 7 * 86400000); break;
-      case 'last_30_days': fromDate = new Date(now.getTime() - 30 * 86400000); break;
-      case 'last_90_days': fromDate = new Date(now.getTime() - 90 * 86400000); break;
-      case 'last_365_days': fromDate = new Date(now.getTime() - 365 * 86400000); break;
-      case 'this_month': fromDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
-      case 'last_month': fromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); break;
-      case 'custom': fromDate = report.date_from ? new Date(report.date_from) : new Date(now.getTime() - 30 * 86400000); break;
-      default: fromDate = new Date(now.getTime() - 30 * 86400000);
+      case 'last_7_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 7)); break;
+      case 'last_30_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30)); break;
+      case 'last_90_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 90)); break;
+      case 'last_365_days': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 365)); break;
+      case 'this_month': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)); break;
+      case 'last_month': fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)); break;
+      case 'custom': fromDate = report.date_from ? new Date(report.date_from + 'T00:00:00Z') : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30)); break;
+      default: fromDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 30));
     }
   }
 
@@ -89,24 +107,27 @@ export async function GET(
   const filterUtmCampaign = request.nextUrl.searchParams.get('utm_campaign');
 
   // Fetch events — include UTM + page_title + is_entry/is_exit
-  let query = supabase
-    .from('events')
-    .select('event_type, visitor_hash, session_id, path, page_title, referrer_hostname, country_code, country_name, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, timestamp, revenue, utm_source, utm_medium, utm_campaign')
-    .eq('site_id', report.site_id)
-    .gte('timestamp', fromDate.toISOString())
-    .lte('timestamp', toDate.toISOString());
+  const events = await fetchAll((from, to) => {
+    let q = supabase
+      .from('events')
+      .select('event_type, visitor_hash, session_id, path, page_title, referrer_hostname, country_code, country_name, browser, os, device_type, engaged_time_ms, is_bounce, is_entry, is_exit, timestamp, revenue, utm_source, utm_medium, utm_campaign')
+      .eq('site_id', report.site_id)
+      .gte('timestamp', fromDate.toISOString())
+      .lte('timestamp', toDate.toISOString())
+      .range(from, to);
 
-  if (filterPage) query = query.eq('path', filterPage);
-  if (filterReferrer) query = query.eq('referrer_hostname', filterReferrer);
-  if (filterCountry) query = query.eq('country_code', filterCountry);
-  if (filterDevice) query = query.eq('device_type', filterDevice);
-  if (filterBrowser) query = query.eq('browser', filterBrowser);
-  if (filterOs) query = query.eq('os', filterOs);
-  if (filterUtmSource) query = query.eq('utm_source', filterUtmSource);
-  if (filterUtmMedium) query = query.eq('utm_medium', filterUtmMedium);
-  if (filterUtmCampaign) query = query.eq('utm_campaign', filterUtmCampaign);
+    if (filterPage) q = q.eq('path', filterPage);
+    if (filterReferrer) q = q.eq('referrer_hostname', filterReferrer);
+    if (filterCountry) q = q.eq('country_code', filterCountry);
+    if (filterDevice) q = q.eq('device_type', filterDevice);
+    if (filterBrowser) q = q.eq('browser', filterBrowser);
+    if (filterOs) q = q.eq('os', filterOs);
+    if (filterUtmSource) q = q.eq('utm_source', filterUtmSource);
+    if (filterUtmMedium) q = q.eq('utm_medium', filterUtmMedium);
+    if (filterUtmCampaign) q = q.eq('utm_campaign', filterUtmCampaign);
 
-  const { data: events } = await query;
+    return q;
+  });
 
   const emptyResult = {
     site_name: (report as any).sites?.name,
@@ -132,7 +153,7 @@ export async function GET(
     utm_campaigns: [],
   };
 
-  if (!events || events.length === 0) {
+  if (events.length === 0) {
     return NextResponse.json(emptyResult);
   }
 
@@ -144,19 +165,22 @@ export async function GET(
   const sessions = sessionSet.size;
 
   // Fetch sessions for reliable bounce rate and duration
-  const { data: sessRows } = await supabase
-    .from('sessions')
-    .select('id, duration_ms, is_bounce')
-    .eq('site_id', report.site_id)
-    .gte('started_at', fromDate.toISOString())
-    .lte('started_at', toDate.toISOString());
+  const sessRows = await fetchAll((from, to) =>
+    supabase
+      .from('sessions')
+      .select('id, duration_ms, is_bounce')
+      .eq('site_id', report.site_id)
+      .gte('started_at', fromDate.toISOString())
+      .lte('started_at', toDate.toISOString())
+      .range(from, to)
+  );
 
   // Bounce rate from sessions table — event-level is_bounce is unreliable
-  const bounces = (sessRows || []).filter((s) => s.is_bounce).length;
+  const bounces = sessRows.filter((s) => s.is_bounce).length;
   const bounceRate = sessions > 0 ? Math.round((bounces / sessions) * 100) : 0;
   const viewsPerSession = sessions > 0 ? Math.round((pageviews / sessions) * 10) / 10 : 0;
   // Avg duration from sessions table (event-level engaged_time summing double-counts)
-  const sessionDurations = (sessRows || []).filter((s) => s.duration_ms > 0).map((s) => s.duration_ms);
+  const sessionDurations = sessRows.filter((s) => s.duration_ms > 0).map((s) => s.duration_ms);
   const avgDuration = sessionDurations.length > 0
     ? Math.round(sessionDurations.reduce((a: number, b: number) => a + b, 0) / sessionDurations.length / 1000)
     : 0;
@@ -289,19 +313,21 @@ export async function GET(
       .gte('created_at', fromDate.toISOString())
       .lte('created_at', toDate.toISOString());
 
+    const reportPvEvents = events.filter((e) => e.event_type === 'pageview');
+
     if (isHourly) {
       const bucketMap: Record<string, { visitors: Set<string>; pageviews: number; leads: number }> = {};
       const startHour = new Date(fromDate);
-      startHour.setMinutes(0, 0, 0);
+      startHour.setUTCMinutes(0, 0, 0);
       for (let h = new Date(startHour); h <= toDate; h = new Date(h.getTime() + 3600000)) {
         const key = h.toISOString().slice(0, 13);
         bucketMap[key] = { visitors: new Set(), pageviews: 0, leads: 0 };
       }
-      events.forEach((e) => {
+      reportPvEvents.forEach((e) => {
         const key = new Date(e.timestamp).toISOString().slice(0, 13);
         if (!bucketMap[key]) bucketMap[key] = { visitors: new Set(), pageviews: 0, leads: 0 };
+        bucketMap[key].pageviews++;
         bucketMap[key].visitors.add(e.visitor_hash);
-        if (e.event_type === 'pageview') bucketMap[key].pageviews++;
       });
       for (const l of tsLeads || []) {
         const key = new Date(l.created_at).toISOString().slice(0, 13);
@@ -314,16 +340,16 @@ export async function GET(
       const dayMap: Record<string, { visitors: Set<string>; pageviews: number; leads: number }> = {};
       // Fill all day slots
       const startDay = new Date(fromDate);
-      startDay.setHours(0, 0, 0, 0);
+      startDay.setUTCHours(0, 0, 0, 0);
       for (let d = new Date(startDay); d <= toDate; d = new Date(d.getTime() + 86400000)) {
         const key = d.toISOString().slice(0, 10);
         dayMap[key] = { visitors: new Set(), pageviews: 0, leads: 0 };
       }
-      events.forEach((e) => {
+      reportPvEvents.forEach((e) => {
         const day = new Date(e.timestamp).toISOString().slice(0, 10);
         if (!dayMap[day]) dayMap[day] = { visitors: new Set(), pageviews: 0, leads: 0 };
+        dayMap[day].pageviews++;
         dayMap[day].visitors.add(e.visitor_hash);
-        if (e.event_type === 'pageview') dayMap[day].pageviews++;
       });
       for (const l of tsLeads || []) {
         const key = new Date(l.created_at).toISOString().slice(0, 10);
