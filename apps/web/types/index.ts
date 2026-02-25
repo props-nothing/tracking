@@ -385,6 +385,10 @@ export interface Visitor {
   first_utm_medium: string | null;
   first_utm_campaign: string | null;
   first_entry_path: string | null;
+  last_referrer_hostname: string | null;
+  last_utm_source: string | null;
+  last_utm_medium: string | null;
+  last_utm_campaign: string | null;
   last_country_code: string | null;
   last_city: string | null;
   last_device_type: string | null;

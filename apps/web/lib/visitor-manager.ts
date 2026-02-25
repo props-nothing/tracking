@@ -36,7 +36,7 @@ export async function upsertVisitor(
   // Check if visitor already exists for this site
   const { data: existing } = await supabase
     .from('visitors')
-    .select('id, total_sessions, total_pageviews, total_events, total_revenue, total_engaged_time_ms, custom_props')
+    .select('id, total_sessions, total_pageviews, total_events, total_revenue, total_engaged_time_ms, custom_props, first_referrer_hostname, first_utm_source, first_utm_medium, first_utm_campaign')
     .eq('site_id', data.site_id)
     .eq('visitor_id', data.visitor_id)
     .maybeSingle();
@@ -58,6 +58,10 @@ export async function upsertVisitor(
       first_utm_medium: data.utm_medium,
       first_utm_campaign: data.utm_campaign,
       first_entry_path: data.path,
+      last_referrer_hostname: data.referrer_hostname,
+      last_utm_source: data.utm_source,
+      last_utm_medium: data.utm_medium,
+      last_utm_campaign: data.utm_campaign,
       last_country_code: data.country_code,
       last_city: data.city,
       last_device_type: data.device_type,
@@ -88,6 +92,26 @@ export async function upsertVisitor(
     last_screen_width: data.screen_width,
     last_screen_height: data.screen_height,
   };
+
+  // Update last-touch referrer/attribution (always track most recent source)
+  if (data.referrer_hostname) {
+    update.last_referrer_hostname = data.referrer_hostname;
+  }
+  if (data.utm_source) {
+    update.last_utm_source = data.utm_source;
+    update.last_utm_medium = data.utm_medium;
+    update.last_utm_campaign = data.utm_campaign;
+  }
+
+  // Backfill first-touch attribution if it was null (visitor's first visit was Direct)
+  if (!existing.first_referrer_hostname && data.referrer_hostname) {
+    update.first_referrer_hostname = data.referrer_hostname;
+  }
+  if (!existing.first_utm_source && data.utm_source) {
+    update.first_utm_source = data.utm_source;
+    update.first_utm_medium = data.utm_medium;
+    update.first_utm_campaign = data.utm_campaign;
+  }
 
   // Increment sessions only for new sessions
   if (data.is_new_session) {

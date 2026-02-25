@@ -9,6 +9,14 @@ import Link from 'next/link';
 import type { Visitor, VisitorStats } from '@/types';
 
 function getSourceLabel(visitor: Visitor): string {
+  // Prefer last-touch attribution (most recent visit source)
+  if (visitor.last_utm_source) {
+    const parts = [visitor.last_utm_source];
+    if (visitor.last_utm_medium) parts.push(visitor.last_utm_medium);
+    return parts.join(' / ');
+  }
+  if (visitor.last_referrer_hostname) return visitor.last_referrer_hostname;
+  // Fall back to first-touch attribution
   if (visitor.first_utm_source) {
     const parts = [visitor.first_utm_source];
     if (visitor.first_utm_medium) parts.push(visitor.first_utm_medium);
