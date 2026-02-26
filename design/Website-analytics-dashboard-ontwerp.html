@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Analytics Cockpit</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Highcharts Maps (Geografische Kaarten via betrouwbare alternatieve CDN om 429 errors te voorkomen) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.3.0/highcharts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highcharts/11.3.0/modules/map.min.js"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Flatpickr (Date Range Picker) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/nl.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            blue: '#3b82f6',
+                            violet: '#8b5cf6',
+                            emerald: '#10b981',
+                            rose: '#f43f5e',
+                            cyan: '#06b6d4'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+        
+        /* Premium Entrance Animaties */
+        @keyframes slideUpFade {
+            0% { opacity: 0; transform: translateY(20px) scale(0.99); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .animate-slide-up {
+            animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        /* Stagger Delays voor het 'Wave' effect */
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
+        .delay-600 { animation-delay: 600ms; }
+        .delay-700 { animation-delay: 700ms; }
+
+        /* Card Hover Effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+            border-color: rgba(203, 213, 225, 1);
+        }
+
+        /* Progress Bar Animatie */
+        @keyframes fillBar {
+            from { width: 0; }
+        }
+        .progress-bar-fill {
+            animation: fillBar 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* Custom Scrollbar voor lijsten & tabs */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 4px;
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Hide Scrollbar for Tabs entirely */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased p-4 sm:p-6 lg:p-8 min-h-screen relative overflow-x-hidden">
+
+    <!-- Subtiele achtergrond elementen -->
+    <div class="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50/50 to-transparent -z-10"></div>
+    <div class="fixed top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-emerald-400/10 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+
+    <div class="max-w-[1440px] mx-auto">
+        
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 animate-slide-up">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                    Web Analytics Cockpit
+                </h1>
+                <p class="text-slate-500 text-xs font-medium flex items-center">
+                    <span class="relative flex h-2.5 w-2.5 mr-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    Live multi-channel data tracking
+                </p>
+            </div>
+
+            <!-- Periode Toggle -->
+            <div class="bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1">
+                <button onclick="updateData('week')" id="btn-week" class="px-5 py-2 rounded-lg text-xs font-semibold transition-all duration-300 text-slate-500 hover:text-slate-900">
+                    Laatste 7 dagen
+                </button>
+                <button onclick="updateData('maand')" id="btn-maand" class="px-5 py-2 rounded-lg text-xs font-semibold transition-all duration-300 bg-blue-600 text-white shadow-md shadow-blue-500/30">
+                    Afgelopen 30 dagen
+                </button>
+                <div class="h-5 w-px bg-slate-200 mx-1"></div>
+                <div class="relative flex items-center group">
+                    <i class="fa-regular fa-calendar absolute left-3 text-slate-400 pointer-events-none transition-colors duration-300" id="custom-icon"></i>
+                    <input type="text" id="btn-custom" placeholder="Aangepast..." class="pl-8 pr-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 text-slate-500 group-hover:text-slate-900 bg-transparent cursor-pointer w-[160px] focus:outline-none focus:ring-0 placeholder-slate-400" readonly>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs Navigatie -->
+        <div class="flex space-x-6 border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar animate-slide-up delay-100">
+            <button onclick="switchTab('all')" id="tab-all" class="pb-3 px-1 text-sm font-bold text-blue-600 border-b-2 border-blue-600 whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-layer-group"></i> Overzicht (All)
+            </button>
+            <button onclick="switchTab('website')" id="tab-website" class="pb-3 px-1 text-sm font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fa-solid fa-globe"></i> Website
+            </button>
+            <button onclick="switchTab('meta')" id="tab-meta" class="pb-3 px-1 text-sm font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fa-brands fa-meta"></i> Meta Ads
+            </button>
+            <button onclick="switchTab('google')" id="tab-google" class="pb-3 px-1 text-sm font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fa-brands fa-google"></i> Google Ads
+            </button>
+            <button onclick="switchTab('mailchimp')" id="tab-mailchimp" class="pb-3 px-1 text-sm font-bold text-slate-500 hover:text-slate-800 border-b-2 border-transparent whitespace-nowrap transition-colors flex items-center gap-2">
+                <i class="fa-brands fa-mailchimp"></i> Mailchimp
+            </button>
+        </div>
+
+        <!-- ================= DASHBOARD CONTENT WRAPPER VOOR ANIMATIES ================= -->
+        <div id="dashboard-content" class="transition-all duration-300 ease-out transform origin-top">
+            
+            <!-- ================= KPI BLOKKEN ================= -->
+
+            <!-- 1. Web Analytics KPI Cards (Zichtbaar bij All & Website) -->
+            <div id="kpi-group-web" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5 animate-slide-up delay-100">
+                <!-- Paginaweergaven -->
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Paginaweergaven</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="kpi-weergaven">0</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shadow-sm border border-blue-100 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-eye"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-xs font-medium">
+                        <span class="text-emerald-500 flex items-center bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" id="kpi-weergaven-trend">
+                            <i class="fa-solid fa-arrow-trend-up mr-1.5 text-[10px]"></i> +12%
+                        </span>
+                        <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                    </div>
+                </div>
+
+                <!-- Unieke Bezoekers -->
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-violet-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Unieke bezoekers</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="kpi-bezoekers">0</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-lg shadow-sm border border-violet-100 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-xs font-medium">
+                        <span class="text-emerald-500 flex items-center bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" id="kpi-bezoekers-trend">
+                            <i class="fa-solid fa-arrow-trend-up mr-1.5 text-[10px]"></i> +8%
+                        </span>
+                        <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                    </div>
+                </div>
+
+                <!-- Bouncepercentage -->
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-rose-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Bouncepercentage</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="kpi-bounce">0%</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center text-lg shadow-sm border border-rose-100 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-xs font-medium">
+                        <span class="text-emerald-500 flex items-center bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" id="kpi-bounce-trend">
+                            <i class="fa-solid fa-arrow-trend-down mr-1.5 text-[10px]"></i> -2%
+                        </span>
+                        <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                    </div>
+                </div>
+
+                <!-- Sessieduur -->
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Gem. sessieduur</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="kpi-duur">0m 0s</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shadow-sm border border-amber-100 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-stopwatch"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center text-xs font-medium">
+                        <span class="text-emerald-500 flex items-center bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100" id="kpi-duur-trend">
+                            <i class="fa-solid fa-arrow-trend-up mr-1.5 text-[10px]"></i> +5s
+                        </span>
+                        <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Ads KPI Cards (Zichtbaar bij Meta & Google) -->
+            <div id="kpi-group-ads" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5 hidden animate-slide-up delay-100">
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Impressies</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="ads-impressions">0</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg shadow-sm border border-purple-100 group-hover:scale-110 transition-transform"><i class="fa-solid fa-bullseye"></i></div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Klikken</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="ads-clicks">0</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shadow-sm border border-blue-100 group-hover:scale-110 transition-transform"><i class="fa-solid fa-hand-pointer"></i></div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Gem. CPC</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="ads-cpc">€0.00</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shadow-sm border border-amber-100 group-hover:scale-110 transition-transform"><i class="fa-solid fa-euro-sign"></i></div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Kosten / Spend</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="ads-spend">€0</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center text-lg shadow-sm border border-rose-100 group-hover:scale-110 transition-transform"><i class="fa-solid fa-wallet"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Mailchimp KPI Cards (Zichtbaar bij Mailchimp) -->
+            <div id="kpi-group-mail" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-5 hidden animate-slide-up delay-100">
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Totaal Verzonden</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="mc-sent">0</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shadow-sm border border-blue-100 group-hover:scale-110 transition-transform"><i class="fa-solid fa-paper-plane"></i></div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Gem. Open Rate</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="mc-openrate">0%</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shadow-sm border border-emerald-100 group-hover:scale-110 transition-transform"><i class="fa-regular fa-envelope-open"></i></div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Gem. Click Rate</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="mc-clickrate">0%</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-lg shadow-sm border border-violet-100 group-hover:scale-110 transition-transform"><i class="fa-solid fa-mouse-pointer"></i></div>
+                    </div>
+                </div>
+                <div class="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                    <div class="flex justify-between items-start mb-4 relative z-10">
+                        <div>
+                            <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Uitschrijvingen</p>
+                            <h3 class="text-3xl font-black text-slate-800" id="mc-unsubs">0</h3>
+                        </div>
+                        <div class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center text-lg shadow-sm border border-rose-100 group-hover:scale-110 transition-transform"><i class="fa-solid fa-user-minus"></i></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Secundaire KPI Strip (Verberg bij Mailchimp) -->
+            <div id="section-secondary-kpi" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8 animate-slide-up delay-200">
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Sessies</p>
+                    <p class="text-xl font-black text-slate-800" id="kpi-sessies">0</p>
+                </div>
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Weergaven / sessie</p>
+                    <p class="text-xl font-black text-slate-800" id="kpi-weergaven-sessie">0</p>
+                </div>
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Gem. actieve tijd</p>
+                    <p class="text-xl font-black text-slate-800" id="kpi-actief">0s</p>
+                </div>
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Leads</p>
+                    <p class="text-xl font-black text-slate-800" id="kpi-leads">0</p>
+                </div>
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Conversiepercentage</p>
+                    <p class="text-xl font-black text-slate-800" id="kpi-conversie">0%</p>
+                </div>
+                <div class="bg-white rounded-xl p-4 border border-slate-200 shadow-sm flex flex-col justify-center">
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Gem. scrolldiepte</p>
+                    <p class="text-xl font-black text-slate-800" id="kpi-scroll">0%</p>
+                </div>
+            </div>
+
+            <!-- Trend Chart & Apparaten Grid -->
+            <div id="section-charts" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 animate-slide-up delay-300">
+                <!-- Trend Chart (2 columns) -->
+                <div id="trend-chart-container" class="lg:col-span-2 glass-card rounded-2xl p-6 flex flex-col transition-all duration-300">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center">
+                            <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3 text-sm">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            Prestaties over tijd <span id="trend-title-suffix" class="text-slate-400 font-normal ml-2 text-sm"></span>
+                        </h2>
+                    </div>
+                    <div class="flex-grow relative h-[280px] w-full">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Apparaten & Retentie (1 column) -->
+                <div id="device-retention-container" class="glass-card rounded-2xl p-6 flex flex-col transition-all duration-300">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center mb-5">
+                        <div class="w-7 h-7 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-laptop-mobile"></i>
+                        </div>
+                        Apparaten & Retentie
+                    </h2>
+                    
+                    <div class="relative h-40 w-full flex justify-center items-center mb-4">
+                        <canvas id="deviceChart"></canvas>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <i class="fa-solid fa-display text-slate-300 text-2xl mb-1"></i>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 mb-6" id="device-legend">
+                        <!-- Ingevuld via JS -->
+                    </div>
+
+                    <!-- Terugkerend -->
+                    <div class="mt-auto pt-4 border-t border-slate-100">
+                        <div class="flex justify-between items-end mb-1">
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Terugkerende bezoekers</span>
+                            <div class="text-right">
+                                <span class="text-lg font-black text-slate-800" id="kpi-terugkerend-perc">0%</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2.5 mb-1.5 shadow-inner">
+                            <div class="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000 progress-bar-fill relative" id="klant-terug-bar" style="width: 0%">
+                                 <div class="absolute top-0 left-0 right-0 h-1 bg-white/30 rounded-full"></div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-medium flex items-center"><i class="fa-solid fa-user-check mr-1.5"></i><span id="kpi-terugkerend-abs">0</span> bezoekers</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geografie Grid (NL Kaart + Land/Stad) - Verborgen bij Mailchimp -->
+            <div id="section-geo" class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 animate-slide-up delay-400">
+                <div class="lg:col-span-2 glass-card rounded-2xl p-6 flex flex-col">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center">
+                            <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3 text-sm">
+                                <i class="fa-solid fa-map-location-dot"></i>
+                            </div>
+                            Regionaal Verkeer
+                        </h2>
+                    </div>
+                    <p class="text-xs text-slate-400 mb-6 font-medium">Interactieve Provinciekaart</p>
+                    <div class="flex flex-col md:flex-row gap-8 items-center flex-grow justify-center w-full">
+                        <div class="flex-grow w-full max-w-md bg-slate-50/50 rounded-xl border border-slate-100 shadow-inner overflow-hidden relative">
+                            <div id="nl-map-container" class="w-full h-[300px]"></div>
+                        </div>
+                        <div class="flex-shrink-0 w-full md:w-64">
+                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Top 5 Provincies</h3>
+                            <div class="space-y-1.5" id="provincies-list-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-6">
+                    <div class="glass-card rounded-2xl p-6 flex-1">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center mb-4">
+                            <div class="w-7 h-7 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center mr-3 text-sm">
+                                <i class="fa-solid fa-earth-europe"></i>
+                            </div> Landen
+                        </h2>
+                        <div class="space-y-1.5 overflow-y-auto custom-scrollbar h-[120px] pr-2" id="landen-container"></div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-6 flex-1">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center mb-4">
+                            <div class="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center mr-3 text-sm">
+                                <i class="fa-solid fa-city"></i>
+                            </div> Steden
+                        </h2>
+                        <div class="space-y-1.5 overflow-y-auto custom-scrollbar h-[120px] pr-2" id="steden-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Web/Ads Campagnes Tabel -->
+            <div id="section-campaigns" class="glass-card rounded-2xl p-6 mb-6 animate-slide-up delay-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center" id="campaign-table-title">
+                        <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-bullhorn"></i>
+                        </div>
+                        Campagne & Acquisitie Prestaties
+                    </h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="pb-2 pl-2">Campagne</th>
+                                <th class="pb-2">Bron / Medium</th>
+                                <th class="pb-2 text-right">Sessies</th>
+                                <th class="pb-2 text-right">Bouncepercentage</th>
+                                <th class="pb-2 text-right">Gem. Duur</th>
+                                <th class="pb-2 text-right pr-2">Leads gegenereerd</th>
+                            </tr>
+                        </thead>
+                        <tbody id="web-campaigns-tbody" class="text-xs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Mailchimp E-mail Campagnes Tabel (Alleen Mailchimp tab) -->
+            <div id="section-mailchimp" class="glass-card rounded-2xl p-6 mb-6 hidden animate-slide-up delay-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center">
+                        <div class="w-7 h-7 rounded-lg bg-yellow-50 text-yellow-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-brands fa-mailchimp"></i>
+                        </div>
+                        Recente E-mailcampagnes
+                    </h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="pb-2 pl-2">Titel</th>
+                                <th class="pb-2">Status</th>
+                                <th class="pb-2 text-right">Verzonden naar</th>
+                                <th class="pb-2 text-right">Open Rate</th>
+                                <th class="pb-2 text-right">Click Rate</th>
+                                <th class="pb-2 text-right pr-2">Datum</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mailchimp-campaigns-tbody" class="text-xs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Ads Campagnes Tabel (Alleen Meta & Google tabs) -->
+            <div id="section-ads-campaigns" class="glass-card rounded-2xl p-6 mb-6 hidden animate-slide-up delay-500">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center">
+                        <div id="ads-campaign-icon" class="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-rectangle-ad"></i>
+                        </div>
+                        <span id="ads-campaign-title-text">Actieve Campagnes</span>
+                    </h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="pb-2 pl-2">Campagne</th>
+                                <th class="pb-2">Status</th>
+                                <th class="pb-2 text-right">Budget / dag</th>
+                                <th class="pb-2 text-right">Bereik</th>
+                                <th class="pb-2 text-right">Weergaven</th>
+                                <th class="pb-2 text-right">Kliks</th>
+                                <th class="pb-2 text-right">CPC</th>
+                                <th class="pb-2 text-right">CPA</th>
+                                <th class="pb-2 text-right pr-2">Leads</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ads-campaigns-tbody" class="text-xs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Leads Tabel (Altijd zichtbaar, filtert mee) -->
+            <div class="glass-card rounded-2xl p-6 mb-6 animate-slide-up delay-600">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center">
+                        <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </div>
+                        Recente Leads
+                    </h2>
+                    <button class="text-xs text-blue-600 font-semibold hover:text-blue-700 transition-colors">Alle leads bekijken &rarr;</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[11px] text-slate-500 font-semibold">
+                                <th class="pb-3 pl-2">Naam</th>
+                                <th class="pb-3">E-mail</th>
+                                <th class="pb-3">Bron</th>
+                                <th class="pb-3">Campagne</th>
+                                <th class="pb-3">Formulier</th>
+                                <th class="pb-3">Status</th>
+                                <th class="pb-3">Datum</th>
+                                <th class="pb-3 text-right pr-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-tbody" class="text-[13px]"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Detail Data Grid (Verberg bij Mailchimp, pas aan bij Ads) -->
+            <div id="section-details" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 animate-slide-up delay-700">
+                <div id="col-pages" class="glass-card rounded-2xl p-6 flex flex-col h-[350px]">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center mb-4 shrink-0">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-file-lines"></i>
+                        </div> Toppagina's
+                    </h2>
+                    <div class="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-1.5" id="toppaginas-container"></div>
+                </div>
+
+                <div id="col-refs" class="glass-card rounded-2xl p-6 flex flex-col h-[350px]">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center mb-4 shrink-0">
+                        <div class="w-7 h-7 rounded-lg bg-pink-50 text-pink-500 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-link"></i>
+                        </div> Topverwijzers
+                    </h2>
+                    <div class="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-1.5" id="verwijzers-container"></div>
+                </div>
+
+                <div class="flex flex-col gap-6 h-[350px]">
+                    <div class="glass-card rounded-2xl p-6 flex-1 flex flex-col">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center mb-4 shrink-0">
+                            <div class="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mr-3 text-sm">
+                                <i class="fa-brands fa-chrome"></i>
+                            </div> Browsers
+                        </h2>
+                        <div class="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-1.5" id="browsers-container"></div>
+                    </div>
+                    <div class="glass-card rounded-2xl p-6 flex-1 flex flex-col">
+                        <h2 class="text-base font-bold text-slate-800 flex items-center mb-4 shrink-0">
+                            <div class="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center mr-3 text-sm">
+                                <i class="fa-brands fa-windows"></i>
+                            </div> Besturingssystemen
+                        </h2>
+                        <div class="flex-grow overflow-y-auto custom-scrollbar pr-2 space-y-1.5" id="os-container"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div> <!-- Einde Dashboard Wrapper -->
+
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script>
+        const formatNumber = (val) => new Intl.NumberFormat("nl-NL").format(val);
+        const formatCurrency = (val) => new Intl.NumberFormat("nl-NL", { style: 'currency', currency: 'EUR' }).format(val);
+
+        // Globale states
+        let currentPeriod = 'maand';
+        let currentTab = 'all'; 
+        let isSwitchingTab = false; // Voorkomt spam-klikken tijdens animatie
+
+        const dataAnalytics = {
+            kpis: {
+                weergaven: { value: 53, trend: 15 },
+                bezoekers: { value: 28, trend: 10 },
+                sessies: { value: 29, trend: 12 },
+                bounce: { value: 79, trend: -4 },
+                weergavenPerSessie: { value: 1.8, trend: 2 },
+                actieveTijd: { value: "32s" },
+                sessieduur: { value: "1m 59s", trend: 5 },
+                leads: { value: 0 },
+                conversie: { value: 0 },
+                scrolldiepte: { value: 22 },
+            },
+            adsKpis: {
+                meta: { imp: 14500, clicks: 312, cpc: 0.85, spend: 265 },
+                google: { imp: 8200, clicks: 450, cpc: 1.15, spend: 517 },
+            },
+            mailchimpKpis: {
+                sent: 4500, openRate: 48.2, clickRate: 12.5, unsubs: 3
+            },
+            retentie: { percentage: 7.1, bezoekers: 2 },
+            trendLabels: ["1/26", "1/29", "2/1", "2/4", "2/7", "2/10", "2/13", "2/16", "2/19", "2/22", "2/25"],
+            trendWeergaven: [2, 5, 12, 8, 15, 22, 18, 30, 42, 50, 53],
+            trendBezoekers: [1, 3, 7, 5, 9, 14, 10, 18, 25, 27, 28],
+            campagnes: [
+                // Toegevoegd: Specifieke Website Acquisitie (Organisch, Direct, etc.)
+                { name: "Organisch Zoekverkeer", source: "google / organic", sessions: 145, bounce: 32, duration: "4m 10s", leads: 4, icon: "fa-magnifying-glass", iconFamily: "fa-solid", color: "text-emerald-500", type: "website" },
+                { name: "Direct Verkeer", source: "(direct) / (none)", sessions: 85, bounce: 45, duration: "2m 30s", leads: 2, icon: "fa-arrow-pointer", iconFamily: "fa-solid", color: "text-slate-500", type: "website" },
+                { name: "Social Media (Organisch)", source: "instagram / social", sessions: 34, bounce: 60, duration: "1m 15s", leads: 0, icon: "fa-hashtag", iconFamily: "fa-solid", color: "text-pink-500", type: "website" },
+                { name: "Referral Verkeer", source: "partner-site.nl / referral", sessions: 22, bounce: 50, duration: "2m 05s", leads: 1, icon: "fa-link", iconFamily: "fa-solid", color: "text-blue-400", type: "website" },
+                
+                // Bestaande Ad / E-mail Campagnes
+                { name: "Retargeting Q1", source: "google / cpc", sessions: 12, bounce: 42, duration: "2m 45s", leads: 0, icon: "fa-google", iconFamily: "fa-brands", color: "text-blue-500", type: "google" },
+                { name: "Lente Sale", source: "facebook / cpc", sessions: 6, bounce: 68, duration: "1m 15s", leads: 0, icon: "fa-facebook", iconFamily: "fa-brands", color: "text-blue-600", type: "meta" },
+                { name: "Instagram Story Promo", source: "instagram / ad", sessions: 4, bounce: 55, duration: "0m 45s", leads: 0, icon: "fa-instagram", iconFamily: "fa-brands", color: "text-pink-500", type: "meta" },
+                { name: "Search Brand", source: "google / cpc", sessions: 18, bounce: 30, duration: "3m 15s", leads: 1, icon: "fa-google", iconFamily: "fa-brands", color: "text-blue-500", type: "google" },
+                { name: "Nieuwsbrief Maart", source: "mailchimp / email", sessions: 8, bounce: 35, duration: "3m 12s", leads: 0, icon: "fa-envelope", iconFamily: "fa-solid", color: "text-amber-500", type: "mailchimp" },
+                { name: "Partner Promo", source: "affiliate / link", sessions: 3, bounce: 55, duration: "1m 50s", leads: 0, icon: "fa-link", iconFamily: "fa-solid", color: "text-slate-500", type: "other" },
+            ],
+            mailchimpCampagnes: [
+                { title: "Nieuwsbrief Maart 2026", status: "Verzonden", sent: 1250, openRate: 52.4, clickRate: 14.2, date: "22 feb 2026" },
+                { title: "Lente Actie Aankondiging", status: "Verzonden", sent: 1248, openRate: 45.8, clickRate: 11.5, date: "15 feb 2026" },
+                { title: "Welkomstflow - E-mail 1", status: "Automatisering", sent: 85, openRate: 68.2, clickRate: 22.4, date: "Lopend" },
+                { title: "Verlaten Winkelwagen", status: "Automatisering", sent: 42, openRate: 55.0, clickRate: 18.1, date: "Lopend" },
+            ],
+            adsCampagnes: [
+                { name: "Lente Sale Retargeting", platform: "meta", status: "Actief", budget: 20, reach: 12500, impressions: 34200, clicks: 850, cpc: 0.75, cpa: 45.50, leads: 12 },
+                { name: "Lookalike Audience NL", platform: "meta", status: "Actief", budget: 35, reach: 45000, impressions: 89000, clicks: 1200, cpc: 0.95, cpa: 38.20, leads: 28 },
+                { name: "Video Views Brand Awareness", platform: "meta", status: "Gepauzeerd", budget: 15, reach: 22000, impressions: 41000, clicks: 310, cpc: 1.10, cpa: 85.00, leads: 2 },
+                { name: "Search - Brand Keyword", platform: "google", status: "Actief", budget: 50, reach: 8000, impressions: 15000, clicks: 2100, cpc: 0.65, cpa: 28.50, leads: 45 },
+                { name: "Performance Max - Polderkroon", platform: "google", status: "Actief", budget: 100, reach: 65000, impressions: 120000, clicks: 3400, cpc: 0.88, cpa: 35.10, leads: 82 },
+                { name: "Display - Retargeting", platform: "google", status: "Actief", budget: 15, reach: 18000, impressions: 45000, clicks: 420, cpc: 1.25, cpa: 65.00, leads: 5 }
+            ],
+            leadsData: [
+                { naam: "Annelien Zwering", email: "j.zwering@quicknet.nl", bron: "Meta / Ad+", bronType: "social", type: "meta", campagne: "Polderkroon", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 10:19" },
+                { naam: "Anouk Broers", email: "anoukbroers1@gmail.com", bron: "Direct", bronType: "direct", type: "website", campagne: "—", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 10:08" },
+                { naam: "Rowan Bergsma", email: "rowanbergsma@icloud.com", bron: "Direct", bronType: "direct", type: "website", campagne: "—", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 10:05" },
+                { naam: "Alice Van Oers", email: "alicevanoers@gmail.com", bron: "lm.facebook.com", bronType: "social", type: "meta", campagne: "—", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 09:38" },
+                { naam: "Niek Sijm", email: "nieksijm12@hotmail.com", bron: "m.facebook.com", bronType: "social", type: "meta", campagne: "—", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 09:35" },
+                { naam: "Sara Pietrusa", email: "sarapietrusa@outlook.com", bron: "Meta / Ad+", bronType: "social", type: "meta", campagne: "Polderkroon", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 08:39" },
+                { naam: "G Beemsterboer", email: "josbeemsterboer@gmail.com", bron: "Meta / Ad+", bronType: "social", type: "meta", campagne: "Polderkroon", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 08:36" },
+                { naam: "Lynn Derksen", email: "lynn.derksen080305@gmail.com", bron: "Direct", bronType: "direct", type: "website", campagne: "—", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 08:26" },
+                { naam: "Gerda Metz", email: "g.metz23@gmail.com", bron: "Meta / Ad+", bronType: "social", type: "meta", campagne: "Polderkroon", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 08:21" },
+                { naam: "Ab Klein Herenbrink", email: "abkleinherenbrink@gmail.com", bron: "Meta / Ad+", bronType: "social", type: "meta", campagne: "Polderkroon", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 07:18" },
+                { naam: "Cora Teeling - Philippus", email: "cora2701@ziggo.nl", bron: "www.google.com", bronType: "social", type: "google", campagne: "Search Brand", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 07:08" },
+                { naam: "Klaas Veenstra", email: "k.veenstra@gmail.com", bron: "Google Ads", bronType: "social", type: "google", campagne: "Retargeting Q1", formulier: "fluentform_3", status: "New", datum: "25 feb 2026, 06:15" },
+                { naam: "Marieke de Boer", email: "marieke88@hotmail.com", bron: "Nieuwsbrief", bronType: "direct", type: "mailchimp", campagne: "Nieuwsbrief Maart", formulier: "fluentform_3", status: "New", datum: "24 feb 2026, 14:20" },
+                { naam: "Peter van Ingen", email: "vaningen@quicknet.nl", bron: "com.google.android.googlequicksearchbox", bronType: "social", type: "google", campagne: "—", formulier: "fluentform_3", status: "New", datum: "24 feb 2026, 23:44" }
+            ],
+            provincies: [
+                { id: "zh", name: "Zuid-Holland", views: 18 }, { id: "nh", name: "Noord-Holland", views: 12 },
+                { id: "nb", name: "Noord-Brabant", views: 8 }, { id: "ge", name: "Gelderland", views: 5 },
+                { id: "ut", name: "Utrecht", views: 4 }, { id: "ov", name: "Overijssel", views: 2 },
+                { id: "fr", name: "Friesland", views: 1 }, { id: "gr", name: "Groningen", views: 1 },
+                { id: "dr", name: "Drenthe", views: 1 }, { id: "fl", name: "Flevoland", views: 1 }
+            ],
+            toppaginas: [
+                { name: "/", views: 20 }, { name: "/buitenverblijf/carports/", views: 7 },
+                { name: "/tuinen/", views: 6 }, { name: "/buitenverblijf/buitenverblijven/", views: 3 }
+            ],
+            verwijzers: [
+                { name: "www.google.com", views: 10, icon: "fa-google", isBrand: true, color: "text-blue-500", type: "google" },
+                { name: "www.facebook.com", views: 5, icon: "fa-facebook", isBrand: true, color: "text-blue-600", type: "meta" },
+                { name: "m.facebook.com", views: 1, icon: "fa-facebook", isBrand: true, color: "text-blue-600", type: "meta" },
+                { name: "www.instagram.com", views: 1, icon: "fa-instagram", isBrand: true, color: "text-pink-500", type: "meta" },
+                { name: "mailchimp.com", views: 1, icon: "fa-mailchimp", isBrand: true, color: "text-yellow-500", type: "mailchimp" },
+            ],
+            landen: [{ name: "NL", views: 60, icon: "🇳🇱" }, { name: "US", views: 7, icon: "🇺🇸" }],
+            steden: [{ name: "Amsterdam", views: 18, icon: "fa-city" }, { name: "Rotterdam", views: 12, icon: "fa-city" }],
+            browsers: [{ name: "Chrome", views: 34, icon: "fa-chrome" }, { name: "Safari", views: 19, icon: "fa-safari" }],
+            os: [{ name: "Windows", views: 31, icon: "fa-windows" }, { name: "macOS", views: 26, icon: "fa-apple" }],
+            apparaten: [
+                { name: "desktop", views: 58, color: "#3b82f6", icon: "fa-desktop" },
+                { name: "mobile", views: 11, color: "#8b5cf6", icon: "fa-mobile-screen" },
+                { name: "tablet", views: 2, color: "#10b981", icon: "fa-tablet-screen-button" },
+            ],
+        };
+
+        let trendChartInstance = null;
+        let deviceChartInstance = null;
+        let mapChartInstance = null;
+
+        function updateTrendUI(elementId, value, reverseColors = false) {
+            const el = document.getElementById(elementId);
+            if (!el || value === undefined) return;
+            const isPositive = value >= 0;
+            const icon = isPositive ? "fa-arrow-trend-up" : "fa-arrow-trend-down";
+            let colorClass = reverseColors ? (isPositive ? "text-rose-500 bg-rose-50 border-rose-100" : "text-emerald-500 bg-emerald-50 border-emerald-100") 
+                                           : (isPositive ? "text-emerald-500 bg-emerald-50 border-emerald-100" : "text-rose-500 bg-rose-50 border-rose-100");
+            el.className = `flex items-center px-2 py-1 rounded-md text-xs border ${colorClass}`;
+            el.innerHTML = `<i class="fa-solid ${icon} mr-1.5 text-[10px]"></i> ${isPositive ? "+" : ""}${value}%`;
+        }
+
+        function renderList(containerId, items, maxVal, bgFillClass, iconType = "none") {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = "";
+            items.forEach((item, index) => {
+                const percentage = maxVal > 0 ? Math.max((item.views / maxVal) * 100, 2) : 0;
+                let iconHtml = iconType === "emoji" ? `<span class="mr-2 text-sm">${item.icon}</span>` 
+                             : iconType === "provincie" ? `<div class="w-5 h-5 rounded bg-blue-100 text-blue-700 font-black flex items-center justify-center text-[8px] mr-2 shrink-0">${item.id.toUpperCase()}</div>`
+                             : `<i class="${item.isBrand || iconType === "brand" ? "fa-brands" : "fa-solid"} ${item.icon || "fa-globe"} w-5 text-center mr-2 ${item.color || "text-slate-400"}"></i>`;
+                container.innerHTML += `
+                    <div class="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors">
+                        <div class="absolute top-0 bottom-0 left-0 ${bgFillClass} opacity-30 -z-10 progress-bar-fill" style="width: ${percentage}%; animation-delay: ${index * 0.05}s"></div>
+                        <div class="flex justify-between items-center text-[11px]">
+                            <div class="flex items-center truncate pr-2 w-3/4">${iconHtml}<span class="font-semibold text-slate-700 truncate" title="${item.name}">${item.name}</span></div>
+                            <span class="font-bold text-slate-900 shrink-0">${item.views}</span>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        async function renderMap(provincies) {
+            if (typeof Highcharts === "undefined" || !Highcharts.mapChart) {
+                setTimeout(() => renderMap(provincies), 200); return;
+            }
+            try {
+                // Fecth de kaartdata via jsDelivr CDN om 429 Too Many Requests limieten te voorkomen
+                const topology = await fetch("https://cdn.jsdelivr.net/npm/@highcharts/map-collection/countries/nl/nl-all.topo.json").then(r => r.json());
+                const mapData = provincies.map(prov => ({ 'hc-key': 'nl-' + prov.id, value: prov.views }));
+                if (mapChartInstance) mapChartInstance.destroy();
+                mapChartInstance = Highcharts.mapChart("nl-map-container", {
+                    chart: { backgroundColor: "transparent", map: topology, style: { fontFamily: "'Inter', sans-serif" } },
+                    title: { text: null }, mapNavigation: { enabled: false },
+                    tooltip: { backgroundColor: "#1e293b", borderWidth: 0, borderRadius: 8, shadow: true, useHTML: true, padding: 10,
+                        formatter: function () { return `<div style="color:#fff;"><span style="font-weight:bold;font-size:13px;">${this.point.name}</span><br/><span style="color:#22d3ee;font-weight:900;font-size:14px;">${this.point.value}</span> <span style="color:#94a3b8;font-size:11px;">weergaven</span></div>`; }
+                    },
+                    colorAxis: { min: 0, minColor: "#eff6ff", maxColor: "#2563eb", lineColor: "transparent" },
+                    series: [{ data: mapData, keys: ['hc-key', 'value'], joinBy: 'hc-key', name: "Weergaven", borderColor: "#ffffff", borderWidth: 1.5, states: { hover: { color: "#38bdf8" } }, dataLabels: { enabled: false } }],
+                    credits: { enabled: false },
+                });
+            } catch (error) { console.error("Fout bij ophalen kaartdata:", error); }
+        }
+
+        function renderWebCampaigns(campagnes) {
+            const tbody = document.getElementById("web-campaigns-tbody");
+            if (!tbody) return; tbody.innerHTML = "";
+            [...campagnes].sort((a, b) => b.sessions - a.sessions).forEach((camp) => {
+                let bounceColor = camp.bounce > 60 ? "text-rose-500 font-semibold" : camp.bounce < 40 ? "text-emerald-500 font-semibold" : "text-slate-500";
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3 pl-2 whitespace-nowrap"><div class="flex items-center"><i class="${camp.iconFamily || "fa-brands"} ${camp.icon} w-5 text-center mr-2 ${camp.color}"></i><span class="font-semibold text-slate-800">${camp.name}</span></div></td>
+                        <td class="py-3 text-slate-500 font-medium whitespace-nowrap"><span class="bg-slate-100 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">${camp.source}</span></td>
+                        <td class="py-3 px-2 text-right font-black text-slate-800 whitespace-nowrap">${formatNumber(camp.sessions)}</td>
+                        <td class="py-3 px-2 text-right ${bounceColor} whitespace-nowrap">${camp.bounce}%</td>
+                        <td class="py-3 px-2 text-right text-slate-500 font-medium whitespace-nowrap">${camp.duration}</td>
+                        <td class="py-3 pr-2 text-right font-black text-emerald-600 whitespace-nowrap">${camp.leads}</td>
+                    </tr>`;
+            });
+        }
+
+        function renderMailchimpCampaigns(mcCampagnes) {
+            const tbody = document.getElementById("mailchimp-campaigns-tbody");
+            if (!tbody) return; tbody.innerHTML = "";
+            mcCampagnes.forEach((camp) => {
+                let statusBadge = camp.status === 'Verzonden' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600';
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3 pl-2 whitespace-nowrap font-bold text-slate-800">${camp.title}</td>
+                        <td class="py-3 whitespace-nowrap"><span class="${statusBadge} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${camp.status}</span></td>
+                        <td class="py-3 px-2 text-right font-black text-slate-800 whitespace-nowrap">${formatNumber(camp.sent)}</td>
+                        <td class="py-3 px-2 text-right font-semibold text-emerald-500 whitespace-nowrap">${camp.openRate}%</td>
+                        <td class="py-3 px-2 text-right font-semibold text-violet-500 whitespace-nowrap">${camp.clickRate}%</td>
+                        <td class="py-3 pr-2 text-right text-slate-400 font-medium whitespace-nowrap">${camp.date}</td>
+                    </tr>`;
+            });
+        }
+
+        function renderAdsCampaigns(campagnes) {
+            const tbody = document.getElementById("ads-campaigns-tbody");
+            if (!tbody) return; tbody.innerHTML = "";
+            [...campagnes].sort((a, b) => b.leads - a.leads).forEach((camp) => {
+                let statusBadge = camp.status === 'Actief' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500';
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3 pl-2 whitespace-nowrap font-bold text-slate-800">${camp.name}</td>
+                        <td class="py-3 whitespace-nowrap"><span class="${statusBadge} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${camp.status}</span></td>
+                        <td class="py-3 px-2 text-right font-medium text-slate-600 whitespace-nowrap">€${camp.budget}</td>
+                        <td class="py-3 px-2 text-right font-black text-slate-800 whitespace-nowrap">${formatNumber(camp.reach)}</td>
+                        <td class="py-3 px-2 text-right text-slate-600 whitespace-nowrap">${formatNumber(camp.impressions)}</td>
+                        <td class="py-3 px-2 text-right font-semibold text-blue-600 whitespace-nowrap">${formatNumber(camp.clicks)}</td>
+                        <td class="py-3 px-2 text-right font-medium text-slate-600 whitespace-nowrap">${formatCurrency(camp.cpc)}</td>
+                        <td class="py-3 px-2 text-right font-medium text-rose-500 whitespace-nowrap">${formatCurrency(camp.cpa)}</td>
+                        <td class="py-3 pr-2 text-right font-black text-emerald-600 whitespace-nowrap">${camp.leads}</td>
+                    </tr>`;
+            });
+        }
+
+        function renderLeads(leads) {
+            const tbody = document.getElementById("leads-tbody");
+            if (!tbody) return; tbody.innerHTML = "";
+            leads.forEach((lead) => {
+                let bronBadge = lead.bronType === 'social' ? `<span class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide">${lead.bron}</span>` : `<span class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-[11px] font-bold tracking-wide">${lead.bron}</span>`;
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
+                        <td class="py-3.5 pl-2 whitespace-nowrap font-bold text-slate-800">${lead.naam}</td>
+                        <td class="py-3.5 whitespace-nowrap text-slate-500">${lead.email}</td>
+                        <td class="py-3.5 whitespace-nowrap">${bronBadge}</td>
+                        <td class="py-3.5 whitespace-nowrap text-slate-500">${lead.campagne}</td>
+                        <td class="py-3.5 whitespace-nowrap text-slate-400">${lead.formulier}</td>
+                        <td class="py-3.5 whitespace-nowrap"><div class="inline-flex items-center bg-blue-100 text-blue-700 px-3 py-1.5 rounded-md text-[12px] font-semibold cursor-pointer hover:bg-blue-200 transition-colors">${lead.status} <i class="fa-solid fa-chevron-down ml-2 text-[10px]"></i></div></td>
+                        <td class="py-3.5 whitespace-nowrap text-slate-500">${lead.datum}</td>
+                        <td class="py-3.5 pr-2 text-right whitespace-nowrap text-slate-400 hover:text-rose-500 cursor-pointer transition-colors"><i class="fa-regular fa-trash-can text-lg"></i></td>
+                    </tr>`;
+            });
+        }
+
+        function initCharts(data, chartLabel = "Paginaweergaven") {
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = "#64748b";
+            const trendCanvas = document.getElementById("trendChart");
+            if (trendCanvas) {
+                const ctxTrend = trendCanvas.getContext("2d");
+                const gradBlue = ctxTrend.createLinearGradient(0, 0, 0, 300); gradBlue.addColorStop(0, "rgba(59, 130, 246, 0.2)"); gradBlue.addColorStop(1, "rgba(59, 130, 246, 0)");
+                if (trendChartInstance) trendChartInstance.destroy();
+                trendChartInstance = new Chart(ctxTrend, {
+                    type: "line",
+                    data: {
+                        labels: data.trendLabels,
+                        datasets: [{ label: chartLabel, data: data.trendWeergaven, borderColor: "#3b82f6", backgroundColor: gradBlue, borderWidth: 2.5, pointBackgroundColor: "#fff", pointBorderColor: "#3b82f6", pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 6, fill: true, tension: 0.4 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1e293b", padding: 10, usePointStyle: true } }, scales: { x: { grid: { display: false, drawBorder: false } }, y: { display: true, grid: { color: "#f1f5f9", drawBorder: false }, min: 0 } } }
+                });
+            }
+            const deviceCanvas = document.getElementById("deviceChart");
+            if (deviceCanvas) {
+                const ctxDevice = deviceCanvas.getContext("2d");
+                if (deviceChartInstance) deviceChartInstance.destroy();
+                deviceChartInstance = new Chart(ctxDevice, {
+                    type: "doughnut", data: { labels: data.apparaten.map(d => d.name), datasets: [{ data: data.apparaten.map(d => d.views), backgroundColor: data.apparaten.map(d => d.color), borderWidth: 2, borderColor: "#ffffff", hoverOffset: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: "75%", plugins: { legend: { display: false }, tooltip: { backgroundColor: "#1e293b" } } }
+                });
+                const dl = document.getElementById("device-legend");
+                if (dl) {
+                    dl.innerHTML = "";
+                    data.apparaten.forEach(app => { dl.innerHTML += `<div class="flex flex-col items-center p-2 rounded-lg bg-slate-50 border border-slate-100"><i class="fa-solid ${app.icon} text-lg mb-1" style="color:${app.color}"></i><span class="text-[9px] text-slate-500 font-bold uppercase tracking-wider">${app.name}</span><span class="text-sm font-black text-slate-800">${app.views}</span></div>`; });
+                }
+            }
+        }
+
+        // ==========================================
+        // VERNIEUWDE ANIMATED TAB SWITCH LOGICA
+        // ==========================================
+        function switchTab(tab) {
+            // Voorkom fouten bij heel snel klikken
+            if (currentTab === tab || isSwitchingTab) return;
+            isSwitchingTab = true;
+            
+            const contentArea = document.getElementById('dashboard-content');
+            
+            // 1. Direct de Tab visueel actief maken voor snappy UX
+            const tabs = ['all', 'website', 'meta', 'google', 'mailchimp'];
+            tabs.forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if(t === tab) {
+                    el.classList.add('text-blue-600', 'border-blue-600');
+                    el.classList.remove('text-slate-500', 'border-transparent', 'hover:text-slate-800');
+                } else {
+                    el.classList.remove('text-blue-600', 'border-blue-600');
+                    el.classList.add('text-slate-500', 'border-transparent', 'hover:text-slate-800');
+                }
+            });
+
+            // 2. Dashboard zachtjes wegdraaien/faden (Out-Animation)
+            contentArea.style.opacity = '0';
+            contentArea.style.transform = 'translateY(15px) scale(0.99)';
+
+            // 3. Wacht op fade out, vervang data en herstart animaties
+            setTimeout(() => {
+                currentTab = tab;
+
+                // Toggle KPI Groepen
+                document.getElementById('kpi-group-web').classList.toggle('hidden', tab === 'meta' || tab === 'google' || tab === 'mailchimp');
+                document.getElementById('kpi-group-ads').classList.toggle('hidden', tab !== 'meta' && tab !== 'google');
+                document.getElementById('kpi-group-mail').classList.toggle('hidden', tab !== 'mailchimp');
+                document.getElementById('section-secondary-kpi').classList.toggle('hidden', tab === 'mailchimp');
+
+                // Toggle Content Secties
+                document.getElementById('section-geo').classList.toggle('hidden', tab === 'mailchimp' || tab === 'meta' || tab === 'google');
+                const showDetails = tab === 'all' || tab === 'website';
+                document.getElementById('col-pages').parentElement.classList.toggle('hidden', !showDetails); 
+                document.getElementById('section-campaigns').classList.toggle('hidden', tab === 'mailchimp' || tab === 'meta' || tab === 'google');
+                document.getElementById('section-mailchimp').classList.toggle('hidden', tab !== 'mailchimp');
+                document.getElementById('section-ads-campaigns').classList.toggle('hidden', tab !== 'meta' && tab !== 'google');
+
+                // Verberg Apparaten & Retentie en maak Trend Chart 100% breed bij Ads & Mailchimp
+                const deviceContainer = document.getElementById('device-retention-container');
+                const trendContainer = document.getElementById('trend-chart-container');
+                
+                if (tab === 'meta' || tab === 'google' || tab === 'mailchimp') {
+                    deviceContainer.classList.add('hidden');
+                    trendContainer.classList.remove('lg:col-span-2');
+                    trendContainer.classList.add('lg:col-span-3');
+                } else {
+                    deviceContainer.classList.remove('hidden');
+                    trendContainer.classList.remove('lg:col-span-3');
+                    trendContainer.classList.add('lg:col-span-2');
+                }
+
+                // Dynamische Styling voor de Ads Tabel Titel & Icoon
+                if (tab === 'meta') {
+                     document.getElementById('ads-campaign-icon').className = "w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3 text-sm";
+                     document.getElementById('ads-campaign-icon').innerHTML = '<i class="fa-brands fa-meta"></i>';
+                     document.getElementById('ads-campaign-title-text').innerText = 'Meta Ads Campagnes';
+                } else if (tab === 'google') {
+                     document.getElementById('ads-campaign-icon').className = "w-7 h-7 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center mr-3 text-sm";
+                     document.getElementById('ads-campaign-icon').innerHTML = '<i class="fa-brands fa-google"></i>';
+                     document.getElementById('ads-campaign-title-text').innerText = 'Google Ads Campagnes';
+                }
+
+                // Update data voor de specifieke tab
+                updateData();
+
+                // 4. Forceer de 'Wave' animatie om opnieuw af te spelen voor alle zichtbare secties
+                const animatedElements = contentArea.querySelectorAll('.animate-slide-up');
+                animatedElements.forEach(el => {
+                    // Verwijder de animatie even
+                    el.style.animation = 'none';
+                    // Forceer de browser om de layout opnieuw te bereken (reflow)
+                    void el.offsetHeight; 
+                    // Zet de animatie weer aan
+                    el.style.animation = null;
+                });
+
+                // 5. Laat de grote wrapper weer verschijnen zodat de kinderen hún eigen golvende fade-in kunnen doen
+                contentArea.style.opacity = '1';
+                contentArea.style.transform = 'translateY(0) scale(1)';
+                
+                // Unlock tabs
+                isSwitchingTab = false;
+
+            }, 200); // Wachttijd voor de perfecte zachte overgang
+        }
+
+        // DATA UPDATE & FILTER LOGIC
+        function updateData(period = currentPeriod) {
+            currentPeriod = period;
+            const data = dataAnalytics;
+
+            // Update UI buttons for Period
+            ["btn-week", "btn-maand", "btn-custom"].forEach(id => {
+                const b = document.getElementById(id); if(!b) return;
+                if(id === "btn-custom") { b.classList.remove("bg-blue-600", "text-white"); b.classList.add("text-slate-500"); }
+                else { b.classList.remove("bg-blue-600", "text-white"); b.classList.add("text-slate-500"); }
+            });
+            if (period === "week") document.getElementById("btn-week").classList.add("bg-blue-600", "text-white");
+            if (period === "maand") document.getElementById("btn-maand").classList.add("bg-blue-600", "text-white");
+
+            // FILTER DATA OP BASIS VAN TABBLAD
+            let filteredCampagnes = data.campagnes;
+            let filteredLeads = data.leadsData;
+            let filteredVerwijzers = data.verwijzers;
+            let trendLabel = "Paginaweergaven";
+
+            if (currentTab === 'website') {
+                filteredCampagnes = data.campagnes.filter(c => c.type === 'website');
+                filteredLeads = data.leadsData.filter(l => l.type === 'website');
+                // Allow all referrers on the website tab, since by definition referrers point TO the website
+                filteredVerwijzers = data.verwijzers;
+                document.getElementById('trend-title-suffix').innerText = "(Website Only)";
+            } 
+            else if (currentTab === 'meta') {
+                filteredCampagnes = data.campagnes.filter(c => c.type === 'meta');
+                filteredLeads = data.leadsData.filter(l => l.type === 'meta');
+                trendLabel = "Ad Impressies";
+                document.getElementById('trend-title-suffix').innerText = "(Meta Ads)";
+                
+                document.getElementById("ads-impressions").innerText = formatNumber(data.adsKpis.meta.imp);
+                document.getElementById("ads-clicks").innerText = formatNumber(data.adsKpis.meta.clicks);
+                document.getElementById("ads-cpc").innerText = formatCurrency(data.adsKpis.meta.cpc);
+                document.getElementById("ads-spend").innerText = formatCurrency(data.adsKpis.meta.spend);
+                
+                renderAdsCampaigns(data.adsCampagnes.filter(c => c.platform === 'meta'));
+            }
+            else if (currentTab === 'google') {
+                filteredCampagnes = data.campagnes.filter(c => c.type === 'google');
+                filteredLeads = data.leadsData.filter(l => l.type === 'google');
+                trendLabel = "Ad Impressies";
+                document.getElementById('trend-title-suffix').innerText = "(Google Ads)";
+                
+                document.getElementById("ads-impressions").innerText = formatNumber(data.adsKpis.google.imp);
+                document.getElementById("ads-clicks").innerText = formatNumber(data.adsKpis.google.clicks);
+                document.getElementById("ads-cpc").innerText = formatCurrency(data.adsKpis.google.cpc);
+                document.getElementById("ads-spend").innerText = formatCurrency(data.adsKpis.google.spend);
+                
+                renderAdsCampaigns(data.adsCampagnes.filter(c => c.platform === 'google'));
+            }
+            else if (currentTab === 'mailchimp') {
+                filteredLeads = data.leadsData.filter(l => l.type === 'mailchimp');
+                trendLabel = "E-mails geopend";
+                document.getElementById('trend-title-suffix').innerText = "(Mailchimp)";
+                
+                document.getElementById("mc-sent").innerText = formatNumber(data.mailchimpKpis.sent);
+                document.getElementById("mc-openrate").innerText = data.mailchimpKpis.openRate + "%";
+                document.getElementById("mc-clickrate").innerText = data.mailchimpKpis.clickRate + "%";
+                document.getElementById("mc-unsubs").innerText = data.mailchimpKpis.unsubs;
+                
+                renderMailchimpCampaigns(data.mailchimpCampagnes);
+            }
+            else {
+                document.getElementById('trend-title-suffix').innerText = "";
+            }
+
+            // Web KPI's (altijd ingevuld voor het geval ze zichtbaar zijn)
+            const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+            setText("kpi-weergaven", data.kpis.weergaven.value); setText("kpi-bezoekers", data.kpis.bezoekers.value); setText("kpi-bounce", data.kpis.bounce.value + "%"); setText("kpi-duur", data.kpis.sessieduur.value);
+            setText("kpi-sessies", data.kpis.sessies.value); setText("kpi-weergaven-sessie", data.kpis.weergavenPerSessie.value); setText("kpi-actief", data.kpis.actieveTijd.value); setText("kpi-leads", data.kpis.leads.value); setText("kpi-conversie", data.kpis.conversie.value + "%"); setText("kpi-scroll", data.kpis.scrolldiepte.value + "%");
+            updateTrendUI("kpi-bounce-trend", data.kpis.bounce.trend, true); updateTrendUI("kpi-duur-trend", data.kpis.sessieduur.trend);
+            setText("kpi-terugkerend-perc", data.retentie.percentage + "%"); setText("kpi-terugkerend-abs", data.retentie.bezoekers);
+
+            // Render lijsten (Verberg map rendering als geo niet zichtbaar is voor prestaties)
+            if(currentTab !== 'mailchimp' && currentTab !== 'meta' && currentTab !== 'google') renderMap(data.provincies);
+            renderList("provincies-list-container", [...data.provincies].sort((a, b) => b.views - a.views).slice(0, 5), Math.max(...data.provincies.map(p => p.views)), "bg-blue-100", "provincie");
+            renderList("landen-container", data.landen, Math.max(...data.landen.map(l => l.views)), "bg-orange-100", "emoji");
+            renderList("steden-container", data.steden, Math.max(...data.steden.map(s => s.views)), "bg-teal-100", "solid");
+            
+            renderWebCampaigns(filteredCampagnes);
+            renderLeads(filteredLeads);
+            
+            renderList("toppaginas-container", data.toppaginas, Math.max(...data.toppaginas.map(p => p.views)), "bg-emerald-100");
+            renderList("verwijzers-container", filteredVerwijzers, Math.max(...filteredVerwijzers.map(r => r.views)), "bg-pink-100", "brand");
+            renderList("browsers-container", data.browsers, Math.max(...data.browsers.map(b => b.views)), "bg-purple-100", "brand");
+            renderList("os-container", data.os, Math.max(...data.os.map(o => o.views)), "bg-slate-200", "brand");
+
+            initCharts(data, trendLabel);
+        }
+
+        window.addEventListener("load", () => {
+            flatpickr("#btn-custom", { mode: "range", dateFormat: "j M", locale: "nl",
+                onChange: function (selectedDates, dateStr) { if (selectedDates.length === 2) { document.getElementById("btn-custom").value = dateStr.replace(" tot ", " - "); updateData("custom"); } }
+            });
+            updateData("maand");
+        });
+    </script>
+</body>
+</html>

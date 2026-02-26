@@ -1,12 +1,47 @@
 'use client';
 
-import { use, useEffect, useState, useCallback } from 'react';
-import { MetricCard } from '@/components/metric-card';
+import { use, useEffect, useState, useCallback, Fragment } from 'react';
 import { TimeSeries } from '@/components/charts/time-series';
-import { BarChart } from '@/components/charts/bar-chart';
-import { PieChart } from '@/components/charts/pie-chart';
-import { DataTable } from '@/components/tables/data-table';
 import { AIReportCard } from '@/components/ai-report-card';
+import {
+  Users,
+  Eye,
+  Activity,
+  BarChart3,
+  Clock,
+  Globe,
+  Monitor,
+  Smartphone,
+  Tablet,
+  ChartLine,
+  ChartPie,
+  FileText,
+  Link2,
+  Search,
+  Sparkles,
+  Layers,
+  Filter as FilterIcon,
+  X,
+  Chrome,
+  Compass,
+  Mail,
+  MailOpen,
+  MousePointer,
+  Hash,
+  Megaphone,
+  TrendingUp,
+  Calendar,
+  Phone,
+  Building2,
+  MapPin,
+  UserPlus,
+  UserCheck,
+  ExternalLink,
+  Tag,
+  Target,
+  Send,
+  CircleDot,
+} from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -86,8 +121,11 @@ interface ReportData {
   ai_analysis?: AIAnalysisData;
 }
 
-interface Filter { key: string; label: string; value: string }
+interface ReportFilter { key: string; label: string; value: string }
 
+/* ------------------------------------------------------------------ */
+/*  Constants                                                          */
+/* ------------------------------------------------------------------ */
 const DATE_RANGES = [
   { value: 'today', label: 'Vandaag' },
   { value: 'last_7_days', label: 'Laatste 7 dagen' },
@@ -98,6 +136,20 @@ const DATE_RANGES = [
   { value: 'last_month', label: 'Vorige maand' },
 ] as const;
 
+const SOURCE_COLORS = [
+  { color: '#3b82f6', bg: 'bg-blue-500' },
+  { color: '#8b5cf6', bg: 'bg-violet-500' },
+  { color: '#10b981', bg: 'bg-emerald-500' },
+  { color: '#f59e0b', bg: 'bg-amber-500' },
+  { color: '#94a3b8', bg: 'bg-slate-400' },
+  { color: '#ec4899', bg: 'bg-pink-500' },
+  { color: '#06b6d4', bg: 'bg-cyan-500' },
+  { color: '#f97316', bg: 'bg-orange-500' },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
 function formatDuration(sec: number) {
   if (sec < 60) return `${sec}s`;
   const m = Math.floor(sec / 60);
@@ -105,8 +157,240 @@ function formatDuration(sec: number) {
   return `${m}m ${s}s`;
 }
 
+function formatNumber(val: number) {
+  return new Intl.NumberFormat('nl-NL').format(val);
+}
+
+/** Convert ISO-2 country code to flag emoji */
+function countryFlag(code: string) {
+  if (!code || code.length !== 2) return '🌍';
+  const upper = code.toUpperCase();
+  const offset = 0x1F1E6 - 65;
+  return String.fromCodePoint(upper.charCodeAt(0) + offset, upper.charCodeAt(1) + offset);
+}
+
+/* ---- Inline SVG brand icons ---- */
+function GoogleIcon({ className = 'w-3 h-3' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <path d="M5.84 14.09A6.97 6.97 0 0 1 5.48 12c0-.72.13-1.43.36-2.09V7.07H2.18A11.96 11.96 0 0 0 0 12c0 1.93.46 3.77 1.28 5.4l3.56-2.77.01-.54z" fill="#FBBC05" />
+      <path d="M12 4.75c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.09 14.97 0 12 0 7.7 0 3.99 2.47 2.18 6.07l3.66 2.84c.87-2.6 3.3-4.16 6.16-4.16z" fill="#EA4335" />
+    </svg>
+  );
+}
+
+function FacebookIcon({ className = 'w-3 h-3' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="#1877F2">
+      <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073c0 6.025 4.388 11.022 10.125 11.927v-8.437H7.078v-3.49h3.047V9.41c0-3.026 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.267h3.328l-.532 3.49h-2.796v8.437C19.612 23.095 24 18.098 24 12.073z" />
+    </svg>
+  );
+}
+
+function InstagramIcon({ className = 'w-3 h-3' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24">
+      <defs>
+        <linearGradient id="ig-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#FFDC80" />
+          <stop offset="25%" stopColor="#F77737" />
+          <stop offset="50%" stopColor="#E1306C" />
+          <stop offset="75%" stopColor="#C13584" />
+          <stop offset="100%" stopColor="#833AB4" />
+        </linearGradient>
+      </defs>
+      <path fill="url(#ig-grad)" d="M12 2.163c3.204 0 3.584.012 4.85.07 1.17.054 1.97.24 2.43.403a4.088 4.088 0 0 1 1.518.988c.464.464.8.952.987 1.518.164.46.35 1.26.404 2.43.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.054 1.17-.24 1.97-.404 2.43a4.088 4.088 0 0 1-.987 1.518 4.088 4.088 0 0 1-1.518.987c-.46.164-1.26.35-2.43.404-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.17-.054-1.97-.24-2.43-.404a4.088 4.088 0 0 1-1.518-.987 4.088 4.088 0 0 1-.987-1.518c-.164-.46-.35-1.26-.404-2.43C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.054-1.17.24-1.97.404-2.43A4.088 4.088 0 0 1 3.624 3.2a4.088 4.088 0 0 1 1.518-.988c.46-.164 1.26-.35 2.43-.404C8.838 1.75 9.218 1.738 12 1.738V2.163zM12 0C8.741 0 8.333.014 7.053.072 5.775.13 4.902.333 4.14.63a5.876 5.876 0 0 0-2.126 1.384A5.876 5.876 0 0 0 .63 4.14C.333 4.902.13 5.775.072 7.053.014 8.333 0 8.741 0 12s.014 3.668.072 4.948c.058 1.277.261 2.15.558 2.913a5.876 5.876 0 0 0 1.384 2.126A5.876 5.876 0 0 0 4.14 23.37c.763.297 1.636.5 2.913.558C8.333 23.986 8.741 24 12 24s3.668-.014 4.948-.072c1.277-.058 2.15-.261 2.913-.558a5.876 5.876 0 0 0 2.126-1.384 5.876 5.876 0 0 0 1.384-2.126c.297-.763.5-1.636.558-2.913.058-1.28.072-1.688.072-4.948s-.014-3.668-.072-4.948c-.058-1.277-.261-2.15-.558-2.913a5.876 5.876 0 0 0-1.384-2.126A5.876 5.876 0 0 0 19.86.63C19.098.333 18.225.13 16.948.072 15.668.014 15.26 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" />
+    </svg>
+  );
+}
+
+/** Return a contextual icon + color for a referrer source */
+function sourceIcon(source: string): { icon: React.ReactNode; color: string; bg: string } {
+  const s = source.toLowerCase();
+  if (s.includes('google'))    return { icon: <GoogleIcon className="w-3.5 h-3.5" />,  color: 'text-blue-600',    bg: 'bg-white' };
+  if (s.includes('facebook') || s.includes('meta') || /\bfb\b/.test(s))  return { icon: <FacebookIcon className="w-3.5 h-3.5" />, color: 'text-blue-600', bg: 'bg-blue-50' };
+  if (s.includes('instagram')) return { icon: <InstagramIcon className="w-3.5 h-3.5" />, color: 'text-pink-600', bg: 'bg-pink-50' };
+  if (s.includes('linkedin'))  return { icon: <UserCheck className="w-3 h-3" />,       color: 'text-sky-600',     bg: 'bg-sky-50' };
+  if (s.includes('twitter') || s.includes('x.com')) return { icon: <Hash className="w-3 h-3" />, color: 'text-slate-700', bg: 'bg-slate-100' };
+  if (s.includes('youtube'))   return { icon: <ExternalLink className="w-3 h-3" />,    color: 'text-red-600',     bg: 'bg-red-50' };
+  if (s.includes('tiktok'))    return { icon: <Hash className="w-3 h-3" />,            color: 'text-fuchsia-600', bg: 'bg-fuchsia-50' };
+  if (s.includes('mail') || s.includes('newsletter') || s.includes('email')) return { icon: <Mail className="w-3 h-3" />, color: 'text-amber-600', bg: 'bg-amber-50' };
+  if (s.includes('direct') || s === '(direct)') return { icon: <MousePointer className="w-3 h-3" />, color: 'text-slate-500', bg: 'bg-slate-100' };
+  if (s.includes('bing'))      return { icon: <Search className="w-3 h-3" />,          color: 'text-teal-600',    bg: 'bg-teal-50' };
+  return { icon: <Link2 className="w-3 h-3" />, color: 'text-blue-500', bg: 'bg-blue-50' };
+}
+
+/** Return an icon for a browser name */
+function browserIcon(name: string): React.ReactNode {
+  const n = name.toLowerCase();
+  if (n.includes('chrome'))  return <GoogleIcon className="w-3.5 h-3.5" />;
+  if (n.includes('safari'))  return <Compass className="w-3.5 h-3.5 text-sky-500" />;
+  if (n.includes('firefox')) return <Globe className="w-3.5 h-3.5 text-orange-500" />;
+  if (n.includes('edge'))    return <Globe className="w-3.5 h-3.5 text-blue-600" />;
+  if (n.includes('opera'))   return <Globe className="w-3.5 h-3.5 text-red-500" />;
+  if (n.includes('samsung')) return <Smartphone className="w-3.5 h-3.5 text-violet-500" />;
+  return <Globe className="w-3.5 h-3.5 text-slate-400" />;
+}
+
+/** Return an icon for an OS name */
+function osIcon(name: string): React.ReactNode {
+  const n = name.toLowerCase();
+  if (n.includes('windows')) return <Monitor className="w-3.5 h-3.5 text-blue-500" />;
+  if (n.includes('mac') || n.includes('ios')) return <Smartphone className="w-3.5 h-3.5 text-slate-700" />;
+  if (n.includes('android')) return <Smartphone className="w-3.5 h-3.5 text-emerald-500" />;
+  if (n.includes('linux'))   return <Monitor className="w-3.5 h-3.5 text-amber-600" />;
+  if (n.includes('chrome'))  return <Chrome className="w-3.5 h-3.5 text-blue-500" />;
+  return <Monitor className="w-3.5 h-3.5 text-slate-400" />;
+}
+
+/** Return an icon for a UTM source/medium/campaign name */
+function utmIcon(name: string): { icon: React.ReactNode; color: string; bg: string } {
+  const n = name.toLowerCase();
+  if (n.includes('google'))    return { icon: <GoogleIcon className="w-3.5 h-3.5" />, color: 'text-blue-600',  bg: 'bg-white' };
+  if (n.includes('facebook') || n.includes('meta') || /\bfb\b/.test(n)) return { icon: <FacebookIcon className="w-3.5 h-3.5" />, color: 'text-blue-600', bg: 'bg-blue-50' };
+  if (n.includes('instagram')) return { icon: <InstagramIcon className="w-3.5 h-3.5" />, color: 'text-pink-600', bg: 'bg-pink-50' };
+  if (n.includes('email') || n.includes('mail') || n.includes('newsletter')) return { icon: <Mail className="w-3 h-3" />, color: 'text-amber-600', bg: 'bg-amber-50' };
+  if (n.includes('linkedin'))  return { icon: <UserCheck className="w-3 h-3" />,  color: 'text-sky-600',     bg: 'bg-sky-50' };
+  if (n.includes('cpc') || n.includes('paid') || n.includes('ad'))   return { icon: <Megaphone className="w-3 h-3" />, color: 'text-orange-600', bg: 'bg-orange-50' };
+  if (n.includes('social'))    return { icon: <Hash className="w-3 h-3" />,        color: 'text-pink-600',    bg: 'bg-pink-50' };
+  if (n.includes('organic'))   return { icon: <Search className="w-3 h-3" />,      color: 'text-emerald-600', bg: 'bg-emerald-50' };
+  if (n.includes('referral'))  return { icon: <Link2 className="w-3 h-3" />,       color: 'text-cyan-600',    bg: 'bg-cyan-50' };
+  if (n.includes('direct'))    return { icon: <MousePointer className="w-3 h-3" />,color: 'text-slate-500',   bg: 'bg-slate-100' };
+  return { icon: <Target className="w-3 h-3" />, color: 'text-slate-600', bg: 'bg-slate-100' };
+}
+
 /* ------------------------------------------------------------------ */
-/*  Component                                                          */
+/*  Inline styles for glass effects & animations                       */
+/* ------------------------------------------------------------------ */
+const REPORT_STYLES = `
+  .rpt .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .rpt .glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    border-color: rgba(203, 213, 225, 1);
+  }
+  @keyframes rptSlideUp {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes rptScaleUp {
+    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes rptSlideRight {
+    0% { opacity: 0; transform: translateX(30px); }
+    100% { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes rptFillBar {
+    from { width: 0; }
+  }
+  .rpt .anim-slide-up {
+    animation: rptSlideUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .rpt .anim-scale-up {
+    animation: rptScaleUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .rpt .anim-slide-right {
+    animation: rptSlideRight 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .rpt .bar-fill {
+    animation: rptFillBar 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .rpt .d100 { animation-delay: 100ms; }
+  .rpt .d150 { animation-delay: 150ms; }
+  .rpt .d200 { animation-delay: 200ms; }
+  .rpt .d250 { animation-delay: 250ms; }
+  .rpt .d300 { animation-delay: 300ms; }
+  .rpt .d400 { animation-delay: 400ms; }
+  .rpt .d500 { animation-delay: 500ms; }
+  .rpt .d600 { animation-delay: 600ms; }
+`;
+
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function GlassCard({ children, className = '', anim = '' }: { children: React.ReactNode; className?: string; anim?: string }) {
+  return <div className={`glass-card rounded-2xl p-6 ${anim} ${className}`}>{children}</div>;
+}
+
+function SectionHeader({ icon, title, iconBg, iconColor, action }: {
+  icon: React.ReactNode; title: string; iconBg: string; iconColor: string; action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-5">
+      <h2 className="text-base font-bold text-slate-800 flex items-center">
+        <div className={`w-7 h-7 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center mr-3 text-sm shadow-sm`}>
+          {icon}
+        </div>
+        {title}
+      </h2>
+      {action}
+    </div>
+  );
+}
+
+function KPICard({ label, value, icon, iconBg, iconColor, gradientFrom, delay }: {
+  label: string; value: string; icon: React.ReactNode; iconBg: string; iconColor: string; gradientFrom: string; delay: string;
+}) {
+  return (
+    <div className={`glass-card rounded-2xl p-6 anim-scale-up ${delay} relative overflow-hidden group`}>
+      <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl ${gradientFrom} to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity duration-500`} />
+      <div className="flex justify-between items-start mb-2 relative z-10">
+        <div>
+          <p className="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">{label}</p>
+          <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+        </div>
+        <div className={`w-10 h-10 rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeviceBar({ icon, name, percentage, idx }: { icon: React.ReactNode; name: string; percentage: number; idx: number }) {
+  return (
+    <div>
+      <div className="flex justify-between items-end mb-1.5">
+        <span className="text-xs font-bold text-slate-700 flex items-center">
+          <span className="text-slate-400 mr-2.5 w-4 flex justify-center">{icon}</span>{name}
+        </span>
+        <span className="text-xs text-slate-500"><span className="font-bold text-slate-800">{percentage}%</span> verkeer</span>
+      </div>
+      <div className="w-full bg-slate-100 rounded-full h-2">
+        <div className="bg-cyan-500 h-2 rounded-full bar-fill" style={{ width: `${percentage}%`, animationDelay: `${idx * 100}ms` }} />
+      </div>
+    </div>
+  );
+}
+
+function TabBar({ tabs, active, onChange }: { tabs: { key: string; label: string }[]; active: string; onChange: (k: string) => void }) {
+  return (
+    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+      {tabs.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => onChange(t.key)}
+          className={`px-3 py-1 rounded-md text-[11px] font-semibold transition-all ${active === t.key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main Component                                                     */
 /* ------------------------------------------------------------------ */
 export default function PublicReportPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
@@ -117,60 +401,44 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
   const [savedPassword, setSavedPassword] = useState('');
   const [error, setError] = useState('');
   const [range, setRange] = useState('last_30_days');
-  const [filters, setFilters] = useState<Filter[]>([]);
+  const [filters, setFilters] = useState<ReportFilter[]>([]);
   const [activeTab, setActiveTab] = useState<'pages' | 'entry' | 'exit'>('pages');
-  const [deviceTab, setDeviceTab] = useState<'browsers' | 'os' | 'devices'>('browsers');
+  const [utmTab, setUtmTab] = useState<'sources' | 'mediums' | 'campaigns'>('sources');
   const [expandedLead, setExpandedLead] = useState<number | null>(null);
 
+  /* ---- Data fetching ---- */
   const fetchReport = useCallback((pw?: string) => {
     setLoading(true);
     setError('');
+    const qs = new URLSearchParams();
+    if (pw) qs.set('password', pw);
+    qs.set('range', range);
+    filters.forEach((f) => qs.set(f.key, f.value));
 
-    const params = new URLSearchParams();
-    if (pw) params.set('password', pw);
-    params.set('range', range);
-    filters.forEach((f) => params.set(f.key, f.value));
-
-    const url = `/api/reports/shared/${token}/data?${params.toString()}`;
-    fetch(url)
+    fetch(`/api/reports/shared/${token}/data?${qs.toString()}`)
       .then(async (res) => {
         if (res.status === 401) { setNeedsPassword(true); setLoading(false); return; }
         if (res.status === 403) { setNeedsPassword(true); setError('Onjuist wachtwoord'); setLoading(false); return; }
         if (!res.ok) { setError('Rapport laden mislukt'); setLoading(false); return; }
         const d = await res.json();
         setData({
-          site_name: d.site_name ?? '',
-          site_domain: d.site_domain ?? '',
-          report_name: d.report_name ?? '',
-          description: d.description ?? '',
-          logo_url: d.logo_url,
-          brand_color: d.brand_color,
-          date_from: d.date_from ?? '',
-          date_to: d.date_to ?? '',
+          site_name: d.site_name ?? '', site_domain: d.site_domain ?? '',
+          report_name: d.report_name ?? '', description: d.description ?? '',
+          logo_url: d.logo_url, brand_color: d.brand_color,
+          date_from: d.date_from ?? '', date_to: d.date_to ?? '',
           metrics: {
-            visitors: d.metrics?.visitors ?? 0,
-            pageviews: d.metrics?.pageviews ?? 0,
-            sessions: d.metrics?.sessions ?? 0,
-            bounce_rate: d.metrics?.bounce_rate ?? 0,
-            views_per_session: d.metrics?.views_per_session ?? 0,
-            avg_duration: d.metrics?.avg_duration ?? 0,
+            visitors: d.metrics?.visitors ?? 0, pageviews: d.metrics?.pageviews ?? 0,
+            sessions: d.metrics?.sessions ?? 0, bounce_rate: d.metrics?.bounce_rate ?? 0,
+            views_per_session: d.metrics?.views_per_session ?? 0, avg_duration: d.metrics?.avg_duration ?? 0,
           },
-          timeseries: d.timeseries ?? [],
-          top_pages: d.top_pages ?? [],
-          top_referrers: d.top_referrers ?? [],
-          browsers: d.browsers ?? [],
-          operating_systems: d.operating_systems ?? [],
-          device_types: d.device_types ?? [],
-          countries: d.countries ?? [],
-          entry_pages: d.entry_pages ?? [],
-          exit_pages: d.exit_pages ?? [],
-          utm_sources: d.utm_sources ?? [],
-          utm_mediums: d.utm_mediums ?? [],
-          utm_campaigns: d.utm_campaigns ?? [],
-          leads: d.leads ?? [],
-          lead_sources: d.lead_sources ?? [],
-          lead_mediums: d.lead_mediums ?? [],
-          lead_campaigns: d.lead_campaigns ?? [],
+          timeseries: d.timeseries ?? [], top_pages: d.top_pages ?? [],
+          top_referrers: d.top_referrers ?? [], browsers: d.browsers ?? [],
+          operating_systems: d.operating_systems ?? [], device_types: d.device_types ?? [],
+          countries: d.countries ?? [], entry_pages: d.entry_pages ?? [],
+          exit_pages: d.exit_pages ?? [], utm_sources: d.utm_sources ?? [],
+          utm_mediums: d.utm_mediums ?? [], utm_campaigns: d.utm_campaigns ?? [],
+          leads: d.leads ?? [], lead_sources: d.lead_sources ?? [],
+          lead_mediums: d.lead_mediums ?? [], lead_campaigns: d.lead_campaigns ?? [],
           ai_analysis: d.ai_analysis ?? undefined,
         });
         setNeedsPassword(false);
@@ -179,26 +447,22 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
       .catch(() => { setError('Rapport laden mislukt'); setLoading(false); });
   }, [token, range, filters]);
 
-  useEffect(() => {
-    fetchReport(savedPassword || undefined);
-  }, [fetchReport, savedPassword]);
+  useEffect(() => { fetchReport(savedPassword || undefined); }, [fetchReport, savedPassword]);
 
   const addFilter = (key: string, label: string, value: string) => {
     if (filters.some((f) => f.key === key && f.value === value)) return;
     setFilters((prev) => [...prev.filter((f) => f.key !== key), { key, label, value }]);
   };
 
-  const removeFilter = (key: string) => {
-    setFilters((prev) => prev.filter((f) => f.key !== key));
-  };
+  const removeFilter = (key: string) => setFilters((prev) => prev.filter((f) => f.key !== key));
 
-  /* ---- Loading ---- */
+  /* ---- Loading state ---- */
   if (loading && !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Rapport laden...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          <p className="text-sm text-slate-500">Rapport laden...</p>
         </div>
       </div>
     );
@@ -207,27 +471,21 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
   /* ---- Password gate ---- */
   if (needsPassword) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="w-full max-w-sm space-y-4 rounded-lg border bg-card p-8">
-          <h1 className="text-lg font-bold">Wachtwoord beveiligd</h1>
-          <p className="text-sm text-muted-foreground">Dit rapport vereist een wachtwoord om te bekijken.</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
+        <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white/95 backdrop-blur-xl border border-slate-200 p-8 shadow-xl">
+          <h1 className="text-lg font-bold text-slate-900">Wachtwoord beveiligd</h1>
+          <p className="text-sm text-slate-500">Dit rapport vereist een wachtwoord.</p>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            type="password" value={password} onChange={(e) => setPassword(e.target.value)}
             placeholder="Wachtwoord invoeren"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { setSavedPassword(password); setNeedsPassword(false); }
-            }}
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            onKeyDown={(e) => { if (e.key === 'Enter') { setSavedPassword(password); setNeedsPassword(false); } }}
+            className="w-full rounded-xl border bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
           <button
             onClick={() => { setSavedPassword(password); setNeedsPassword(false); }}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Rapport bekijken
-          </button>
+            className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-md shadow-blue-500/30 transition-colors"
+          >Rapport bekijken</button>
         </div>
       </div>
     );
@@ -235,189 +493,184 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-[#f8fafc]">
         <p className="text-sm text-red-600">{error || 'Rapport niet gevonden'}</p>
       </div>
     );
   }
 
-  const m = data.metrics;
+  /* ---- Derived data ---- */
+  const met = data.metrics;
+  const totalDev = data.device_types.reduce((a, d) => a + d.value, 0);
+  const devPcts = data.device_types.map((d) => ({ name: d.name, pct: totalDev > 0 ? Math.round((d.value / totalDev) * 100) : 0 }));
+  const pagesData = activeTab === 'pages' ? data.top_pages : activeTab === 'entry' ? data.entry_pages : data.exit_pages;
+  const utmData = utmTab === 'sources' ? data.utm_sources : utmTab === 'mediums' ? data.utm_mediums : data.utm_campaigns;
 
   /* ---- Dashboard ---- */
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight">{data.report_name}</h1>
-            <p className="truncate text-xs text-muted-foreground">{data.site_name}{data.site_domain ? ` · ${data.site_domain}` : ''}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {loading && <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />}
-            <select
-              value={range}
-              onChange={(e) => setRange(e.target.value)}
-              className="rounded-md border bg-background px-3 py-1.5 text-xs font-medium"
-            >
-              {DATE_RANGES.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </header>
+    <div className="rpt text-slate-800 antialiased min-h-screen relative overflow-x-hidden bg-[#f8fafc]">
+      <style dangerouslySetInnerHTML={{ __html: REPORT_STYLES }} />
 
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-        {/* Active filters */}
+      {/* Background blobs */}
+      <div className="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50/50 to-transparent -z-10" />
+      <div className="fixed top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
+      <div className="fixed bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-emerald-400/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
+
+      <div className="max-w-[1440px] mx-auto p-4 sm:p-6 lg:p-8">
+
+        {/* ═══════════════════ Header ═══════════════════ */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 anim-slide-up">
+          <div className="flex items-center gap-4">
+            {data.logo_url && (
+              <img src={data.logo_url} alt="" className="h-10 w-10 rounded-xl object-contain border border-slate-200 shadow-sm" />
+            )}
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">{data.report_name}</h1>
+              <p className="text-slate-500 text-xs font-medium flex items-center">
+                <span className="relative flex h-2.5 w-2.5 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+                {data.site_name}{data.site_domain ? ` · ${data.site_domain}` : ''}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center gap-1">
+            <Calendar className="w-4 h-4 text-slate-400 ml-2 mr-1" />
+            {DATE_RANGES.map((r) => (
+              <button
+                key={r.value}
+                onClick={() => setRange(r.value)}
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 ${range === r.value ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-slate-500 hover:text-slate-900'}`}
+              >{r.label}</button>
+            ))}
+            {loading && <div className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />}
+          </div>
+        </header>
+
+        {/* ═══════════════════ Active Filters ═══════════════════ */}
         {filters.length > 0 && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-6 anim-slide-up">
             {filters.map((f) => (
-              <span
-                key={f.key}
-                className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-              >
+              <span key={f.key} className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 border border-blue-100 px-3 py-1.5 text-xs font-semibold text-blue-700">
                 {f.label}: {f.value}
-                <button onClick={() => removeFilter(f.key)} className="ml-1 hover:text-primary/70">✕</button>
+                <button onClick={() => removeFilter(f.key)} className="hover:text-blue-500 transition-colors"><X className="w-3 h-3" /></button>
               </span>
             ))}
-            <button
-              onClick={() => setFilters([])}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Alles wissen
-            </button>
+            <button onClick={() => setFilters([])} className="text-xs text-slate-400 hover:text-slate-600 font-medium transition-colors">Alles wissen</button>
           </div>
         )}
 
-        {/* Metric cards */}
-        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-          <MetricCard title="Bezoekers" value={m.visitors.toLocaleString()} />
-          <MetricCard title="Paginaweergaven" value={m.pageviews.toLocaleString()} />
-          <MetricCard title="Sessies" value={m.sessions.toLocaleString()} />
-          <MetricCard title="Bouncepercentage" value={`${m.bounce_rate}%`} />
-          <MetricCard title="Weergaven / sessie" value={m.views_per_session.toString()} />
-          <MetricCard title="Gem. duur" value={formatDuration(m.avg_duration)} />
+        {/* ═══════════════════ KPI Cards ═══════════════════ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-8">
+          <KPICard label="Bezoekers" value={formatNumber(met.visitors)} icon={<Users className="w-5 h-5" />} iconBg="bg-violet-50" iconColor="text-violet-600" gradientFrom="from-violet-100" delay="d100" />
+          <KPICard label="Paginaweergaven" value={formatNumber(met.pageviews)} icon={<Eye className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" gradientFrom="from-blue-100" delay="d150" />
+          <KPICard label="Sessies" value={formatNumber(met.sessions)} icon={<Activity className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" gradientFrom="from-emerald-100" delay="d200" />
+          <KPICard label="Bouncepercentage" value={`${met.bounce_rate}%`} icon={<BarChart3 className="w-5 h-5" />} iconBg="bg-amber-50" iconColor="text-amber-600" gradientFrom="from-amber-100" delay="d250" />
+          <KPICard label="Weergaven / sessie" value={met.views_per_session.toString()} icon={<Layers className="w-5 h-5" />} iconBg="bg-cyan-50" iconColor="text-cyan-600" gradientFrom="from-cyan-100" delay="d300" />
+          <KPICard label="Gem. duur" value={formatDuration(met.avg_duration)} icon={<Clock className="w-5 h-5" />} iconBg="bg-rose-50" iconColor="text-rose-600" gradientFrom="from-rose-100" delay="d400" />
         </div>
 
-        {/* Timeseries chart */}
-        {data.timeseries.length > 0 && (
-          <div className="rounded-lg border bg-card p-6">
-            <h2 className="mb-4 text-sm font-medium">Bezoekers &amp; paginaweergaven in de tijd</h2>
-            <TimeSeries data={data.timeseries} period={range} />
-          </div>
-        )}
-
-        {/* Pages + Referrers row */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Pages with tabs */}
-          <div className="rounded-lg border bg-card">
-            <div className="flex items-center gap-1 border-b px-4 py-2">
-              {(['pages', 'entry', 'exit'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    activeTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  {tab === 'pages' ? 'Toppagina\'s' : tab === 'entry' ? 'Instappagina\'s' : 'Uitstappagina\'s'}
-                </button>
-              ))}
-            </div>
-            <div className="p-0">
-              {activeTab === 'pages' && (
-                <DataTable
-                  title=""
-                  columns={[
-                    { key: 'path', label: 'Pagina' },
-                    { key: 'views', label: 'Weergaven', align: 'right' },
-                  ]}
-                  data={data.top_pages}
-                  pageSize={10}
-                  searchable
-                  borderless
-                />
-              )}
-              {activeTab === 'entry' && (
-                <DataTable
-                  title=""
-                  columns={[
-                    { key: 'path', label: 'Pagina' },
-                    { key: 'views', label: 'Instappen', align: 'right' },
-                  ]}
-                  data={data.entry_pages}
-                  pageSize={10}
-                  searchable
-                  borderless
-                />
-              )}
-              {activeTab === 'exit' && (
-                <DataTable
-                  title=""
-                  columns={[
-                    { key: 'path', label: 'Pagina' },
-                    { key: 'views', label: 'Uitstappen', align: 'right' },
-                  ]}
-                  data={data.exit_pages}
-                  pageSize={10}
-                  searchable
-                  borderless
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Referrers */}
-          <DataTable
-            title="Topverwijzers"
-            columns={[
-              { key: 'source', label: 'Bron' },
-              { key: 'visitors', label: 'Bezoekers', align: 'right' },
-            ]}
-            data={data.top_referrers.map((r) => ({
-              ...r,
-              _onClick: () => addFilter('referrer', 'Referrer', r.source),
-            }))}
-            pageSize={10}
-            searchable
-          />
-        </div>
-
-        {/* Countries + Devices row */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Countries */}
-          {data.countries.length > 0 && (
-            <div className="rounded-lg border bg-card">
-              <div className="border-b px-4 py-3">
-                <h3 className="text-sm font-medium">Landen</h3>
+        {/* ═══════════════════ Chart + Sources ═══════════════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {data.timeseries.length > 0 && (
+            <GlassCard className="lg:col-span-2 flex flex-col" anim="anim-slide-up d300">
+              <SectionHeader icon={<ChartLine className="w-4 h-4" />} title="Bezoekers & Paginaweergaven" iconBg="bg-blue-50" iconColor="text-blue-600" />
+              <div className="flex-grow relative" style={{ minHeight: 280 }}>
+                <TimeSeries data={data.timeseries} period={range} />
               </div>
+            </GlassCard>
+          )}
+
+          {data.top_referrers.length > 0 && (
+            <GlassCard className="flex flex-col" anim="anim-slide-right d400">
+              <SectionHeader icon={<ChartPie className="w-4 h-4" />} title="Verkeersbronnen" iconBg="bg-violet-50" iconColor="text-violet-600" />
+              <div className="flex-grow flex flex-col gap-2.5">
+                {data.top_referrers.slice(0, 8).map((ref, i) => {
+                  const pct = met.visitors > 0 ? Math.round((ref.visitors / met.visitors) * 100) : 0;
+                  const si = sourceIcon(ref.source);
+                  return (
+                    <button key={ref.source} onClick={() => addFilter('referrer', 'Referrer', ref.source)}
+                      className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors group text-left w-full">
+                      <div className="flex items-center">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-3 ${si.bg} ${si.color} shadow-sm`}>
+                          {si.icon}
+                        </div>
+                        <span className="text-[13px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors truncate max-w-[140px]">{ref.source}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-bold text-slate-800">{pct}%</span>
+                        <span className="text-[10px] text-slate-400">({formatNumber(ref.visitors)})</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </GlassCard>
+          )}
+        </div>
+
+        {/* ═══════════════════ Pages + Countries ═══════════════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <GlassCard anim="anim-slide-up d400">
+            <SectionHeader
+              icon={<FileText className="w-4 h-4" />}
+              title={activeTab === 'pages' ? "Meest Bekeken Pagina's" : activeTab === 'entry' ? "Instappagina's" : "Uitstappagina's"}
+              iconBg="bg-teal-50" iconColor="text-teal-600"
+              action={<TabBar tabs={[{ key: 'pages', label: 'Top' }, { key: 'entry', label: 'Instap' }, { key: 'exit', label: 'Uitstap' }]} active={activeTab} onChange={(k) => setActiveTab(k as typeof activeTab)} />}
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="pb-2">Pagina</th>
+                    <th className="pb-2 text-right">Weergaven</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs">
+                  {pagesData.slice(0, 10).map((p) => (
+                    <tr key={p.path} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors group cursor-pointer" onClick={() => addFilter('page', 'Pagina', p.path)}>
+                      <td className="py-3 pr-2 font-medium text-slate-700 whitespace-nowrap group-hover:text-blue-600 transition-colors">
+                        <Link2 className="inline w-3 h-3 text-slate-300 mr-2" />{p.path}
+                      </td>
+                      <td className="py-3 pl-2 text-right text-slate-800 font-bold tabular-nums">{formatNumber(p.views)}</td>
+                    </tr>
+                  ))}
+                  {pagesData.length === 0 && <tr><td colSpan={2} className="py-8 text-center text-slate-400">Geen data</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+
+          {data.countries.length > 0 && (
+            <GlassCard anim="anim-slide-up d500">
+              <SectionHeader icon={<Globe className="w-4 h-4" />} title="Landen" iconBg="bg-indigo-50" iconColor="text-indigo-600" />
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b text-xs text-muted-foreground">
-                      <th className="px-4 py-2 text-left font-medium">Land</th>
-                      <th className="px-4 py-2 text-right font-medium">Bezoekers</th>
-                      <th className="px-4 py-2 text-right font-medium w-32">%</th>
+                    <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-2">Land</th>
+                      <th className="pb-2 text-right">Bezoekers</th>
+                      <th className="pb-2 text-right w-32">%</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="text-xs">
                     {data.countries.slice(0, 10).map((c) => {
-                      const pct = m.visitors > 0 ? Math.round((c.visitors / m.visitors) * 100) : 0;
+                      const pct = met.visitors > 0 ? Math.round((c.visitors / met.visitors) * 100) : 0;
                       return (
-                        <tr
-                          key={c.code}
-                          className="border-b text-sm hover:bg-muted/50 cursor-pointer transition-colors"
-                          onClick={() => addFilter('country', 'Land', c.code)}
-                        >
-                          <td className="px-4 py-2">{c.name}</td>
-                          <td className="px-4 py-2 text-right tabular-nums">{c.visitors.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-right">
+                        <tr key={c.code} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors cursor-pointer group" onClick={() => addFilter('country', 'Land', c.code)}>
+                          <td className="py-3 pr-2 whitespace-nowrap">
+                            <span className="mr-2 text-base">{countryFlag(c.code)}</span>
+                            <span className="font-medium text-slate-700 group-hover:text-blue-600 transition-colors">{c.name}</span>
+                          </td>
+                          <td className="py-3 px-2 text-right text-slate-800 font-bold tabular-nums">{formatNumber(c.visitors)}</td>
+                          <td className="py-3 pl-2 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                                <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
+                                <div className="h-full rounded-full bg-indigo-500 bar-fill" style={{ width: `${pct}%` }} />
                               </div>
-                              <span className="w-8 text-xs tabular-nums text-muted-foreground">{pct}%</span>
+                              <span className="w-8 text-[11px] tabular-nums text-slate-500 font-semibold">{pct}%</span>
                             </div>
                           </td>
                         </tr>
@@ -426,233 +679,317 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                   </tbody>
                 </table>
               </div>
-            </div>
+            </GlassCard>
           )}
-
-          {/* Devices / Browsers / OS */}
-          <div className="rounded-lg border bg-card">
-            <div className="flex items-center gap-1 border-b px-4 py-2">
-              {(['browsers', 'os', 'devices'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setDeviceTab(tab)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    deviceTab === tab ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  {tab === 'browsers' ? 'Browsers' : tab === 'os' ? 'OS' : 'Apparaten'}
-                </button>
-              ))}
-            </div>
-            <div className="p-6">
-              {deviceTab === 'browsers' && <PieChart data={data.browsers} />}
-              {deviceTab === 'os' && <PieChart data={data.operating_systems} />}
-              {deviceTab === 'devices' && <PieChart data={data.device_types} />}
-            </div>
-          </div>
         </div>
 
-        {/* UTM section */}
-        {(data.utm_sources.length > 0 || data.utm_mediums.length > 0 || data.utm_campaigns.length > 0) && (
-          <>
-            <h2 className="text-sm font-medium text-muted-foreground pt-2">Campagnetracking (UTM)</h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {data.utm_sources.length > 0 && (
-                <DataTable
-                  title="UTM-bronnen"
-                  columns={[
-                    { key: 'name', label: 'Bron' },
-                    { key: 'visitors', label: 'Bezoekers', align: 'right' },
-                  ]}
-                  data={data.utm_sources.map((r) => ({
-                    ...r,
-                    _onClick: () => addFilter('utm_source', 'UTM Source', r.name),
-                  }))}
-                  pageSize={10}
-                />
-              )}
-              {data.utm_mediums.length > 0 && (
-                <DataTable
-                  title="UTM-media"
-                  columns={[
-                    { key: 'name', label: 'Medium' },
-                    { key: 'visitors', label: 'Bezoekers', align: 'right' },
-                  ]}
-                  data={data.utm_mediums.map((r) => ({
-                    ...r,
-                    _onClick: () => addFilter('utm_medium', 'UTM Medium', r.name),
-                  }))}
-                  pageSize={10}
-                />
-              )}
-              {data.utm_campaigns.length > 0 && (
-                <DataTable
-                  title="UTM-campagnes"
-                  columns={[
-                    { key: 'name', label: 'Campagne' },
-                    { key: 'visitors', label: 'Bezoekers', align: 'right' },
-                  ]}
-                  data={data.utm_campaigns.map((r) => ({
-                    ...r,
-                    _onClick: () => addFilter('utm_campaign', 'UTM Campaign', r.name),
-                  }))}
-                  pageSize={10}
-                />
-              )}
-            </div>
-          </>
+        {/* ═══════════════════ Devices + Browsers/OS ═══════════════════ */}
+        {data.device_types.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <GlassCard anim="anim-slide-up d500">
+              <SectionHeader icon={<Smartphone className="w-4 h-4" />} title="Verkeer per Apparaat" iconBg="bg-cyan-50" iconColor="text-cyan-600" />
+              <div className="flex flex-col justify-center gap-5">
+                {devPcts.map((d, i) => {
+                  const ic = d.name.toLowerCase().includes('mobile') || d.name.toLowerCase().includes('mobiel')
+                    ? <Smartphone className="w-3.5 h-3.5" />
+                    : d.name.toLowerCase().includes('desktop') ? <Monitor className="w-3.5 h-3.5" /> : <Tablet className="w-3.5 h-3.5" />;
+                  return <DeviceBar key={d.name} icon={ic} name={d.name} percentage={d.pct} idx={i} />;
+                })}
+              </div>
+            </GlassCard>
+
+            <GlassCard anim="anim-slide-up d600">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <div className="flex items-center mb-4">
+                    <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mr-3 text-sm shadow-sm">
+                      <GoogleIcon className="w-4 h-4" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-800">Browsers</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {data.browsers.slice(0, 5).map((b) => {
+                      const tot = data.browsers.reduce((a, x) => a + x.value, 0);
+                      const pct = tot > 0 ? Math.round((b.value / tot) * 100) : 0;
+                      return (
+                        <div key={b.name} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-5 flex justify-center">{browserIcon(b.name)}</span>
+                            <span className="text-xs font-medium text-slate-600">{b.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100">
+                              <div className="h-full rounded-full bg-purple-400 bar-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-bold text-slate-800 w-8 text-right">{pct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center mb-4">
+                    <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center mr-3 text-sm shadow-sm">
+                      <Monitor className="w-4 h-4" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-800">Besturingssystemen</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {data.operating_systems.slice(0, 5).map((os) => {
+                      const tot = data.operating_systems.reduce((a, x) => a + x.value, 0);
+                      const pct = tot > 0 ? Math.round((os.value / tot) * 100) : 0;
+                      return (
+                        <div key={os.name} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-5 flex justify-center">{osIcon(os.name)}</span>
+                            <span className="text-xs font-medium text-slate-600">{os.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100">
+                              <div className="h-full rounded-full bg-slate-400 bar-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs font-bold text-slate-800 w-8 text-right">{pct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </GlassCard>
+          </div>
         )}
 
-        {/* Leads section */}
+        {/* ═══════════════════ UTM Campaigns ═══════════════════ */}
+        {(data.utm_sources.length > 0 || data.utm_mediums.length > 0 || data.utm_campaigns.length > 0) && (
+          <GlassCard className="mb-6" anim="anim-slide-up d400">
+            <SectionHeader
+              icon={<Megaphone className="w-4 h-4" />} title="Campagnetracking (UTM)" iconBg="bg-emerald-50" iconColor="text-emerald-600"
+              action={<TabBar tabs={[{ key: 'sources', label: 'Bronnen' }, { key: 'mediums', label: 'Media' }, { key: 'campaigns', label: 'Campagnes' }]} active={utmTab} onChange={(k) => setUtmTab(k as typeof utmTab)} />}
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="pb-2">{utmTab === 'sources' ? 'Bron' : utmTab === 'mediums' ? 'Medium' : 'Campagne'}</th>
+                    <th className="pb-2 text-right">Bezoekers</th>
+                    <th className="pb-2 text-right w-32">%</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs">
+                  {utmData.slice(0, 10).map((item) => {
+                    const pct = met.visitors > 0 ? Math.round((item.visitors / met.visitors) * 100) : 0;
+                    return (
+                      <tr key={item.name} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                        onClick={() => {
+                          const k = utmTab === 'sources' ? 'utm_source' : utmTab === 'mediums' ? 'utm_medium' : 'utm_campaign';
+                          const l = utmTab === 'sources' ? 'UTM Source' : utmTab === 'mediums' ? 'UTM Medium' : 'UTM Campaign';
+                          addFilter(k, l, item.name);
+                        }}>
+                        <td className="py-3 pr-2 font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
+                          <span className="inline-flex items-center gap-2">
+                            {(() => { const ui = utmIcon(item.name); return <span className={`w-5 h-5 rounded flex items-center justify-center ${ui.bg} ${ui.color}`}>{ui.icon}</span>; })()}
+                            {item.name}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-right text-slate-800 font-bold tabular-nums">{formatNumber(item.visitors)}</td>
+                        <td className="py-3 pl-2 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
+                              <div className="h-full rounded-full bg-emerald-500 bar-fill" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="w-8 text-[11px] tabular-nums text-slate-500 font-semibold">{pct}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {utmData.length === 0 && <tr><td colSpan={3} className="py-8 text-center text-slate-400">Geen data</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* ═══════════════════ Leads ═══════════════════ */}
         {data.leads.length > 0 && (
           <>
-            <h2 className="text-sm font-medium text-muted-foreground pt-2">Leads</h2>
-
-            {/* Lead source breakdown */}
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {data.lead_sources.length > 0 && (
-                <DataTable
-                  title="Leadbronnen"
-                  columns={[
-                    { key: 'source', label: 'Bron' },
-                    { key: 'count', label: 'Leads', align: 'right' },
-                  ]}
-                  data={data.lead_sources}
-                  pageSize={10}
-                />
-              )}
-              {data.lead_mediums.length > 0 && (
-                <DataTable
-                  title="Lead-media"
-                  columns={[
-                    { key: 'medium', label: 'Medium' },
-                    { key: 'count', label: 'Leads', align: 'right' },
-                  ]}
-                  data={data.lead_mediums}
-                  pageSize={10}
-                />
-              )}
-              {data.lead_campaigns.length > 0 && (
-                <DataTable
-                  title="Leadcampagnes"
-                  columns={[
-                    { key: 'campaign', label: 'Campagne' },
-                    { key: 'count', label: 'Leads', align: 'right' },
-                  ]}
-                  data={data.lead_campaigns}
-                  pageSize={10}
-                />
-              )}
-            </div>
+            {(data.lead_sources.length > 0 || data.lead_mediums.length > 0 || data.lead_campaigns.length > 0) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                {data.lead_sources.length > 0 && (
+                  <GlassCard anim="anim-slide-up d400">
+                    <SectionHeader icon={<UserPlus className="w-4 h-4" />} title="Leadbronnen" iconBg="bg-orange-50" iconColor="text-orange-600" />
+                    <div className="space-y-1.5">{data.lead_sources.slice(0, 8).map((s) => {
+                      const si = sourceIcon(s.source);
+                      return (
+                        <div key={s.source} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${si.bg} ${si.color}`}>{si.icon}</div>
+                            <span className="text-xs font-medium text-slate-600">{s.source}</span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-full">{s.count}</span>
+                        </div>
+                      );
+                    })}</div>
+                  </GlassCard>
+                )}
+                {data.lead_mediums.length > 0 && (
+                  <GlassCard anim="anim-slide-up d500">
+                    <SectionHeader icon={<Send className="w-4 h-4" />} title="Lead-media" iconBg="bg-pink-50" iconColor="text-pink-600" />
+                    <div className="space-y-1.5">{data.lead_mediums.slice(0, 8).map((md) => {
+                      const mi = utmIcon(md.medium);
+                      return (
+                        <div key={md.medium} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${mi.bg} ${mi.color}`}>{mi.icon}</div>
+                            <span className="text-xs font-medium text-slate-600">{md.medium}</span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-full">{md.count}</span>
+                        </div>
+                      );
+                    })}</div>
+                  </GlassCard>
+                )}
+                {data.lead_campaigns.length > 0 && (
+                  <GlassCard anim="anim-slide-up d600">
+                    <SectionHeader icon={<Megaphone className="w-4 h-4" />} title="Leadcampagnes" iconBg="bg-sky-50" iconColor="text-sky-600" />
+                    <div className="space-y-1.5">{data.lead_campaigns.slice(0, 8).map((c) => {
+                      const ci = utmIcon(c.campaign);
+                      return (
+                        <div key={c.campaign} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-6 h-6 rounded-md flex items-center justify-center ${ci.bg} ${ci.color}`}>{ci.icon}</div>
+                            <span className="text-xs font-medium text-slate-600">{c.campaign}</span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-full">{c.count}</span>
+                        </div>
+                      );
+                    })}</div>
+                  </GlassCard>
+                )}
+              </div>
+            )}
 
             {/* Leads table */}
-            <div className="rounded-lg border bg-card overflow-hidden">
-              <div className="border-b px-4 py-3">
-                <h3 className="text-sm font-medium">Alle leads ({data.leads.length})</h3>
-              </div>
+            <GlassCard className="mb-6" anim="anim-slide-up d500">
+              <SectionHeader icon={<Users className="w-4 h-4" />} title={`Alle leads (${data.leads.length})`} iconBg="bg-orange-50" iconColor="text-orange-600" />
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b text-xs text-muted-foreground">
-                      <th className="px-4 py-2.5 text-left font-medium">Naam</th>
-                      <th className="px-4 py-2.5 text-left font-medium">E-mail</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Bron</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Campagne</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Formulier</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                      <th className="px-4 py-2.5 text-left font-medium">Datum</th>
+                    <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <th className="pb-2 pl-2">Naam</th><th className="pb-2">E-mail</th><th className="pb-2">Bron</th>
+                      <th className="pb-2">Campagne</th><th className="pb-2">Status</th><th className="pb-2 text-right">Datum</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="text-xs">
                     {data.leads.map((lead) => {
-                      const sourceLabel = lead.utm_source
-                        ? [lead.utm_source, lead.utm_medium].filter(Boolean).join(' / ')
-                        : lead.referrer_hostname || 'Direct';
-                      const srcKey = (lead.utm_source || lead.referrer_hostname || '').toLowerCase();
-                      const sourceBadge = srcKey.includes('google')
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'
-                        : srcKey.includes('facebook') || srcKey.includes('meta') || srcKey.includes('instagram')
-                        ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                        : srcKey.includes('linkedin')
-                        ? 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300'
-                        : 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300';
-                      const statusColor: Record<string, string> = {
-                        new: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-                        contacted: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-                        qualified: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-                        converted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-                        archived: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+                      const srcLbl = lead.utm_source ? [lead.utm_source, lead.utm_medium].filter(Boolean).join(' / ') : lead.referrer_hostname || 'Direct';
+                      const sk = (lead.utm_source || lead.referrer_hostname || '').toLowerCase();
+                      const srcBdg = sk.includes('google') ? 'bg-blue-50 text-blue-700 border-blue-100'
+                        : sk.includes('facebook') || sk.includes('meta') || sk.includes('instagram') ? 'bg-violet-50 text-violet-700 border-violet-100'
+                        : sk.includes('linkedin') ? 'bg-sky-50 text-sky-700 border-sky-100' : 'bg-slate-50 text-slate-700 border-slate-100';
+                      const stS: Record<string, string> = {
+                        new: 'bg-blue-50 text-blue-600 border-blue-100', contacted: 'bg-amber-50 text-amber-600 border-amber-100',
+                        qualified: 'bg-purple-50 text-purple-600 border-purple-100', converted: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+                        archived: 'bg-slate-100 text-slate-500 border-slate-200',
                       };
-                      const dateStr = new Date(lead.created_at).toLocaleDateString('nl-NL', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                      });
+                      const ds = new Date(lead.created_at).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+                      const isExpanded = expandedLead === lead.id;
+
                       return (
-                        <>
-                          <tr
-                            key={lead.id}
-                            className="border-b hover:bg-muted/50 cursor-pointer transition-colors text-sm"
-                            onClick={() => setExpandedLead(expandedLead === lead.id ? null : lead.id)}
-                          >
-                            <td className="px-4 py-2.5 font-medium">{lead.lead_name || <span className="text-muted-foreground italic">—</span>}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground">{lead.lead_email || '—'}</td>
-                            <td className="px-4 py-2.5">
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${sourceBadge}`}>
-                                {sourceLabel}
+                        <Fragment key={lead.id}>
+                          <tr className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                            onClick={() => setExpandedLead(isExpanded ? null : lead.id)}>
+                            <td className="py-3 pl-2 font-semibold text-slate-700 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Users className="w-3 h-3 text-slate-400" />
+                                {lead.lead_name || <span className="text-slate-400 italic">—</span>}
                               </span>
                             </td>
-                            <td className="px-4 py-2.5 text-muted-foreground text-xs">{lead.utm_campaign || '—'}</td>
-                            <td className="px-4 py-2.5 text-muted-foreground text-xs">{lead.form_id || '—'}</td>
-                            <td className="px-4 py-2.5">
-                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[lead.status] || ''}`}>
+                            <td className="py-3 text-slate-500 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Mail className="w-3 h-3 text-slate-300" />
+                                {lead.lead_email || '—'}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold border shadow-sm ${srcBdg}`}>
+                                {(() => { const si = sourceIcon(sk || srcLbl); return <span className={si.color}>{si.icon}</span>; })()}
+                                {srcLbl}
+                              </span>
+                            </td>
+                            <td className="py-3 text-slate-500">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Tag className="w-3 h-3 text-slate-300" />
+                                {lead.utm_campaign || '—'}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold border shadow-sm ${stS[lead.status] || ''}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  lead.status === 'new' ? 'bg-blue-500 animate-pulse' :
+                                  lead.status === 'contacted' ? 'bg-amber-500' :
+                                  lead.status === 'qualified' ? 'bg-purple-500' :
+                                  lead.status === 'converted' ? 'bg-emerald-500' : 'bg-slate-400'
+                                }`} />
                                 {lead.status.charAt(0).toUpperCase() + lead.status.slice(1)}
                               </span>
                             </td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">{dateStr}</td>
+                            <td className="py-3 text-right text-slate-500 whitespace-nowrap">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Calendar className="w-3 h-3 text-slate-300" />
+                                {ds}
+                              </span>
+                            </td>
                           </tr>
-                          {expandedLead === lead.id && (
-                            <tr key={`${lead.id}-detail`} className="border-b bg-muted/30">
-                              <td colSpan={7} className="px-6 py-4">
+                          {isExpanded && (
+                            <tr className="border-b border-slate-100 bg-slate-50/50">
+                              <td colSpan={6} className="px-4 py-4">
                                 <div className="grid gap-4 sm:grid-cols-3 text-sm">
                                   <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Contactgegevens</p>
-                                    {lead.lead_name && <p><span className="text-muted-foreground">Naam:</span> {lead.lead_name}</p>}
-                                    {lead.lead_email && <p><span className="text-muted-foreground">E-mail:</span> {lead.lead_email}</p>}
-                                    {lead.lead_phone && <p><span className="text-muted-foreground">Telefoon:</span> {lead.lead_phone}</p>}
-                                    {lead.lead_company && <p><span className="text-muted-foreground">Bedrijf:</span> {lead.lead_company}</p>}
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                      <Users className="w-3 h-3" /> Contactgegevens
+                                    </p>
+                                    {lead.lead_name && <p className="text-xs flex items-center gap-1.5"><Users className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Naam:</span> <span className="font-medium text-slate-700">{lead.lead_name}</span></p>}
+                                    {lead.lead_email && <p className="text-xs flex items-center gap-1.5"><Mail className="w-3 h-3 text-slate-400" /><span className="text-slate-500">E-mail:</span> <span className="font-medium text-slate-700">{lead.lead_email}</span></p>}
+                                    {lead.lead_phone && <p className="text-xs flex items-center gap-1.5"><Phone className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Tel:</span> <span className="font-medium text-slate-700">{lead.lead_phone}</span></p>}
+                                    {lead.lead_company && <p className="text-xs flex items-center gap-1.5"><Building2 className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Bedrijf:</span> <span className="font-medium text-slate-700">{lead.lead_company}</span></p>}
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Attributie</p>
-                                    <p><span className="text-muted-foreground">Bron:</span> {lead.utm_source || lead.referrer_hostname || 'Direct'}</p>
-                                    {lead.utm_medium && <p><span className="text-muted-foreground">Medium:</span> {lead.utm_medium}</p>}
-                                    {lead.utm_campaign && <p><span className="text-muted-foreground">Campagne:</span> {lead.utm_campaign}</p>}
-                                    {lead.page_path && <p><span className="text-muted-foreground">Pagina:</span> {lead.page_path}</p>}
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                      <Target className="w-3 h-3" /> Attributie
+                                    </p>
+                                    <p className="text-xs flex items-center gap-1.5"><Search className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Bron:</span> <span className="font-medium text-slate-700">{lead.utm_source || lead.referrer_hostname || 'Direct'}</span></p>
+                                    {lead.utm_medium && <p className="text-xs flex items-center gap-1.5"><Send className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Medium:</span> <span className="font-medium text-slate-700">{lead.utm_medium}</span></p>}
+                                    {lead.utm_campaign && <p className="text-xs flex items-center gap-1.5"><Megaphone className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Campagne:</span> <span className="font-medium text-slate-700">{lead.utm_campaign}</span></p>}
+                                    {lead.page_path && <p className="text-xs flex items-center gap-1.5"><FileText className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Pagina:</span> <span className="font-medium text-slate-700">{lead.page_path}</span></p>}
                                   </div>
                                   <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">Context</p>
-                                    {lead.country_code && <p><span className="text-muted-foreground">Locatie:</span> {lead.city ? `${lead.city}, ` : ''}{lead.country_code}</p>}
-                                    {lead.device_type && <p><span className="text-muted-foreground">Apparaat:</span> {lead.device_type}</p>}
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                      <Globe className="w-3 h-3" /> Context
+                                    </p>
+                                    {lead.country_code && <p className="text-xs flex items-center gap-1.5"><MapPin className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Locatie:</span> <span className="mr-1">{countryFlag(lead.country_code)}</span><span className="font-medium text-slate-700">{lead.city ? `${lead.city}, ` : ''}{lead.country_code}</span></p>}
+                                    {lead.device_type && <p className="text-xs flex items-center gap-1.5"><Smartphone className="w-3 h-3 text-slate-400" /><span className="text-slate-500">Apparaat:</span> <span className="font-medium text-slate-700">{lead.device_type}</span></p>}
                                     {lead.lead_message && (
                                       <div className="mt-2">
-                                        <p className="text-muted-foreground">Bericht:</p>
-                                        <p className="mt-0.5 rounded bg-background p-2 text-xs whitespace-pre-wrap">{lead.lead_message}</p>
+                                        <p className="text-slate-500 text-xs">Bericht:</p>
+                                        <p className="mt-0.5 rounded-lg bg-white p-2 text-xs whitespace-pre-wrap border border-slate-200">{lead.lead_message}</p>
                                       </div>
                                     )}
                                   </div>
                                 </div>
-                                {/* All form data */}
                                 {lead.lead_data && typeof lead.lead_data === 'object' && Object.keys(lead.lead_data).length > 0 && (
-                                  <div className="mt-4 border-t pt-3">
-                                    <p className="text-xs font-medium text-muted-foreground mb-2">Alle formulierdata</p>
-                                    <div className="rounded border bg-background overflow-hidden">
+                                  <div className="mt-4 border-t border-slate-200 pt-3">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Alle formulierdata</p>
+                                    <div className="rounded-lg border bg-white overflow-hidden">
                                       <table className="w-full text-xs">
-                                        <tbody>
-                                          {Object.entries(lead.lead_data as Record<string, string>).map(([key, value]) => (
-                                            <tr key={key} className="border-b last:border-0">
-                                              <td className="px-3 py-1.5 text-muted-foreground font-medium whitespace-nowrap align-top w-1/3">{key}</td>
-                                              <td className="px-3 py-1.5 whitespace-pre-wrap break-words">{value}</td>
-                                            </tr>
-                                          ))}
-                                        </tbody>
+                                        <tbody>{Object.entries(lead.lead_data).map(([k, v]) => (
+                                          <tr key={k} className="border-b border-slate-100 last:border-0">
+                                            <td className="px-3 py-1.5 text-slate-500 font-medium whitespace-nowrap align-top w-1/3">{k}</td>
+                                            <td className="px-3 py-1.5 text-slate-700 whitespace-pre-wrap break-words">{v}</td>
+                                          </tr>
+                                        ))}</tbody>
                                       </table>
                                     </div>
                                   </div>
@@ -660,31 +997,43 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                               </td>
                             </tr>
                           )}
-                        </>
+                        </Fragment>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </GlassCard>
           </>
         )}
 
-        {/* AI Insights (if available in shared report) */}
+        {/* ═══════════════════ AI Insights ═══════════════════ */}
         {data.ai_analysis && (
-          <>
-            <h2 className="text-sm font-medium text-muted-foreground pt-2">AI-inzichten</h2>
-            <div className="rounded-lg border bg-card p-6">
-              <AIReportCard
-                analysis={data.ai_analysis as any}
-                periodStart={data.date_from}
-                periodEnd={data.date_to}
-                compact
-              />
+          <div className="glass-card rounded-2xl p-6 anim-slide-up d600 mb-8 border-l-4 border-l-purple-500 relative overflow-hidden">
+            <div className="absolute top-[-50%] right-[-10%] w-[40%] h-[200%] bg-purple-400/5 blur-[80px] -z-10 pointer-events-none" />
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base font-bold text-slate-800 flex items-center">
+                <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mr-3 text-sm shadow-sm border border-purple-100">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                Smart AI Inzichten
+              </h2>
+              <span className="px-2.5 py-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-[10px] font-bold rounded-full shadow-md flex items-center">
+                <span className="w-1.5 h-1.5 bg-white rounded-full mr-1.5 animate-pulse" />
+                Analyse
+              </span>
             </div>
-          </>
+            <AIReportCard analysis={data.ai_analysis as any} periodStart={data.date_from} periodEnd={data.date_to} compact />
+          </div>
         )}
-      </main>
+
+        {/* Footer */}
+        <div className="text-center pb-8 anim-slide-up d600">
+          <p className="text-[11px] text-slate-400 font-medium">
+            Rapport gegenereerd voor periode {data.date_from} – {data.date_to}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

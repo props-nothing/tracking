@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Klant Cockpit Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://npmcdn.com/flatpickr/dist/l10n/nl.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            google: '#3b82f6', 
+                            meta: '#8b5cf6',   
+                            mail: '#f59e0b',   
+                            org: '#10b981',    
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #f8fafc; 
+        }
+        
+        /* Custom Animaties */
+        @keyframes slideUpFade {
+            0% { opacity: 0; transform: translateY(30px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes scaleUpFade {
+            0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        @keyframes slideInRightFade {
+            0% { opacity: 0; transform: translateX(30px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        .animate-slide-up {
+            animation: slideUpFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        .animate-scale-up {
+            animation: scaleUpFade 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            opacity: 0;
+        }
+
+        .animate-slide-right {
+            animation: slideInRightFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+
+        /* Gestaffelde delays voor een waterval effect */
+        .delay-100 { animation-delay: 100ms; }
+        .delay-150 { animation-delay: 150ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-250 { animation-delay: 250ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
+        .delay-600 { animation-delay: 600ms; }
+
+        /* Card Hover Effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+            border-color: rgba(203, 213, 225, 1);
+        }
+
+        /* Progress Bar Animatie */
+        @keyframes fillBar {
+            from { width: 0; }
+        }
+        .progress-bar-fill {
+            animation: fillBar 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        
+        /* Table Sort Headers */
+        .sortable-header {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .sortable-header:hover {
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased p-4 sm:p-6 lg:p-8 min-h-screen relative overflow-x-hidden">
+
+    <div class="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50/50 to-transparent -z-10"></div>
+    <div class="fixed top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-emerald-400/10 rounded-full blur-[100px] -z-10 pointer-events-none"></div>
+
+    <div class="max-w-[1440px] mx-auto">
+        
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-slide-up">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                    E-commerce Cockpit
+                </h1>
+                <p class="text-slate-500 text-xs font-medium flex items-center">
+                    <span class="relative flex h-2.5 w-2.5 mr-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    Live data synchronisatie actief
+                </p>
+            </div>
+
+            <div class="bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1">
+                <button onclick="updateData('week')" id="btn-week" class="px-5 py-2 rounded-lg text-xs font-semibold transition-all duration-300 text-slate-500 hover:text-slate-900">
+                    Laatste 7 dagen
+                </button>
+                <button onclick="updateData('maand')" id="btn-maand" class="px-5 py-2 rounded-lg text-xs font-semibold transition-all duration-300 bg-blue-600 text-white shadow-md shadow-blue-500/30">
+                    Afgelopen 30 dagen
+                </button>
+                <div class="h-5 w-px bg-slate-200 mx-1"></div>
+                <div class="relative flex items-center group">
+                    <i class="fa-regular fa-calendar absolute left-3 text-slate-400 pointer-events-none transition-colors duration-300" id="custom-icon"></i>
+                    <input type="text" id="btn-custom" placeholder="Aangepast..." class="pl-8 pr-4 py-2 rounded-lg text-xs font-semibold transition-all duration-300 text-slate-500 group-hover:text-slate-900 bg-transparent cursor-pointer w-[160px] focus:outline-none focus:ring-0 placeholder-slate-400" readonly>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+            <div class="glass-card rounded-2xl p-6 animate-scale-up delay-100 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-blue-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Totale Omzet</p>
+                        <h3 class="text-2xl font-black text-slate-800" id="kpi-omzet">€0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg shadow-sm border border-blue-100 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-euro-sign"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-xs font-medium">
+                    <span class="flex items-center px-2 py-1 rounded-md border" id="kpi-omzet-trend"></span>
+                    <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 animate-scale-up delay-150 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-violet-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Bezoekers</p>
+                        <h3 class="text-2xl font-black text-slate-800" id="kpi-bezoekers">0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-lg shadow-sm border border-violet-100 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-xs font-medium">
+                    <span class="flex items-center px-2 py-1 rounded-md border" id="kpi-bez-trend"></span>
+                    <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 animate-scale-up delay-200 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-emerald-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Conversieratio</p>
+                        <h3 class="text-2xl font-black text-slate-800" id="kpi-conversie">0%</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg shadow-sm border border-emerald-100 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-cart-shopping"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-xs font-medium">
+                    <span class="flex items-center px-2 py-1 rounded-md border" id="kpi-conv-trend"></span>
+                    <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 animate-scale-up delay-250 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-amber-100 to-transparent rounded-bl-full opacity-50 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div>
+                        <p class="text-slate-500 text-[11px] font-bold mb-1.5 uppercase tracking-wider">Gem. Bestelwaarde</p>
+                        <h3 class="text-2xl font-black text-slate-800" id="kpi-aov">€0</h3>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg shadow-sm border border-amber-100 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                </div>
+                <div class="flex items-center text-xs font-medium">
+                    <span class="flex items-center px-2 py-1 rounded-md border" id="kpi-aov-trend"></span>
+                    <span class="text-slate-400 ml-3 text-[11px]">vs vorige periode</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-2 glass-card rounded-2xl p-6 animate-slide-up delay-300 flex flex-col">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center">
+                        <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        Omzet & Verkeer Ontwikkeling
+                    </h2>
+                </div>
+                <div class="flex-grow relative h-[280px] w-full">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 animate-slide-right delay-400 flex flex-col">
+                <h2 class="text-base font-bold text-slate-800 flex items-center mb-5">
+                    <div class="w-7 h-7 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center mr-3 text-sm">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    Verkeersbronnen
+                </h2>
+                
+                <div class="relative h-48 w-full flex justify-center items-center mb-5">
+                    <canvas id="sourceChart"></canvas>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        <span class="text-xl font-black text-slate-800" id="total-traffic-label">100%</span>
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Totaal</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2.5" id="source-legend"></div>
+            </div>
+
+            <div class="lg:col-span-2 glass-card rounded-2xl p-6 animate-slide-up delay-400 mt-2">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center mr-3 text-sm">
+                            <i class="fa-solid fa-bullseye"></i>
+                        </div>
+                        Campagnes Prestaties
+                    </h2>
+                    <span class="text-[10px] text-slate-400 font-medium italic">Klik op een kolom om te sorteren</span>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider select-none">
+                                <th class="pb-3 pl-2 sortable-header" onclick="sortCampaigns('name')">Campagne <i class="fa-solid fa-sort ml-1 opacity-50" id="sort-icon-name"></i></th>
+                                <th class="pb-3 text-center sortable-header" onclick="sortCampaigns('status')">Status <i class="fa-solid fa-sort ml-1 opacity-50" id="sort-icon-status"></i></th>
+                                <th class="pb-3 text-right sortable-header" onclick="sortCampaigns('dailyBudget')">Dagbudget <i class="fa-solid fa-sort ml-1 opacity-50" id="sort-icon-dailyBudget"></i></th>
+                                <th class="pb-3 text-right sortable-header" onclick="sortCampaigns('spend')">Kosten <i class="fa-solid fa-sort ml-1 opacity-50" id="sort-icon-spend"></i></th>
+                                <th class="pb-3 text-right sortable-header" onclick="sortCampaigns('conversions')">Conversies <i class="fa-solid fa-sort ml-1 opacity-50" id="sort-icon-conversions"></i></th>
+                                <th class="pb-3 text-right sortable-header" onclick="sortCampaigns('rev')">Omzet <i class="fa-solid fa-sort ml-1 opacity-50" id="sort-icon-rev"></i></th>
+                                <th class="pb-3 text-right sortable-header text-emerald-600" onclick="sortCampaigns('roas')">ROAS <i class="fa-solid fa-sort ml-1 opacity-50" id="sort-icon-roas"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody id="campaigns-body" class="text-xs"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 animate-slide-right delay-500 mt-2 flex flex-col">
+                <h2 class="text-base font-bold text-slate-800 flex items-center mb-5">
+                    <div class="w-7 h-7 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center mr-3 text-sm">
+                        <i class="fa-solid fa-filter"></i>
+                    </div>
+                    Winkelwagen Funnel
+                </h2>
+                <div class="flex-grow flex flex-col justify-center gap-1" id="funnel-container"></div>
+                <div class="mt-6 p-4 bg-rose-50 rounded-xl border border-rose-100 flex items-center justify-between">
+                    <div class="flex gap-6">
+                        <div>
+                            <p class="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">Verlatingspercentage</p>
+                            <p class="text-lg font-black text-slate-800" id="abandoned-rate">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">Misgelopen Waarde</p>
+                            <p class="text-lg font-black text-rose-600" id="abandoned-value">€0</p>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-cart-arrow-down text-2xl text-rose-200 opacity-50"></i>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div class="glass-card rounded-2xl p-6 animate-slide-up delay-500">
+                <h2 class="text-base font-bold text-slate-800 flex items-center mb-5">
+                    <div class="w-7 h-7 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center mr-3 text-sm">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </div>
+                    Meest Bekeken Pagina's
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="pb-2">Pagina Pad</th>
+                                <th class="pb-2 text-right">Weergaven</th>
+                                <th class="pb-2 text-right">Bounce Rate</th>
+                                <th class="pb-2 text-right">Gem. Tijd</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-pages-tbody" class="text-xs">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 animate-slide-up delay-600">
+                <h2 class="text-base font-bold text-slate-800 flex items-center mb-5">
+                    <div class="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center mr-3 text-sm">
+                        <i class="fa-solid fa-eye"></i>
+                    </div>
+                    Meest Bekeken Producten (Potentieel)
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <th class="pb-2">Product</th>
+                                <th class="pb-2 text-right">Weergaven</th>
+                                <th class="pb-2 text-right">Omzet</th>
+                                <th class="pb-2 text-right">Verlaten in Cart</th>
+                            </tr>
+                        </thead>
+                        <tbody id="viewed-products-tbody" class="text-xs">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6 mb-8">
+            <div class="glass-card rounded-2xl p-6 animate-slide-up delay-600 flex flex-col">
+                <h2 class="text-base font-bold text-slate-800 flex items-center mb-5">
+                    <div class="w-7 h-7 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center mr-3 text-sm">
+                        <i class="fa-solid fa-mobile-screen"></i>
+                    </div>
+                    Verkeer & Conversie per Apparaat
+                </h2>
+                <div class="flex-grow flex flex-col justify-center gap-5" id="apparaten-container"></div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6 animate-slide-up delay-600">
+                <h2 class="text-base font-bold text-slate-800 flex items-center mb-5">
+                    <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mr-3 text-sm">
+                        <i class="fa-solid fa-heart"></i>
+                    </div>
+                    Klantloyaliteit (Retentie)
+                </h2>
+                
+                <div class="flex items-center gap-6 h-full pb-4">
+                    <div class="flex-1 space-y-4">
+                        <div>
+                            <div class="flex justify-between items-end mb-1">
+                                <span class="text-xs font-bold text-slate-700 flex items-center"><span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>Nieuwe Klanten</span>
+                                <span class="text-sm font-black text-slate-800" id="klant-nieuw-perc">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full transition-all duration-1000" id="klant-nieuw-bar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-end mb-1">
+                                <span class="text-xs font-bold text-slate-700 flex items-center"><span class="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span>Terugkerende Klanten</span>
+                                <span class="text-sm font-black text-slate-800" id="klant-terug-perc">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2">
+                                <div class="bg-indigo-500 h-2 rounded-full transition-all duration-1000" id="klant-terug-bar" style="width: 0%"></div>
+                            </div>
+                            <p class="text-[10px] text-slate-500 mt-2 italic"><i class="fa-solid fa-circle-info mr-1"></i>Terugkerende klanten besteden gem. 35% meer per order.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6 animate-slide-up delay-600 mb-8 border-l-4 border-l-purple-500 relative overflow-hidden">
+            <div class="absolute top-[-50%] right-[-10%] w-[40%] h-[200%] bg-purple-400/5 blur-[80px] -z-10 pointer-events-none"></div>
+            
+            <div class="flex items-center justify-between mb-5">
+                <h2 class="text-base font-bold text-slate-800 flex items-center">
+                    <div class="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mr-3 text-sm shadow-sm border border-purple-100">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    Smart AI Inzichten
+                </h2>
+                <span class="px-2.5 py-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-[10px] font-bold rounded-full shadow-md flex items-center">
+                    <span class="w-1.5 h-1.5 bg-white rounded-full mr-1.5 animate-pulse"></span>
+                    Analyse Actief
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="ai-insights-container">
+                </div>
+        </div>
+
+    </div>
+
+    <script>
+        const formatCurrency = (val) => '€' + new Intl.NumberFormat('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(val);
+        const formatNumber = (val) => new Intl.NumberFormat('nl-NL').format(val);
+
+        // --- DATA ---
+        const dataMaand = {
+            kpis: { omzet: { value: 45230, trend: 18.7 }, bezoekers: { value: 24500, trend: 15.5 }, conversie: { value: 3.2, trend: 14.2 }, aov: { value: 85.50, trend: -2.1 } },
+            apparaten: [
+                { name: 'Mobiel', traffic: 74, conv: 2.1, icon: 'fa-mobile-screen' },
+                { name: 'Desktop', traffic: 22, conv: 5.4, icon: 'fa-desktop' },
+                { name: 'Tablet', traffic: 4, conv: 2.8, icon: 'fa-tablet-screen-button' }
+            ],
+            klanten: { nieuw: 72, terugkerend: 28 },
+            trendLabels: ['1 mei', '5 mei', '10 mei', '15 mei', '20 mei', '25 mei', '30 mei'],
+            trendOmzet: [1200, 1900, 1500, 2800, 2100, 3500, 3100],
+            trendVerkeer: [800, 1100, 950, 1500, 1200, 1900, 1700],
+            bronnen: [
+                { name: 'Google Ads', value: 45, color: '#3b82f6', icon: 'fa-google' },
+                { name: 'Meta Ads', value: 25, color: '#8b5cf6', icon: 'fa-facebook' },
+                { name: 'Organisch', value: 15, color: '#10b981', icon: 'fa-magnifying-glass' },
+                { name: 'Mailchimp', value: 10, color: '#f59e0b', icon: 'fa-envelope' },
+                { name: 'Overig/Direct', value: 5, color: '#94a3b8', icon: 'fa-link' }
+            ],
+            campagnes: [
+                { name: 'Zomer Sale 2026', type: 'Meta', roas: 4.2, spend: 1200, rev: 5040, color: '#8b5cf6', status: 'active', dailyBudget: 50, conversions: 84 },
+                { name: 'Retargeting Website', type: 'Meta', roas: 3.8, spend: 800, rev: 3040, color: '#8b5cf6', status: 'active', dailyBudget: 35, conversions: 62 },
+                { name: 'Nieuwsbrief VIPs', type: 'Mail', roas: 8.5, spend: 150, rev: 1275, color: '#f59e0b', status: 'sent', dailyBudget: 0, conversions: 25 },
+                { name: 'Google Shopping Algemeen', type: 'Google', roas: 2.9, spend: 2000, rev: 5800, color: '#3b82f6', status: 'active', dailyBudget: 75, conversions: 145 },
+                { name: 'Lente Collectie (Oud)', type: 'Google', roas: 1.4, spend: 350, rev: 490, color: '#3b82f6', status: 'paused', dailyBudget: 20, conversions: 14 },
+                { name: 'TikTok Test', type: 'Overig', roas: 1.8, spend: 400, rev: 720, color: '#0f172a', status: 'active', dailyBudget: 20, conversions: 12 }
+            ],
+            funnel: { sessies: 24500, addToCart: 3100, checkout: 1250, aankopen: 784, abandonedRate: 68.5, abandonedValue: 185400 },
+            bekekenProducten: [
+                { name: 'Loungebank "Sevilla"', views: 4500, rev: 800, abandoned: 145, abandonedValue: 116000 },
+                { name: 'Zomerjurk "Ibiza" Blauw', views: 3200, rev: 12500, abandoned: 82, abandonedValue: 4100 },
+                { name: 'Smartwatch "FitPro"', views: 2800, rev: 1500, abandoned: 210, abandonedValue: 18900 }
+            ],
+            topPaginas: [
+                { path: '/', views: 18500, bounce: 32.5, time: '1:45' },
+                { path: '/collectie/zomer', views: 8200, bounce: 41.2, time: '2:10' },
+                { path: '/sale', views: 6400, bounce: 55.0, time: '1:15' },
+                { path: '/blog/styling-tips', views: 3100, bounce: 68.4, time: '3:20' }
+            ],
+            aiInzichten: [
+                { type: 'success', title: 'Meta Ads Schalen', text: 'De "Zomer Sale 2026" campagne op Meta haalt een ROAS van 4.2x. Overweeg het dagbudget met 20% te verhogen om omzet te maximaliseren.', icon: 'fa-arrow-trend-up', color: 'emerald' },
+                { type: 'warning', title: 'Winkelwagen Verlating', text: 'Er is €185.400 aan waarde achtergelaten. Activeer een retargeting e-mail flow met 5% korting om naar schatting 12% hiervan terug te winnen.', icon: 'fa-cart-arrow-down', color: 'amber' },
+                { type: 'danger', title: 'Hoge Bounce Rate', text: 'De pagina "/sale" heeft een bounce rate van 55%. De AI detecteert een trage laadtijd van afbeeldingen op mobiele apparaten.', icon: 'fa-bolt', color: 'rose' }
+            ]
+        };
+
+        const dataWeek = {
+            kpis: { omzet: { value: 12400, trend: 5.2 }, bezoekers: { value: 5800, trend: -1.5 }, conversie: { value: 3.5, trend: 8.4 }, aov: { value: 89.20, trend: 3.1 } },
+            apparaten: [ { name: 'Mobiel', traffic: 76, conv: 2.3, icon: 'fa-mobile-screen' }, { name: 'Desktop', traffic: 20, conv: 5.8, icon: 'fa-desktop' }, { name: 'Tablet', traffic: 4, conv: 3.1, icon: 'fa-tablet-screen-button' } ],
+            klanten: { nieuw: 68, terugkerend: 32 },
+            trendLabels: ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'],
+            trendOmzet: [1500, 1800, 1600, 2200, 2800, 3500, 3100],
+            trendVerkeer: [800, 900, 850, 1100, 1300, 1600, 1450],
+            bronnen: [ { name: 'Google Ads', value: 40, color: '#3b82f6', icon: 'fa-google' }, { name: 'Meta Ads', value: 30, color: '#8b5cf6', icon: 'fa-facebook' }, { name: 'Organisch', value: 15, color: '#10b981', icon: 'fa-magnifying-glass' }, { name: 'Mailchimp', value: 10, color: '#f59e0b', icon: 'fa-envelope' }, { name: 'Overig/Direct', value: 5, color: '#94a3b8', icon: 'fa-link' } ],
+            campagnes: [ 
+                { name: 'Zomer Sale 2026', type: 'Meta', roas: 4.5, spend: 300, rev: 1350, color: '#8b5cf6', status: 'active', dailyBudget: 50, conversions: 22 },
+                { name: 'Retargeting Website', type: 'Meta', roas: 4.1, spend: 200, rev: 820, color: '#8b5cf6', status: 'active', dailyBudget: 35, conversions: 16 },
+                { name: 'Nieuwsbrief VIPs', type: 'Mail', roas: 9.2, spend: 50, rev: 460, color: '#f59e0b', status: 'sent', dailyBudget: 0, conversions: 9 },
+                { name: 'Google Shopping Algemeen', type: 'Google', roas: 3.1, spend: 500, rev: 1550, color: '#3b82f6', status: 'active', dailyBudget: 75, conversions: 38 },
+                { name: 'TikTok Test', type: 'Overig', roas: 1.1, spend: 100, rev: 110, color: '#0f172a', status: 'active', dailyBudget: 20, conversions: 2 }
+            ],
+            funnel: { sessies: 5800, addToCart: 850, checkout: 320, aankopen: 195, abandonedRate: 77.0, abandonedValue: 56200 },
+            bekekenProducten: [ { name: 'Loungebank "Sevilla"', views: 1100, rev: 200, abandoned: 45, abandonedValue: 36000 } ],
+            topPaginas: [
+                { path: '/', views: 4200, bounce: 30.1, time: '1:50' },
+                { path: '/collectie/zomer', views: 1800, bounce: 40.5, time: '2:05' },
+                { path: '/acties', views: 950, bounce: 48.0, time: '1:05' },
+                { path: '/klantenservice', views: 400, bounce: 25.0, time: '2:40' }
+            ],
+            aiInzichten: [
+                { type: 'success', title: 'Mobiele Conversie', text: 'De conversie op mobiel is deze week gestegen naar 2.3%. De nieuwe checkout-knop lijkt een positief effect te hebben.', icon: 'fa-mobile-screen', color: 'emerald' },
+                { type: 'warning', title: 'Loungebank Sevilla', text: 'Dit product heeft 1.100 weergaven maar slechts €200 omzet. Controleer de productprijs ten opzichte van concurrenten.', icon: 'fa-eye-low-vision', color: 'amber' },
+                { type: 'danger', title: 'Google Shopping', text: 'De ROAS op Google Shopping (3.1x) daalt licht. De AI adviseert om de zoektermen van de afgelopen 7 dagen uit te sluiten op irrelevante kliks.', icon: 'fa-magnifying-glass-chart', color: 'rose' }
+            ]
+        };
+
+        const dataCustom = {
+            kpis: { omzet: { value: 68450, trend: 8.2 }, bezoekers: { value: 38200, trend: 4.1 }, conversie: { value: 2.8, trend: -0.5 }, aov: { value: 78.40, trend: 1.2 } },
+            apparaten: [ { name: 'Mobiel', traffic: 68, conv: 1.9, icon: 'fa-mobile-screen' }, { name: 'Desktop', traffic: 28, conv: 4.9, icon: 'fa-desktop' }, { name: 'Tablet', traffic: 4, conv: 2.5, icon: 'fa-tablet-screen-button' } ],
+            klanten: { nieuw: 55, terugkerend: 45 },
+            trendLabels: ['Dag 1', 'Dag 2', 'Dag 3', 'Dag 4', 'Dag 5', 'Dag 6', 'Dag 7'],
+            trendOmzet: [1400, 2100, 2500, 1800, 3200, 4100, 3800],
+            trendVerkeer: [1200, 1400, 1800, 1300, 2100, 2400, 2200],
+            bronnen: [ { name: 'Google Ads', value: 35, color: '#3b82f6', icon: 'fa-google' }, { name: 'Meta Ads', value: 35, color: '#8b5cf6', icon: 'fa-facebook' }, { name: 'Organisch', value: 20, color: '#10b981', icon: 'fa-magnifying-glass' }, { name: 'Mailchimp', value: 5, color: '#f59e0b', icon: 'fa-envelope' }, { name: 'Overig/Direct', value: 5, color: '#94a3b8', icon: 'fa-link' } ],
+            campagnes: [
+                { name: 'Custom Range Promo', type: 'Meta', roas: 5.1, spend: 1500, rev: 7650, color: '#8b5cf6', status: 'active', dailyBudget: 100, conversions: 115 },
+                { name: 'Retargeting Website', type: 'Meta', roas: 3.2, spend: 1100, rev: 3520, color: '#8b5cf6', status: 'active', dailyBudget: 50, conversions: 78 },
+                { name: 'Google Shopping Algemeen', type: 'Google', roas: 3.5, spend: 2500, rev: 8750, color: '#3b82f6', status: 'active', dailyBudget: 100, conversions: 210 },
+                { name: 'TikTok Viral Promo', type: 'Overig', roas: 2.4, spend: 800, rev: 1920, color: '#0f172a', status: 'active', dailyBudget: 40, conversions: 35 }
+            ],
+            funnel: { sessies: 38200, addToCart: 4500, checkout: 1800, aankopen: 1150, abandonedRate: 74.4, abandonedValue: 265000 },
+            bekekenProducten: [
+                { name: 'Smartwatch "FitPro"', views: 6500, rev: 3500, abandoned: 420, abandonedValue: 37800 },
+                { name: 'Leren Sneaker Wit', views: 4200, rev: 12500, abandoned: 115, abandonedValue: 8050 }
+            ],
+            topPaginas: [
+                { path: '/', views: 24500, bounce: 31.0, time: '1:55' },
+                { path: '/custom-promo', views: 12400, bounce: 45.2, time: '2:15' },
+                { path: '/sale', views: 8800, bounce: 52.0, time: '1:10' },
+            ],
+            aiInzichten: [
+                { type: 'success', title: 'Custom Range Succes', text: 'De Custom Range Promo is zeer succesvol met een 5.1x ROAS. We raden aan dit format door te voeren in de always-on campagnes.', icon: 'fa-rocket', color: 'emerald' },
+                { type: 'warning', title: 'Hoge Funnel Drop-off', text: '74.4% verlaat de funnel zonder aankoop in deze periode. Een A/B test op de afrekenpagina is wenselijk.', icon: 'fa-filter-circle-xmark', color: 'amber' }
+            ]
+        };
+
+        let currentActiveData = dataMaand;
+        let trendChartInstance = null;
+        let sourceChartInstance = null;
+
+        // Sorting State: null (grouped), 'desc', 'asc'
+        let currentSort = { column: null, direction: null };
+
+        // --- RENDER FUNCTIES ---
+
+        function updateTrendUI(elementId, value) {
+            const el = document.getElementById(elementId);
+            const isPositive = value >= 0;
+            const colorClass = isPositive ? 'text-emerald-500 bg-emerald-50 border-emerald-100' : 'text-rose-500 bg-rose-50 border-rose-100';
+            const icon = isPositive ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down';
+            const sign = isPositive ? '+' : '';
+            el.className = `flex items-center px-2 py-1 rounded-md text-xs border ${colorClass}`;
+            el.innerHTML = `<i class="fa-solid ${icon} mr-1.5 text-[10px]"></i> ${sign}${value}%`;
+        }
+
+        function renderPages(paginas) {
+            const tbody = document.getElementById('top-pages-tbody');
+            tbody.innerHTML = '';
+            paginas.forEach((page) => {
+                const bounceColor = page.bounce > 50 ? 'text-rose-500' : 'text-emerald-500';
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors group';
+                tr.innerHTML = `
+                    <td class="py-3 pr-2 font-medium text-slate-700 whitespace-nowrap group-hover:text-blue-600 transition-colors cursor-pointer">
+                        <i class="fa-solid fa-link text-slate-300 mr-2 text-[10px]"></i>${page.path}
+                    </td>
+                    <td class="py-3 px-2 text-right text-slate-800 font-bold whitespace-nowrap">${formatNumber(page.views)}</td>
+                    <td class="py-3 px-2 text-right font-semibold ${bounceColor} whitespace-nowrap">${page.bounce}%</td>
+                    <td class="py-3 pl-2 text-right text-slate-500 text-[11px] whitespace-nowrap"><i class="fa-regular fa-clock mr-1"></i>${page.time}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderOperations(data) {
+            const appContainer = document.getElementById('apparaten-container');
+            appContainer.innerHTML = '';
+            data.apparaten.forEach((app, index) => {
+                appContainer.innerHTML += `
+                    <div>
+                        <div class="flex justify-between items-end mb-1.5">
+                            <span class="text-xs font-bold text-slate-700 flex items-center">
+                                <i class="fa-solid ${app.icon} text-slate-400 mr-2.5 w-3 text-center"></i>${app.name}
+                            </span>
+                            <div class="flex gap-4 text-xs">
+                                <span class="text-slate-500"><span class="font-bold text-slate-800">${app.traffic}%</span> verkeer</span>
+                                <span class="text-slate-500"><span class="font-bold text-emerald-600">${app.conv}%</span> conv.</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2">
+                            <div class="bg-cyan-500 h-2 rounded-full transition-all duration-1000 progress-bar-fill" style="width: ${app.traffic}%; animation-delay: ${index * 0.1}s"></div>
+                        </div>
+                    </div>`;
+            });
+
+            document.getElementById('klant-nieuw-perc').innerText = data.klanten.nieuw + '%';
+            document.getElementById('klant-terug-perc').innerText = data.klanten.terugkerend + '%';
+            
+            setTimeout(() => {
+                document.getElementById('klant-nieuw-bar').style.width = data.klanten.nieuw + '%';
+                document.getElementById('klant-terug-bar').style.width = data.klanten.terugkerend + '%';
+            }, 100);
+        }
+
+        // Logic voor sorteren
+        function sortCampaigns(column) {
+            if (currentSort.column === column) {
+                // Cycle: desc -> asc -> null (grouped)
+                if (currentSort.direction === 'desc') currentSort.direction = 'asc';
+                else if (currentSort.direction === 'asc') { currentSort.direction = null; currentSort.column = null; }
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'desc';
+            }
+
+            // Update UI Iconen
+            const columns = ['name', 'status', 'dailyBudget', 'spend', 'conversions', 'rev', 'roas'];
+            columns.forEach(col => {
+                const icon = document.getElementById(`sort-icon-${col}`);
+                if (!icon) return;
+                icon.className = 'fa-solid fa-sort ml-1 opacity-50'; // reset
+                if (currentSort.column === col) {
+                    icon.className = currentSort.direction === 'desc' ? 'fa-solid fa-sort-down ml-1 text-slate-800 opacity-100' : 'fa-solid fa-sort-up ml-1 text-slate-800 opacity-100';
+                }
+            });
+
+            renderCampaigns(currentActiveData.campagnes);
+        }
+
+        function createCampaignRow(camp) {
+            const cpa = camp.conversions > 0 ? (camp.spend / camp.conversions) : 0;
+            
+            let statusBadge = '';
+            if (camp.status === 'active') statusBadge = `<span class="inline-flex items-center px-2 py-1 rounded-md text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 shadow-sm"><span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 animate-pulse"></span>Actief</span>`;
+            else if (camp.status === 'paused') statusBadge = `<span class="inline-flex items-center px-2 py-1 rounded-md text-[9px] font-bold bg-slate-100 text-slate-500 border border-slate-200 shadow-sm"><span class="w-1.5 h-1.5 bg-slate-400 rounded-full mr-1.5"></span>Pauze</span>`;
+            else statusBadge = `<span class="inline-flex items-center px-2 py-1 rounded-md text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-100 shadow-sm"><span class="w-1.5 h-1.5 bg-blue-500 rounded-full mr-1.5"></span>Klaar</span>`;
+
+            // Channel Icon voor flat list
+            const iconConfig = camp.type === 'Google' ? 'fa-google text-blue-500' : (camp.type === 'Meta' ? 'fa-facebook text-violet-500' : (camp.type === 'Mail' ? 'fa-envelope text-amber-500' : 'fa-layer-group text-slate-500'));
+
+            const tr = document.createElement('tr');
+            tr.className = 'border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors group';
+            tr.innerHTML = `
+                <td class="py-3.5 pl-2 whitespace-nowrap border-l-2 border-transparent group-hover:border-slate-300 flex items-center gap-2">
+                    ${currentSort.column !== null ? `<i class="fa-brands ${iconConfig} w-4 text-center"></i>` : ''}
+                    <span class="font-semibold text-slate-700 group-hover:text-blue-600 transition-colors">${camp.name}</span>
+                </td>
+                <td class="py-3.5 text-center whitespace-nowrap">${statusBadge}</td>
+                <td class="py-3.5 text-right font-medium text-slate-500 whitespace-nowrap">${camp.dailyBudget > 0 ? formatCurrency(camp.dailyBudget) + '<span class="text-[9px] text-slate-400 ml-1">/dag</span>' : '<span class="text-slate-300">-</span>'}</td>
+                <td class="py-3.5 text-right font-medium text-slate-500 whitespace-nowrap">${formatCurrency(camp.spend)}</td>
+                <td class="py-3.5 text-right whitespace-nowrap">
+                    <div class="flex flex-col items-end">
+                        <span class="font-bold text-slate-800">${formatNumber(camp.conversions)}</span>
+                        <span class="text-[9px] text-slate-400 font-medium">${cpa > 0 ? `CPA: ${formatCurrency(cpa)}` : '-'}</span>
+                    </div>
+                </td>
+                <td class="py-3.5 text-right font-bold text-slate-800 whitespace-nowrap">${formatCurrency(camp.rev)}</td>
+                <td class="py-3.5 text-right font-bold text-slate-800 whitespace-nowrap">${camp.roas.toFixed(1)}x</td>
+            `;
+            return tr;
+        }
+
+        function renderCampaigns(campagnes) {
+            const tbody = document.getElementById('campaigns-body');
+            tbody.innerHTML = '';
+            
+            let campsToRender = [...campagnes];
+
+            // Als er gesorteerd is: render flat list
+            if (currentSort.column !== null) {
+                campsToRender.sort((a, b) => {
+                    let valA = a[currentSort.column];
+                    let valB = b[currentSort.column];
+                    
+                    if (typeof valA === 'string') {
+                        valA = valA.toLowerCase();
+                        valB = valB.toLowerCase();
+                    }
+
+                    if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                    if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                    return 0;
+                });
+
+                campsToRender.forEach(camp => tbody.appendChild(createCampaignRow(camp)));
+                return; // Stop hier, geen groepering
+            }
+
+            // Als niet gesorteerd: Gegroepeerde modus
+            const groupsConfig = {
+                'Google': { label: 'Google Ads', bgHeader: 'bg-blue-50/60', iconConfig: 'fa-brands fa-google', iconColor: '#3b82f6', items: [] },
+                'Meta': { label: 'Meta Ads', bgHeader: 'bg-violet-50/60', iconConfig: 'fa-brands fa-facebook', iconColor: '#8b5cf6', items: [] },
+                'Mail': { label: 'Mailchimp (E-mail)', bgHeader: 'bg-amber-50/60', iconConfig: 'fa-solid fa-envelope', iconColor: '#f59e0b', items: [] },
+                'Overig': { label: 'Overige Campagnes', bgHeader: 'bg-slate-50', iconConfig: 'fa-solid fa-layer-group', iconColor: '#475569', items: [] }
+            };
+
+            campsToRender.forEach(camp => {
+                const key = groupsConfig[camp.type] ? camp.type : 'Overig';
+                groupsConfig[key].items.push(camp);
+            });
+
+            Object.keys(groupsConfig).forEach(groupKey => {
+                const group = groupsConfig[groupKey];
+                if (group.items.length === 0) return; 
+                
+                group.items.sort((a,b) => b.roas - a.roas); // Standaard sortering binnen groep
+
+                const headerTr = document.createElement('tr');
+                headerTr.className = `border-y border-slate-200 ${group.bgHeader}`;
+                headerTr.innerHTML = `
+                    <td colspan="7" class="py-2.5 pl-3">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-6 h-6 rounded flex items-center justify-center text-white text-[10px] shadow-sm" style="background-color: ${group.iconColor}">
+                                <i class="${group.iconConfig}"></i>
+                            </div>
+                            <span class="font-bold text-slate-800 text-[11px] uppercase tracking-wider">${group.label}</span>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(headerTr);
+
+                group.items.forEach((camp) => tbody.appendChild(createCampaignRow(camp)));
+            });
+        }
+
+        function renderProducts(bekekenProducten) {
+            const viewedContainer = document.getElementById('viewed-products-tbody');
+            viewedContainer.innerHTML = '';
+            bekekenProducten.forEach((prod) => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-3 pr-2 font-semibold text-slate-800 whitespace-nowrap">${prod.name}</td>
+                    <td class="py-3 px-2 text-right text-slate-500 font-medium whitespace-nowrap">${formatNumber(prod.views)}</td>
+                    <td class="py-3 px-2 text-right font-black text-emerald-600 whitespace-nowrap">${formatCurrency(prod.rev)}</td>
+                    <td class="py-3 pl-2 text-right whitespace-nowrap">
+                        <span class="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-100 shadow-sm">
+                            <i class="fa-solid fa-cart-arrow-down mr-1"></i> ${prod.abandoned}x (${formatCurrency(prod.abandonedValue)})
+                        </span>
+                    </td>
+                `;
+                viewedContainer.appendChild(tr);
+            });
+        }
+
+        function renderSourceLegend(bronnen) {
+            const container = document.getElementById('source-legend');
+            container.innerHTML = '';
+            bronnen.forEach(bron => {
+                const isBrand = bron.icon.includes('fa-');
+                const iconClass = isBrand ? `fa-brands ${bron.icon}` : `fa-solid ${bron.icon}`;
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2 rounded-lg hover:bg-slate-50 transition-colors';
+                div.innerHTML = `
+                    <div class="flex items-center">
+                        <div class="w-6 h-6 rounded-md flex items-center justify-center mr-3 text-white text-[11px]" style="background-color: ${bron.color}">
+                            <i class="${iconClass}"></i>
+                        </div>
+                        <span class="text-[13px] font-medium text-slate-600">${bron.name}</span>
+                    </div>
+                    <span class="text-[13px] font-bold text-slate-800">${bron.value}%</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function renderFunnel(funnel) {
+            const container = document.getElementById('funnel-container');
+            container.innerHTML = '';
+            
+            const steps = [
+                { id: 'sessies', label: 'Sessies', value: funnel.sessies, icon: 'fa-users', bgLight: 'bg-blue-50', textIcon: 'text-blue-600', borderClass: 'border-blue-100', bgFill: 'bg-blue-50' },
+                { id: 'cart', label: 'Toegevoegd aan winkelwagen', value: funnel.addToCart, icon: 'fa-cart-plus', bgLight: 'bg-indigo-50', textIcon: 'text-indigo-600', borderClass: 'border-indigo-100', bgFill: 'bg-indigo-50' },
+                { id: 'checkout', label: 'Afrekenen gestart', value: funnel.checkout, icon: 'fa-credit-card', bgLight: 'bg-purple-50', textIcon: 'text-purple-600', borderClass: 'border-purple-100', bgFill: 'bg-purple-50' },
+                { id: 'purchase', label: 'Aankopen', value: funnel.aankopen, icon: 'fa-check-circle', bgLight: 'bg-emerald-50', textIcon: 'text-emerald-600', borderClass: 'border-emerald-100', bgFill: 'bg-emerald-50' }
+            ];
+
+            let html = '<div class="relative w-full">';
+            steps.forEach((step, index) => {
+                let convHtml = '';
+                if (index > 0) {
+                    const prevValue = steps[index - 1].value;
+                    const convRate = ((step.value / prevValue) * 100).toFixed(1);
+                    const dropRate = (100 - convRate).toFixed(1);
+
+                    convHtml = `
+                        <div class="flex items-center py-2 relative group">
+                            <div class="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-200 -z-10 group-hover:bg-blue-300 transition-colors"></div>
+                            <div class="ml-12 w-full flex items-center justify-between pr-2">
+                                <div class="flex items-center gap-2 text-[11px]">
+                                    <span class="bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded border border-emerald-100 shadow-sm flex items-center">
+                                        <i class="fa-solid fa-arrow-down mr-1 text-[9px]"></i> ${convRate}%
+                                    </span>
+                                    <span class="text-slate-500 font-medium hidden sm:inline">gaat door</span>
+                                </div>
+                                <div class="text-rose-500 font-medium text-[9px] bg-rose-50 px-2 py-0.5 rounded border border-rose-100 shadow-sm">
+                                    -${dropRate}% afhakers
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+                html += convHtml;
+                const relativeWidth = Math.max((step.value / steps[0].value) * 100, 2);
+                html += `
+                    <div class="relative bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 z-10 overflow-hidden group hover:border-slate-300 hover:-translate-y-0.5">
+                        <div class="absolute top-0 bottom-0 left-0 ${step.bgFill} opacity-40 -z-10 progress-bar-fill" style="width: ${relativeWidth}%; animation-delay: ${index * 0.1}s"></div>
+                        <div class="absolute top-0 bottom-0 left-0 w-1 ${step.bgLight} brightness-90"></div>
+                        <div class="flex items-center justify-between pl-1">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg ${step.bgLight} ${step.textIcon} flex items-center justify-center text-sm shadow-inner border ${step.borderClass} group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid ${step.icon}"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-[13px] font-bold text-slate-800">${step.label}</h4>
+                                    <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Stap ${index + 1}</p>
+                                </div>
+                            </div>
+                            <span class="text-base font-black text-slate-800">${formatNumber(step.value)}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+
+            document.getElementById('abandoned-rate').innerText = funnel.abandonedRate.toFixed(1) + '%';
+            document.getElementById('abandoned-value').innerText = formatCurrency(funnel.abandonedValue);
+        }
+
+        function renderAIInsights(inzichten) {
+            const container = document.getElementById('ai-insights-container');
+            container.innerHTML = '';
+            
+            const colorMap = {
+                emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-100', iconText: 'text-emerald-500' },
+                amber: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-100', iconText: 'text-amber-500' },
+                rose: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-100', iconText: 'text-rose-500' },
+                purple: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-100', iconText: 'text-purple-500' }
+            };
+
+            inzichten.forEach((inzicht, index) => {
+                const colors = colorMap[inzicht.color] || colorMap.purple;
+                container.innerHTML += `
+                    <div class="p-4 rounded-xl ${colors.bg} border ${colors.border} flex gap-3 opacity-0 animate-scale-up" style="animation-delay: ${600 + (index * 150)}ms; animation-fill-mode: forwards;">
+                        <div class="mt-0.5">
+                            <i class="fa-solid ${inzicht.icon} ${colors.iconText} text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold ${colors.text} mb-1 uppercase tracking-wider">${inzicht.title}</h4>
+                            <p class="text-[11px] text-slate-600 font-medium leading-relaxed">${inzicht.text}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function initCharts(data) {
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            
+            const gradientBlue = ctxTrend.createLinearGradient(0, 0, 0, 300);
+            gradientBlue.addColorStop(0, 'rgba(59, 130, 246, 0.2)');
+            gradientBlue.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+            const gradientViolet = ctxTrend.createLinearGradient(0, 0, 0, 300);
+            gradientViolet.addColorStop(0, 'rgba(139, 92, 246, 0.2)');
+            gradientViolet.addColorStop(1, 'rgba(139, 92, 246, 0)');
+
+            if (trendChartInstance) trendChartInstance.destroy();
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'line',
+                data: {
+                    labels: data.trendLabels,
+                    datasets: [
+                        { label: 'Omzet', data: data.trendOmzet, borderColor: '#3b82f6', backgroundColor: gradientBlue, borderWidth: 2.5, pointBackgroundColor: '#ffffff', pointBorderColor: '#3b82f6', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 5, fill: true, tension: 0.4, yAxisID: 'y' },
+                        { label: 'Bezoekers', data: data.trendVerkeer, borderColor: '#8b5cf6', backgroundColor: gradientViolet, borderWidth: 2.5, borderDash: [5, 5], pointBackgroundColor: '#ffffff', pointBorderColor: '#8b5cf6', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 5, fill: true, tension: 0.4, yAxisID: 'y1' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: true, position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 6, font: { weight: 'bold', size: 10 } } },
+                        tooltip: { backgroundColor: '#1e293b', titleFont: { size: 12, weight: 'bold' }, bodyFont: { size: 12, weight: 'bold' }, padding: 10, usePointStyle: true,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.datasetIndex === 0) label += formatCurrency(context.parsed.y);
+                                    else label += formatNumber(context.parsed.y);
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false, drawBorder: false }, ticks: { font: { size: 11 } } },
+                        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Omzet (€)', font: { size: 10, weight: 'bold' }, color: '#3b82f6' }, grid: { color: '#f1f5f9', drawBorder: false }, beginAtZero: true, ticks: { callback: function(value) { return '€' + (value / 1000) + 'k'; }, font: { size: 11 } } },
+                        y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Bezoekers', font: { size: 10, weight: 'bold' }, color: '#8b5cf6' }, grid: { drawOnChartArea: false }, beginAtZero: true, ticks: { font: { size: 11 } } }
+                    }
+                }
+            });
+
+            const ctxSource = document.getElementById('sourceChart').getContext('2d');
+            if (sourceChartInstance) sourceChartInstance.destroy();
+            sourceChartInstance = new Chart(ctxSource, {
+                type: 'doughnut',
+                data: {
+                    labels: data.bronnen.map(b => b.name),
+                    datasets: [{ data: data.bronnen.map(b => b.value), backgroundColor: data.bronnen.map(b => b.color), borderWidth: 2, borderColor: '#ffffff', hoverOffset: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', titleFont: { size: 12 }, bodyFont: { size: 12 }, padding: 10, callbacks: { label: function(context) { return ` ${context.label}: ${context.parsed}%`; } } } } }
+            });
+        }
+
+        function updateData(period) {
+            let data = period === 'week' ? dataWeek : (period === 'maand' ? dataMaand : dataCustom);
+            currentActiveData = data; 
+
+            // Update UI buttons styling
+            const btnWeek = document.getElementById('btn-week');
+            const btnMaand = document.getElementById('btn-maand');
+            const btnCustom = document.getElementById('btn-custom');
+            const customIcon = document.getElementById('custom-icon');
+            
+            const activeClassesBtn = ['bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-500/30'];
+            const inactiveClassesBtn = ['text-slate-500', 'hover:text-slate-900', 'bg-transparent', 'shadow-none'];
+
+            btnWeek.classList.remove(...activeClassesBtn); btnWeek.classList.add(...inactiveClassesBtn);
+            btnMaand.classList.remove(...activeClassesBtn); btnMaand.classList.add(...inactiveClassesBtn);
+            btnCustom.classList.remove('bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-500/30'); btnCustom.classList.add('text-slate-500', 'bg-transparent');
+            customIcon.classList.remove('text-white'); customIcon.classList.add('text-slate-400');
+
+            if (period === 'week') { btnWeek.classList.add(...activeClassesBtn); btnWeek.classList.remove(...inactiveClassesBtn); btnCustom.value = ''; } 
+            else if (period === 'maand') { btnMaand.classList.add(...activeClassesBtn); btnMaand.classList.remove(...inactiveClassesBtn); btnCustom.value = ''; } 
+            else { btnCustom.classList.remove('text-slate-500', 'bg-transparent'); btnCustom.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-500/30'); customIcon.classList.remove('text-slate-400'); customIcon.classList.add('text-white'); }
+
+            // Animate KPIs
+            const kpiEls = ['kpi-omzet', 'kpi-bezoekers', 'kpi-conversie', 'kpi-aov'];
+            kpiEls.forEach(id => {
+                const el = document.getElementById(id);
+                el.style.opacity = 0;
+                el.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    el.style.transition = 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                    el.style.opacity = 1;
+                    el.style.transform = 'scale(1)';
+                }, 200);
+            });
+
+            setTimeout(() => {
+                document.getElementById('kpi-omzet').innerText = formatCurrency(data.kpis.omzet.value);
+                document.getElementById('kpi-bezoekers').innerText = formatNumber(data.kpis.bezoekers.value);
+                document.getElementById('kpi-conversie').innerText = data.kpis.conversie.value.toFixed(1) + '%';
+                document.getElementById('kpi-aov').innerText = formatCurrency(data.kpis.aov.value);
+
+                updateTrendUI('kpi-omzet-trend', data.kpis.omzet.trend);
+                updateTrendUI('kpi-bez-trend', data.kpis.bezoekers.trend);
+                updateTrendUI('kpi-conv-trend', data.kpis.conversie.trend);
+                updateTrendUI('kpi-aov-trend', data.kpis.aov.trend);
+            }, 200);
+
+            // Render alles
+            renderCampaigns(data.campagnes);
+            renderProducts(data.bekekenProducten);
+            renderPages(data.topPaginas); 
+            renderOperations(data);
+            renderFunnel(data.funnel);
+            renderSourceLegend(data.bronnen); 
+            renderAIInsights(data.aiInzichten);
+            initCharts(data);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            flatpickr("#btn-custom", { mode: "range", locale: "nl", onChange: function(selectedDates, dateStr) {
+                if(selectedDates.length === 2) updateData('custom');
+            }});
+            updateData('maand');
+        });
+    </script>
+</body>
+</html>
