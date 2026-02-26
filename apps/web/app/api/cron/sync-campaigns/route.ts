@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createServiceClient } from '@/lib/supabase/server';
-import { syncGoogleAds, syncMetaAds, syncMailchimp } from '@/lib/campaign-sync';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from "next/server";
+import { createServiceClient } from "@/lib/supabase/server";
+import { syncGoogleAds, syncMetaAds, syncMailchimp } from "@/lib/campaign-sync";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * GET /api/cron/sync-campaigns
@@ -39,21 +39,25 @@ interface IntegrationRow {
 function shouldSync(integration: IntegrationRow, now: Date): boolean {
   const freq = integration.sync_frequency;
 
-  if (freq === 'hourly') return true;
+  if (freq === "hourly") return true;
 
-  if (freq === 'daily') {
+  if (freq === "daily") {
     // Sync once every ~20 hours (ensures at least one sync per day regardless of timezone)
     if (integration.last_synced_at) {
-      const hours = (now.getTime() - new Date(integration.last_synced_at).getTime()) / 3_600_000;
+      const hours =
+        (now.getTime() - new Date(integration.last_synced_at).getTime()) /
+        3_600_000;
       if (hours < 20) return false;
     }
     return true;
   }
 
-  if (freq === 'weekly') {
+  if (freq === "weekly") {
     // Sync once every ~6 days
     if (integration.last_synced_at) {
-      const days = (now.getTime() - new Date(integration.last_synced_at).getTime()) / 86_400_000;
+      const days =
+        (now.getTime() - new Date(integration.last_synced_at).getTime()) /
+        86_400_000;
       if (days < 6) return false;
     }
     // If never synced, go ahead
@@ -64,9 +68,13 @@ function shouldSync(integration: IntegrationRow, now: Date): boolean {
 }
 
 /** Resolve credentials by merging credential set (base) with direct credentials (overrides) */
-function resolveCredentials(integration: IntegrationRow): Record<string, string> {
+function resolveCredentials(
+  integration: IntegrationRow,
+): Record<string, string> {
   let resolved = (integration.credentials || {}) as Record<string, string>;
-  const credSet = integration.credential_set as { credentials?: Record<string, string> } | null;
+  const credSet = integration.credential_set as {
+    credentials?: Record<string, string>;
+  } | null;
   if (credSet?.credentials) {
     resolved = {
       ...credSet.credentials,
@@ -89,11 +97,11 @@ async function copyDataToSibling(
 ): Promise<number> {
   // Fetch the source rows
   const { data: sourceRows, error: fetchErr } = await db
-    .from('campaign_data')
-    .select('*')
-    .eq('integration_id', sourceIntegrationId)
-    .gte('date', startStr)
-    .lte('date', endStr);
+    .from("campaign_data")
+    .select("*")
+    .eq("integration_id", sourceIntegrationId)
+    .gte("date", startStr)
+    .lte("date", endStr);
 
   if (fetchErr || !sourceRows?.length) return 0;
 
@@ -101,7 +109,9 @@ async function copyDataToSibling(
   const filter = target.campaign_filter?.trim();
   const filteredRows = filter
     ? sourceRows.filter((row: Record<string, unknown>) =>
-        (String(row.campaign_name || '')).toLowerCase().includes(filter.toLowerCase())
+        String(row.campaign_name || "")
+          .toLowerCase()
+          .includes(filter.toLowerCase()),
       )
     : sourceRows;
 
@@ -118,19 +128,14 @@ async function copyDataToSibling(
     };
   });
 
-  // Delete existing data for target + period, then insert fresh
-  await db
-    .from('campaign_data')
-    .delete()
-    .eq('integration_id', target.id)
-    .gte('date', startStr)
-    .lte('date', endStr);
-
   for (let i = 0; i < mapped.length; i += 500) {
     const chunk = mapped.slice(i, i + 500);
     const { error } = await db
-      .from('campaign_data')
-      .upsert(chunk, { onConflict: 'integration_id,campaign_id,date,ad_group_id', ignoreDuplicates: false });
+      .from("campaign_data")
+      .upsert(chunk, {
+        onConflict: "integration_id,campaign_id,date,ad_group_id",
+        ignoreDuplicates: false,
+      });
     if (error) throw new Error(`Copy fout: ${error.message}`);
   }
 
@@ -138,26 +143,31 @@ async function copyDataToSibling(
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
+  const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const db = await createServiceClient();
 
   // Fetch all enabled, non-manual integrations
   const { data: integrations, error } = await db
-    .from('campaign_integrations')
-    .select('*, credential_set:campaign_credential_sets(credentials)')
-    .eq('enabled', true)
-    .neq('sync_frequency', 'manual');
+    .from("campaign_integrations")
+    .select("*, credential_set:campaign_credential_sets(credentials)")
+    .eq("enabled", true)
+    .neq("sync_frequency", "manual");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   if (!integrations?.length) {
-    return NextResponse.json({ success: true, processed: 0, skipped: 0, apiCalls: 0 });
+    return NextResponse.json({
+      success: true,
+      processed: 0,
+      skipped: 0,
+      apiCalls: 0,
+    });
   }
 
   const now = new Date();
@@ -171,7 +181,8 @@ export async function GET(request: NextRequest) {
   let processed = 0;
   let skipped = 0;
   let apiCalls = 0;
-  const errors: { integration_id: string; provider: string; error: string }[] = [];
+  const errors: { integration_id: string; provider: string; error: string }[] =
+    [];
 
   // ── Group integrations by shared credential set ─────────────
   // Key = "credset:<credential_set_id>:<provider>" for shared accounts
@@ -198,7 +209,9 @@ export async function GET(request: NextRequest) {
     groups.get(key)!.push(integration);
   }
 
-  console.log(`[sync-campaigns] ${groups.size} unique credential groups from ${integrations.length} integrations (${skipped} skipped — not due yet)`);
+  console.log(
+    `[sync-campaigns] ${groups.size} unique credential groups from ${integrations.length} integrations (${skipped} skipped — not due yet)`,
+  );
 
   // ── Process each group ──────────────────────────────────────
   for (const [groupKey, groupIntegrations] of groups) {
@@ -217,40 +230,35 @@ export async function GET(request: NextRequest) {
 
     const endDate = new Date();
     const startDate = new Date(Date.now() - 30 * 86_400_000);
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
+    const startStr = startDate.toISOString().split("T")[0];
+    const endStr = endDate.toISOString().split("T")[0];
 
     // Mark all integrations in group as syncing
     const allIds = groupIntegrations.map((i) => i.id);
     await db
-      .from('campaign_integrations')
-      .update({ last_sync_status: 'syncing', updated_at: now.toISOString() })
-      .in('id', allIds);
+      .from("campaign_integrations")
+      .update({ last_sync_status: "syncing", updated_at: now.toISOString() })
+      .in("id", allIds);
 
     try {
       // ── Sync primary (actual API call) ──────────────────────
-      await db
-        .from('campaign_data')
-        .delete()
-        .eq('integration_id', primary.id)
-        .gte('date', startStr)
-        .lte('date', endStr);
-
       const rowCount = await syncFn(db, integrationForSync, startDate, endDate);
       apiCalls++;
 
       await db
-        .from('campaign_integrations')
+        .from("campaign_integrations")
         .update({
           last_synced_at: now.toISOString(),
-          last_sync_status: 'success',
+          last_sync_status: "success",
           last_sync_error: null,
           updated_at: now.toISOString(),
         })
-        .eq('id', primary.id);
+        .eq("id", primary.id);
 
       processed++;
-      console.log(`[sync-campaigns] ${primary.provider} primary (${primary.id}): ${rowCount} rows [${groupKey}]`);
+      console.log(
+        `[sync-campaigns] ${primary.provider} primary (${primary.id}): ${rowCount} rows [${groupKey}]`,
+      );
 
       // ── Copy to siblings (no API call) ──────────────────────
       for (const sibling of siblings) {
@@ -258,54 +266,72 @@ export async function GET(request: NextRequest) {
           const copiedRows = await copyDataToSibling(
             db,
             primary.id,
-            { id: sibling.id, site_id: sibling.site_id, campaign_filter: sibling.campaign_filter },
+            {
+              id: sibling.id,
+              site_id: sibling.site_id,
+              campaign_filter: sibling.campaign_filter,
+            },
             startStr,
             endStr,
           );
 
           await db
-            .from('campaign_integrations')
+            .from("campaign_integrations")
             .update({
               last_synced_at: now.toISOString(),
-              last_sync_status: 'success',
+              last_sync_status: "success",
               last_sync_error: null,
               updated_at: now.toISOString(),
             })
-            .eq('id', sibling.id);
+            .eq("id", sibling.id);
 
           processed++;
-          console.log(`[sync-campaigns] ${sibling.provider} sibling (${sibling.id}): ${copiedRows} rows copied from ${primary.id}`);
+          console.log(
+            `[sync-campaigns] ${sibling.provider} sibling (${sibling.id}): ${copiedRows} rows copied from ${primary.id}`,
+          );
         } catch (sibErr: unknown) {
-          const msg = sibErr instanceof Error ? sibErr.message : 'Copy error';
+          const msg = sibErr instanceof Error ? sibErr.message : "Copy error";
           await db
-            .from('campaign_integrations')
+            .from("campaign_integrations")
             .update({
-              last_sync_status: 'error',
+              last_sync_status: "error",
               last_sync_error: msg,
               updated_at: now.toISOString(),
             })
-            .eq('id', sibling.id);
-          errors.push({ integration_id: sibling.id, provider: sibling.provider, error: msg });
-          console.error(`[sync-campaigns] sibling copy (${sibling.id}): ${msg}`);
+            .eq("id", sibling.id);
+          errors.push({
+            integration_id: sibling.id,
+            provider: sibling.provider,
+            error: msg,
+          });
+          console.error(
+            `[sync-campaigns] sibling copy (${sibling.id}): ${msg}`,
+          );
         }
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Unknown sync error';
+      const message = err instanceof Error ? err.message : "Unknown sync error";
 
       // Mark all integrations in this group as error
       await db
-        .from('campaign_integrations')
+        .from("campaign_integrations")
         .update({
-          last_sync_status: 'error',
+          last_sync_status: "error",
           last_sync_error: message,
           updated_at: now.toISOString(),
         })
-        .in('id', allIds);
+        .in("id", allIds);
 
       for (const i of groupIntegrations) {
-        errors.push({ integration_id: i.id, provider: i.provider, error: message });
+        errors.push({
+          integration_id: i.id,
+          provider: i.provider,
+          error: message,
+        });
       }
-      console.error(`[sync-campaigns] ${primary.provider} group (${groupKey}): ${message}`);
+      console.error(
+        `[sync-campaigns] ${primary.provider} group (${groupKey}): ${message}`,
+      );
     }
   }
 

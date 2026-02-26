@@ -73,7 +73,7 @@ function ChartTooltip({ active, payload, label, isHourly, isRevenue }: any) {
       {payload.map((p: any, i: number) => (
         <p key={i} style={{ color: p.color, margin: "2px 0" }}>
           {p.name}:{" "}
-          {isRevenue
+          {isRevenue && p.dataKey === "revenue"
             ? new Intl.NumberFormat("nl-NL", {
                 style: "currency",
                 currency: "EUR",
@@ -162,6 +162,20 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
                 stopOpacity={0}
               />
             </linearGradient>
+            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient
+              id="colorRevenueVisitors"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.2} />
+              <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+            </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
           <XAxis
@@ -207,7 +221,7 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
                 stroke="#10b981"
                 strokeWidth={2}
                 fillOpacity={1}
-                fill="url(#colorVisitors)"
+                fill="url(#colorRevenue)"
                 name="Omzet"
                 yAxisId="left"
               />
@@ -216,8 +230,8 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
                 dataKey="visitors"
                 stroke="#8b5cf6"
                 strokeWidth={2}
-                strokeDasharray="5 5"
-                fillOpacity={0}
+                fillOpacity={1}
+                fill="url(#colorRevenueVisitors)"
                 name="Bezoekers"
                 yAxisId="right"
               />
