@@ -173,12 +173,23 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
             interval={tickInterval}
           />
           <YAxis
+            yAxisId="left"
             fontSize={12}
             tick={{ fill: "var(--color-muted-foreground)" }}
             stroke="var(--color-border)"
             allowDecimals={false}
             tickFormatter={isRevenue ? (v) => `€${v}` : undefined}
           />
+          {isRevenue && (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              fontSize={12}
+              tick={{ fill: "var(--color-muted-foreground)" }}
+              stroke="var(--color-border)"
+              allowDecimals={false}
+            />
+          )}
           <Tooltip
             content={<ChartTooltip isHourly={isHourly} isRevenue={isRevenue} />}
           />
@@ -189,15 +200,28 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
             }}
           />
           {isRevenue ? (
-            <Area
-              type="monotone"
-              dataKey="revenue"
-              stroke="#10b981"
-              strokeWidth={2}
-              fillOpacity={1}
-              fill="url(#colorVisitors)"
-              name="Omzet"
-            />
+            <>
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#10b981"
+                strokeWidth={2}
+                fillOpacity={1}
+                fill="url(#colorVisitors)"
+                name="Omzet"
+                yAxisId="left"
+              />
+              <Area
+                type="monotone"
+                dataKey="visitors"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                fillOpacity={0}
+                name="Bezoekers"
+                yAxisId="right"
+              />
+            </>
           ) : (
             <>
               <Area
@@ -208,6 +232,7 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
                 fillOpacity={1}
                 fill="url(#colorPageviews)"
                 name="Paginaweergaven"
+                yAxisId="left"
               />
               <Area
                 type="monotone"
@@ -217,6 +242,7 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
                 fillOpacity={1}
                 fill="url(#colorVisitors)"
                 name="Bezoekers"
+                yAxisId="left"
               />
             </>
           )}
@@ -226,6 +252,7 @@ export function TimeSeries({ data, period, isRevenue }: TimeSeriesProps) {
               key={`lead-${point.date}`}
               x={point.date}
               y={point.pageviews}
+              yAxisId="left"
               r={7}
               fill="#f59e0b"
               stroke="white"

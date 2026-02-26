@@ -25,7 +25,6 @@ import {
   Chrome,
   Compass,
   Mail,
-  MailOpen,
   MousePointer,
   Hash,
   Megaphone,
@@ -40,7 +39,6 @@ import {
   Tag,
   Target,
   Send,
-  CircleDot,
   DollarSign,
   MousePointerClick,
   BadgeEuro,
@@ -182,6 +180,11 @@ interface ReportData {
     avg_duration: number;
     total_revenue?: number;
     purchases?: number;
+    ecommerce_conversion_rate?: number;
+    avg_scroll_depth?: number;
+    avg_active_time?: number;
+    returning_visitors?: number;
+    returning_percentage?: number;
   };
   timeseries: { date: string; visitors: number; pageviews: number }[];
   top_pages: PathViews[];
@@ -195,9 +198,23 @@ interface ReportData {
   utm_sources: NameVisitors[];
   utm_mediums: NameVisitors[];
   utm_campaigns: NameVisitors[];
+  ecommerce_funnel?: {
+    sessions: number;
+    add_to_cart: number;
+    begin_checkout: number;
+    purchases: number;
+    abandoned_rate: number;
+    abandoned_value: number;
+  };
   ecommerce_sources?: { name: string; revenue: number; purchases: number }[];
   ecommerce_campaigns?: { name: string; revenue: number; purchases: number }[];
-  top_products?: { name: string; revenue: number; quantity: number }[];
+  top_products?: {
+    name: string;
+    revenue: number;
+    quantity: number;
+    abandoned?: number;
+    abandoned_value?: number;
+  }[];
   revenue_timeseries?: { date: string; revenue: number }[];
   leads: LeadRow[];
   lead_sources: SourceCount[];
@@ -226,17 +243,6 @@ const DATE_RANGES = [
   { value: "this_month", label: "Deze maand" },
   { value: "last_month", label: "Vorige maand" },
 ] as const;
-
-const SOURCE_COLORS = [
-  { color: "#3b82f6", bg: "bg-blue-500" },
-  { color: "#8b5cf6", bg: "bg-violet-500" },
-  { color: "#10b981", bg: "bg-emerald-500" },
-  { color: "#f59e0b", bg: "bg-amber-500" },
-  { color: "#94a3b8", bg: "bg-slate-400" },
-  { color: "#ec4899", bg: "bg-pink-500" },
-  { color: "#06b6d4", bg: "bg-cyan-500" },
-  { color: "#f97316", bg: "bg-orange-500" },
-];
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -508,17 +514,28 @@ function utmIcon(name: string): {
 /*  Inline styles for glass effects & animations                       */
 /* ------------------------------------------------------------------ */
 const REPORT_STYLES = `
+  .rpt {
+    isolation: isolate;
+  }
   .rpt .glass-card {
     background: rgba(255, 255, 255, 0.95);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border: 1px solid rgba(226, 232, 240, 0.8);
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .rpt .glass-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
-    border-color: rgba(203, 213, 225, 1);
+  @media (hover: hover) and (pointer: fine) {
+    .rpt .glass-card:hover {
+      transform: translate3d(0, -4px, 0);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+      border-color: rgba(203, 213, 225, 1);
+    }
   }
   @keyframes rptSlideUp {
     0% { opacity: 0; transform: translateY(30px); }
@@ -591,7 +608,7 @@ function SectionHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between mb-5">
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <h2 className="text-base font-bold text-slate-800 flex items-center">
         <div
           className={`w-7 h-7 rounded-lg ${iconBg} ${iconColor} flex items-center justify-center mr-3 text-sm shadow-sm`}
@@ -600,7 +617,7 @@ function SectionHeader({
         </div>
         {title}
       </h2>
-      {action}
+      {action ? <div className="self-start sm:self-auto">{action}</div> : null}
     </div>
   );
 }
@@ -781,6 +798,12 @@ export default function PublicReportPage({
               avg_duration: d.metrics?.avg_duration ?? 0,
               total_revenue: d.metrics?.total_revenue ?? 0,
               purchases: d.metrics?.purchases ?? 0,
+              ecommerce_conversion_rate:
+                d.metrics?.ecommerce_conversion_rate ?? 0,
+              avg_scroll_depth: d.metrics?.avg_scroll_depth ?? 0,
+              avg_active_time: d.metrics?.avg_active_time ?? 0,
+              returning_visitors: d.metrics?.returning_visitors ?? 0,
+              returning_percentage: d.metrics?.returning_percentage ?? 0,
             },
             timeseries: d.timeseries ?? [],
             top_pages: d.top_pages ?? [],
@@ -819,6 +842,7 @@ export default function PublicReportPage({
 
   useEffect(() => {
     fetchReport(savedPassword || undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchReport, savedPassword]);
 
   const addFilter = (key: string, label: string, value: string) => {
@@ -1087,9 +1111,9 @@ export default function PublicReportPage({
       <style dangerouslySetInnerHTML={{ __html: REPORT_STYLES }} />
 
       {/* Background blobs */}
-      <div className="fixed top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50/50 to-transparent -z-10" />
-      <div className="fixed top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
-      <div className="fixed bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-emerald-400/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
+      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-blue-50/50 to-transparent -z-10 pointer-events-none" />
+      <div className="absolute top-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-5%] w-[40%] h-[40%] bg-emerald-400/10 rounded-full blur-[100px] -z-10 pointer-events-none" />
 
       <div className="max-w-[1440px] mx-auto p-4 sm:p-6 lg:p-8">
         {/* ═══════════════════ Header ═══════════════════ */}
@@ -1356,7 +1380,7 @@ export default function PublicReportPage({
 
         {/* ═══════════════════ E-commerce KPIs ═══════════════════ */}
         {showEcommerce && (data.metrics.total_revenue || 0) > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
             <KPICard
               label="Totale Omzet"
               value={formatCurrency(data.metrics.total_revenue || 0)}
@@ -1374,6 +1398,15 @@ export default function PublicReportPage({
               iconColor="text-blue-600"
               gradientFrom="from-blue-100"
               delay="d150"
+            />
+            <KPICard
+              label="Conversiepercentage"
+              value={`${data.metrics.ecommerce_conversion_rate || 0}%`}
+              icon={<Activity className="w-5 h-5" />}
+              iconBg="bg-violet-50"
+              iconColor="text-violet-600"
+              gradientFrom="from-violet-100"
+              delay="d200"
             />
             <KPICard
               label="Gem. Bestelwaarde"
@@ -1438,24 +1471,25 @@ export default function PublicReportPage({
                           onClick={() =>
                             addFilter("referrer", "Referrer", ref.source)
                           }
-                          className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 transition-colors group text-left w-full"
+                          className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors text-left w-full"
                         >
-                          <div className="flex items-center">
-                            <div
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center mr-3 ${si.bg} ${si.color} shadow-sm`}
-                            >
-                              {si.icon}
+                          <div
+                            className="absolute top-0 bottom-0 left-0 bg-violet-100 opacity-50 -z-10 bar-fill"
+                            style={{ width: `${pct}%` }}
+                          />
+                          <div className="flex justify-between items-center text-[13px]">
+                            <div className="flex items-center truncate pr-2 w-3/4">
+                              <div
+                                className={`w-6 h-6 rounded-md flex items-center justify-center mr-2.5 ${si.bg} ${si.color} shadow-sm shrink-0`}
+                              >
+                                {si.icon}
+                              </div>
+                              <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                {ref.source}
+                              </span>
                             </div>
-                            <span className="text-[13px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors truncate max-w-[140px]">
-                              {ref.source}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[13px] font-bold text-slate-800">
-                              {pct}%
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              ({formatNumber(ref.visitors)})
+                            <span className="font-bold text-slate-900 shrink-0">
+                              {formatNumber(ref.visitors)}
                             </span>
                           </div>
                         </button>
@@ -1492,42 +1526,41 @@ export default function PublicReportPage({
                     />
                   }
                 />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="pb-2">Pagina</th>
-                        <th className="pb-2 text-right">Weergaven</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs">
-                      {pagesData.slice(0, 10).map((p) => (
-                        <tr
-                          key={p.path}
-                          className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                          onClick={() => addFilter("page", "Pagina", p.path)}
-                        >
-                          <td className="py-3 pr-2 font-medium text-slate-700 whitespace-nowrap group-hover:text-blue-600 transition-colors">
-                            <Link2 className="inline w-3 h-3 text-slate-300 mr-2" />
-                            {p.path}
-                          </td>
-                          <td className="py-3 pl-2 text-right text-slate-800 font-bold tabular-nums">
+                <div className="flex-grow flex flex-col gap-2.5">
+                  {pagesData.slice(0, 10).map((p) => {
+                    const pct =
+                      met.pageviews > 0
+                        ? Math.round((p.views / met.pageviews) * 100)
+                        : 0;
+                    return (
+                      <button
+                        key={p.path}
+                        onClick={() => addFilter("page", "Pagina", p.path)}
+                        className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors text-left w-full"
+                      >
+                        <div
+                          className="absolute top-0 bottom-0 left-0 bg-teal-100 opacity-50 -z-10 bar-fill"
+                          style={{ width: `${pct}%` }}
+                        />
+                        <div className="flex justify-between items-center text-[13px]">
+                          <div className="flex items-center truncate pr-2 w-3/4">
+                            <Link2 className="inline w-4 h-4 text-teal-500 mr-2.5 shrink-0" />
+                            <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                              {p.path}
+                            </span>
+                          </div>
+                          <span className="font-bold text-slate-900 shrink-0">
                             {formatNumber(p.views)}
-                          </td>
-                        </tr>
-                      ))}
-                      {pagesData.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={2}
-                            className="py-8 text-center text-slate-400"
-                          >
-                            Geen data
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {pagesData.length === 0 && (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      Geen data
+                    </div>
+                  )}
                 </div>
               </GlassCard>
 
@@ -1539,58 +1572,38 @@ export default function PublicReportPage({
                     iconBg="bg-indigo-50"
                     iconColor="text-indigo-600"
                   />
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          <th className="pb-2">Land</th>
-                          <th className="pb-2 text-right">Bezoekers</th>
-                          <th className="pb-2 text-right w-32">%</th>
-                        </tr>
-                      </thead>
-                      <tbody className="text-xs">
-                        {data.countries.slice(0, 10).map((c) => {
-                          const pct =
-                            met.visitors > 0
-                              ? Math.round((c.visitors / met.visitors) * 100)
-                              : 0;
-                          return (
-                            <tr
-                              key={c.code}
-                              className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors cursor-pointer group"
-                              onClick={() =>
-                                addFilter("country", "Land", c.code)
-                              }
-                            >
-                              <td className="py-3 pr-2 whitespace-nowrap">
-                                <span className="mr-2 text-base">
-                                  {countryFlag(c.code)}
-                                </span>
-                                <span className="font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
-                                  {c.name}
-                                </span>
-                              </td>
-                              <td className="py-3 px-2 text-right text-slate-800 font-bold tabular-nums">
-                                {formatNumber(c.visitors)}
-                              </td>
-                              <td className="py-3 pl-2 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-                                    <div
-                                      className="h-full rounded-full bg-indigo-500 bar-fill"
-                                      style={{ width: `${pct}%` }}
-                                    />
-                                  </div>
-                                  <span className="w-8 text-[11px] tabular-nums text-slate-500 font-semibold">
-                                    {pct}%
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                  <div className="flex-grow flex flex-col gap-2.5">
+                    {data.countries.slice(0, 10).map((c) => {
+                      const pct =
+                        met.visitors > 0
+                          ? Math.round((c.visitors / met.visitors) * 100)
+                          : 0;
+                      return (
+                        <button
+                          key={c.code}
+                          onClick={() => addFilter("country", "Land", c.code)}
+                          className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors text-left w-full"
+                        >
+                          <div
+                            className="absolute top-0 bottom-0 left-0 bg-indigo-100 opacity-50 -z-10 bar-fill"
+                            style={{ width: `${pct}%` }}
+                          />
+                          <div className="flex justify-between items-center text-[13px]">
+                            <div className="flex items-center truncate pr-2 w-3/4">
+                              <span className="mr-2.5 text-base shrink-0">
+                                {countryFlag(c.code)}
+                              </span>
+                              <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                {c.name}
+                              </span>
+                            </div>
+                            <span className="font-bold text-slate-900 shrink-0">
+                              {formatNumber(c.visitors)}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </GlassCard>
               )}
@@ -1602,7 +1615,7 @@ export default function PublicReportPage({
                 <GlassCard anim="anim-slide-up d500">
                   <SectionHeader
                     icon={<Smartphone className="w-4 h-4" />}
-                    title="Verkeer per Apparaat"
+                    title="Apparaten & Retentie"
                     iconBg="bg-cyan-50"
                     iconColor="text-cyan-600"
                   />
@@ -1628,6 +1641,35 @@ export default function PublicReportPage({
                       );
                     })}
                   </div>
+
+                  {/* Retention */}
+                  <div className="mt-auto pt-6 border-t border-slate-100">
+                    <div className="flex justify-between items-end mb-1">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        Terugkerende bezoekers
+                      </span>
+                      <div className="text-right">
+                        <span className="text-lg font-black text-slate-800">
+                          {met.returning_percentage || 0}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2.5 mb-1.5 shadow-inner">
+                      <div
+                        className="bg-indigo-500 h-2.5 rounded-full transition-all duration-1000 bar-fill relative"
+                        style={{ width: `${met.returning_percentage || 0}%` }}
+                      >
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-white/30 rounded-full"></div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-medium flex items-center">
+                      <UserCheck className="w-3 h-3 mr-1.5" />
+                      <span>
+                        {formatNumber(met.returning_visitors || 0)}
+                      </span>{" "}
+                      bezoekers
+                    </p>
+                  </div>
                 </GlassCard>
 
                 <GlassCard anim="anim-slide-up d600">
@@ -1652,25 +1694,23 @@ export default function PublicReportPage({
                           return (
                             <div
                               key={b.name}
-                              className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                              className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors"
                             >
-                              <div className="flex items-center gap-2.5">
-                                <span className="w-5 flex justify-center">
-                                  {browserIcon(b.name)}
-                                </span>
-                                <span className="text-xs font-medium text-slate-600">
-                                  {b.name}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100">
-                                  <div
-                                    className="h-full rounded-full bg-purple-400 bar-fill"
-                                    style={{ width: `${pct}%` }}
-                                  />
+                              <div
+                                className="absolute top-0 bottom-0 left-0 bg-purple-100 opacity-50 -z-10 bar-fill"
+                                style={{ width: `${pct}%` }}
+                              />
+                              <div className="flex justify-between items-center text-[13px]">
+                                <div className="flex items-center truncate pr-2 w-3/4">
+                                  <span className="w-5 flex justify-center mr-2 shrink-0">
+                                    {browserIcon(b.name)}
+                                  </span>
+                                  <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                    {b.name}
+                                  </span>
                                 </div>
-                                <span className="text-xs font-bold text-slate-800 w-8 text-right">
-                                  {pct}%
+                                <span className="font-bold text-slate-900 shrink-0">
+                                  {formatNumber(b.value)}
                                 </span>
                               </div>
                             </div>
@@ -1698,25 +1738,23 @@ export default function PublicReportPage({
                           return (
                             <div
                               key={os.name}
-                              className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                              className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors"
                             >
-                              <div className="flex items-center gap-2.5">
-                                <span className="w-5 flex justify-center">
-                                  {osIcon(os.name)}
-                                </span>
-                                <span className="text-xs font-medium text-slate-600">
-                                  {os.name}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="h-1.5 w-12 overflow-hidden rounded-full bg-slate-100">
-                                  <div
-                                    className="h-full rounded-full bg-slate-400 bar-fill"
-                                    style={{ width: `${pct}%` }}
-                                  />
+                              <div
+                                className="absolute top-0 bottom-0 left-0 bg-slate-200 opacity-50 -z-10 bar-fill"
+                                style={{ width: `${pct}%` }}
+                              />
+                              <div className="flex justify-between items-center text-[13px]">
+                                <div className="flex items-center truncate pr-2 w-3/4">
+                                  <span className="w-5 flex justify-center mr-2 shrink-0">
+                                    {osIcon(os.name)}
+                                  </span>
+                                  <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                    {os.name}
+                                  </span>
                                 </div>
-                                <span className="text-xs font-bold text-slate-800 w-8 text-right">
-                                  {pct}%
+                                <span className="font-bold text-slate-900 shrink-0">
+                                  {formatNumber(os.value)}
                                 </span>
                               </div>
                             </div>
@@ -1751,93 +1789,64 @@ export default function PublicReportPage({
                     />
                   }
                 />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="pb-2">
-                          {utmTab === "sources"
-                            ? "Bron"
-                            : utmTab === "mediums"
-                              ? "Medium"
-                              : "Campagne"}
-                        </th>
-                        <th className="pb-2 text-right">Bezoekers</th>
-                        <th className="pb-2 text-right w-32">%</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs">
-                      {utmData.slice(0, 10).map((item) => {
-                        const pct =
-                          met.visitors > 0
-                            ? Math.round((item.visitors / met.visitors) * 100)
-                            : 0;
-                        return (
-                          <tr
-                            key={item.name}
-                            className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors cursor-pointer group"
-                            onClick={() => {
-                              const k =
-                                utmTab === "sources"
-                                  ? "utm_source"
-                                  : utmTab === "mediums"
-                                    ? "utm_medium"
-                                    : "utm_campaign";
-                              const l =
-                                utmTab === "sources"
-                                  ? "UTM Source"
-                                  : utmTab === "mediums"
-                                    ? "UTM Medium"
-                                    : "UTM Campaign";
-                              addFilter(k, l, item.name);
-                            }}
-                          >
-                            <td className="py-3 pr-2 font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
-                              <span className="inline-flex items-center gap-2">
-                                {(() => {
-                                  const ui = utmIcon(item.name);
-                                  return (
-                                    <span
-                                      className={`w-5 h-5 rounded flex items-center justify-center ${ui.bg} ${ui.color}`}
-                                    >
-                                      {ui.icon}
-                                    </span>
-                                  );
-                                })()}
-                                {item.name}
-                              </span>
-                            </td>
-                            <td className="py-3 px-2 text-right text-slate-800 font-bold tabular-nums">
-                              {formatNumber(item.visitors)}
-                            </td>
-                            <td className="py-3 pl-2 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
-                                  <div
-                                    className="h-full rounded-full bg-emerald-500 bar-fill"
-                                    style={{ width: `${pct}%` }}
-                                  />
-                                </div>
-                                <span className="w-8 text-[11px] tabular-nums text-slate-500 font-semibold">
-                                  {pct}%
+                <div className="flex-grow flex flex-col gap-2.5">
+                  {utmData.slice(0, 10).map((item) => {
+                    const pct =
+                      met.visitors > 0
+                        ? Math.round((item.visitors / met.visitors) * 100)
+                        : 0;
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => {
+                          const k =
+                            utmTab === "sources"
+                              ? "utm_source"
+                              : utmTab === "mediums"
+                                ? "utm_medium"
+                                : "utm_campaign";
+                          const l =
+                            utmTab === "sources"
+                              ? "UTM Source"
+                              : utmTab === "mediums"
+                                ? "UTM Medium"
+                                : "UTM Campaign";
+                          addFilter(k, l, item.name);
+                        }}
+                        className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors text-left w-full"
+                      >
+                        <div
+                          className="absolute top-0 bottom-0 left-0 bg-emerald-100 opacity-50 -z-10 bar-fill"
+                          style={{ width: `${pct}%` }}
+                        />
+                        <div className="flex justify-between items-center text-[13px]">
+                          <div className="flex items-center truncate pr-2 w-3/4">
+                            {(() => {
+                              const ui = utmIcon(item.name);
+                              return (
+                                <span
+                                  className={`w-6 h-6 rounded-md flex items-center justify-center mr-2.5 ${ui.bg} ${ui.color} shadow-sm shrink-0`}
+                                >
+                                  {ui.icon}
                                 </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {utmData.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={3}
-                            className="py-8 text-center text-slate-400"
-                          >
-                            Geen data
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                              );
+                            })()}
+                            <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                              {item.name}
+                            </span>
+                          </div>
+                          <span className="font-bold text-slate-900 shrink-0">
+                            {formatNumber(item.visitors)}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {utmData.length === 0 && (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      Geen data
+                    </div>
+                  )}
                 </div>
               </GlassCard>
             )}
@@ -1985,15 +1994,163 @@ export default function PublicReportPage({
                 />
                 <div className="flex-grow relative" style={{ minHeight: 280 }}>
                   <TimeSeries
-                    data={data.revenue_timeseries.map((d) => ({
-                      date: d.date,
-                      pageviews: 0,
-                      visitors: 0,
-                      revenue: d.revenue,
-                    }))}
+                    data={data.revenue_timeseries.map((d) => {
+                      const tsData = data.timeseries.find(
+                        (t) => t.date === d.date,
+                      );
+                      return {
+                        date: d.date,
+                        pageviews: tsData?.pageviews || 0,
+                        visitors: tsData?.visitors || 0,
+                        revenue: d.revenue,
+                      };
+                    })}
                     period={range}
                     isRevenue
                   />
+                </div>
+              </GlassCard>
+            )}
+
+            {data.ecommerce_funnel && (
+              <GlassCard className="mb-6" anim="anim-slide-up d350">
+                <SectionHeader
+                  icon={<FilterIcon className="w-4 h-4" />}
+                  title="Winkelwagen Funnel"
+                  iconBg="bg-indigo-50"
+                  iconColor="text-indigo-600"
+                />
+                <div className="relative w-full mt-4">
+                  {[
+                    {
+                      id: "sessies",
+                      label: "Sessies",
+                      value: data.ecommerce_funnel.sessions,
+                      icon: <Users className="w-4 h-4" />,
+                      bgLight: "bg-blue-50",
+                      textIcon: "text-blue-600",
+                      borderClass: "border-blue-100",
+                      bgFill: "bg-blue-50",
+                    },
+                    {
+                      id: "cart",
+                      label: "Toegevoegd aan winkelwagen",
+                      value: data.ecommerce_funnel.add_to_cart,
+                      icon: <Target className="w-4 h-4" />,
+                      bgLight: "bg-indigo-50",
+                      textIcon: "text-indigo-600",
+                      borderClass: "border-indigo-100",
+                      bgFill: "bg-indigo-50",
+                    },
+                    {
+                      id: "checkout",
+                      label: "Afrekenen gestart",
+                      value: data.ecommerce_funnel.begin_checkout,
+                      icon: <Activity className="w-4 h-4" />,
+                      bgLight: "bg-purple-50",
+                      textIcon: "text-purple-600",
+                      borderClass: "border-purple-100",
+                      bgFill: "bg-purple-50",
+                    },
+                    {
+                      id: "purchase",
+                      label: "Aankopen",
+                      value: data.ecommerce_funnel.purchases,
+                      icon: <DollarSign className="w-4 h-4" />,
+                      bgLight: "bg-emerald-50",
+                      textIcon: "text-emerald-600",
+                      borderClass: "border-emerald-100",
+                      bgFill: "bg-emerald-50",
+                    },
+                  ].map((step, index, steps) => {
+                    let convHtml = null;
+                    if (index > 0) {
+                      const prevValue = steps[index - 1].value;
+                      const convRate =
+                        prevValue > 0
+                          ? ((step.value / prevValue) * 100).toFixed(1)
+                          : "0.0";
+                      const dropRate =
+                        prevValue > 0
+                          ? (100 - parseFloat(convRate)).toFixed(1)
+                          : "0.0";
+
+                      convHtml = (
+                        <div
+                          key={`conv-${index}`}
+                          className="flex items-center py-2 relative group"
+                        >
+                          <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-200 -z-10 group-hover:bg-blue-300 transition-colors"></div>
+                          <div className="ml-12 w-full flex items-center justify-between pr-2">
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <span className="bg-emerald-50 text-emerald-600 font-bold px-2 py-0.5 rounded border border-emerald-100 shadow-sm flex items-center">
+                                <TrendingUp className="w-3 h-3 mr-1" />{" "}
+                                {convRate}%
+                              </span>
+                              <span className="text-slate-500 font-medium hidden sm:inline">
+                                gaat door
+                              </span>
+                            </div>
+                            <div className="text-rose-500 font-medium text-[9px] bg-rose-50 px-2 py-0.5 rounded border border-rose-100 shadow-sm">
+                              -{dropRate}% afhakers
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    const relativeWidth =
+                      steps[0].value > 0
+                        ? Math.max((step.value / steps[0].value) * 100, 2)
+                        : 0;
+                    return (
+                      <Fragment key={step.id}>
+                        {convHtml}
+                        <div className="relative bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 z-10 overflow-hidden group hover:border-slate-300 hover:-translate-y-0.5">
+                          <div
+                            className={`absolute top-0 bottom-0 left-0 ${step.bgFill} opacity-40 -z-10 bar-fill`}
+                            style={{ width: `${relativeWidth}%` }}
+                          ></div>
+                          <div
+                            className={`absolute top-0 bottom-0 left-0 w-1 ${step.bgLight} brightness-90`}
+                          ></div>
+                          <div className="flex items-center justify-between pl-1">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-8 h-8 rounded-lg ${step.bgLight} ${step.textIcon} flex items-center justify-center text-sm shadow-inner border ${step.borderClass} group-hover:scale-110 transition-transform`}
+                              >
+                                {step.icon}
+                              </div>
+                              <div>
+                                <h4 className="text-[13px] font-bold text-slate-800">
+                                  {step.label}
+                                </h4>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                                  Stap {index + 1}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-base font-black text-slate-800">
+                              {formatNumber(step.value)}
+                            </span>
+                          </div>
+                        </div>
+                      </Fragment>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 flex justify-between items-center border-t border-slate-100 pt-4">
+                  <div className="text-sm text-slate-600">
+                    Verlaten winkelwagen percentage:{" "}
+                    <span className="font-bold text-rose-500">
+                      {data.ecommerce_funnel.abandoned_rate}%
+                    </span>
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Verloren omzet:{" "}
+                    <span className="font-bold text-rose-500">
+                      {formatCurrency(data.ecommerce_funnel.abandoned_value)}
+                    </span>
+                  </div>
                 </div>
               </GlassCard>
             )}
@@ -2016,25 +2173,88 @@ export default function PublicReportPage({
                     />
                   }
                 />
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                        <th className="pb-2">
-                          {ecomTab === "sources" ? "Bron" : "Campagne"}
-                        </th>
-                        <th className="pb-2 text-right">Aankopen</th>
-                        <th className="pb-2 text-right">Omzet</th>
-                        <th className="pb-2 text-right w-32">% van Totaal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs">
-                      {(ecomTab === "sources"
-                        ? data.ecommerce_sources
-                        : data.ecommerce_campaigns
-                      )
-                        ?.slice(0, 10)
-                        .map((item) => {
+                {ecomTab === "sources" ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          <th className="pb-2">Bron</th>
+                          <th className="pb-2 text-right">Aankopen</th>
+                          <th className="pb-2 text-right">Omzet</th>
+                          <th className="pb-2 text-right w-32">% van Totaal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs">
+                        {(data.ecommerce_sources || [])
+                          .slice(0, 10)
+                          .map((item) => {
+                            const totalSourceRevenue = (
+                              data.ecommerce_sources || []
+                            ).reduce((acc, source) => acc + source.revenue, 0);
+                            const pct =
+                              totalSourceRevenue > 0
+                                ? Math.round(
+                                    (item.revenue / totalSourceRevenue) * 100,
+                                  )
+                                : 0;
+                            return (
+                              <tr
+                                key={item.name}
+                                className="border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition-colors group"
+                              >
+                                <td className="py-3 pr-2 font-medium text-slate-700 group-hover:text-blue-600 transition-colors">
+                                  <span className="truncate inline-block max-w-[220px] align-middle">
+                                    {item.name}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-2 text-right text-slate-800 font-bold tabular-nums">
+                                  {formatNumber(item.purchases)}
+                                </td>
+                                <td className="py-3 px-2 text-right text-emerald-600 font-bold tabular-nums">
+                                  {formatCurrency(item.revenue)}
+                                </td>
+                                <td className="py-3 pl-2 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-100">
+                                      <div
+                                        className="h-full rounded-full bg-emerald-500 bar-fill"
+                                        style={{ width: `${pct}%` }}
+                                      />
+                                    </div>
+                                    <span className="w-8 text-[11px] tabular-nums text-slate-500 font-semibold">
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        {!data.ecommerce_sources?.length && (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="py-8 text-center text-slate-400"
+                            >
+                              Geen data
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                          <th className="pb-2">Campagne</th>
+                          <th className="pb-2 text-right">Aankopen</th>
+                          <th className="pb-2 text-right">Omzet</th>
+                          <th className="pb-2 text-right w-32">% van Totaal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs">
+                        {data.ecommerce_campaigns?.slice(0, 10).map((item) => {
                           const pct =
                             (data.metrics.total_revenue || 0) > 0
                               ? Math.round(
@@ -2085,23 +2305,20 @@ export default function PublicReportPage({
                             </tr>
                           );
                         })}
-                      {!(
-                        ecomTab === "sources"
-                          ? data.ecommerce_sources
-                          : data.ecommerce_campaigns
-                      )?.length && (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="py-8 text-center text-slate-400"
-                          >
-                            Geen data
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        {!data.ecommerce_campaigns?.length && (
+                          <tr>
+                            <td
+                              colSpan={4}
+                              className="py-8 text-center text-slate-400"
+                            >
+                              Geen data
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </GlassCard>
 
               {data.top_products && data.top_products.length > 0 && (
@@ -2119,6 +2336,9 @@ export default function PublicReportPage({
                           <th className="pb-2">Product</th>
                           <th className="pb-2 text-right">Aantal</th>
                           <th className="pb-2 text-right">Omzet</th>
+                          <th className="pb-2 text-right">
+                            Verlaten in winkelwagen
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="text-xs">
@@ -2133,8 +2353,19 @@ export default function PublicReportPage({
                             <td className="py-3 px-2 text-right text-slate-800 font-bold tabular-nums">
                               {formatNumber(p.quantity)}
                             </td>
-                            <td className="py-3 pl-2 text-right text-emerald-600 font-bold tabular-nums">
+                            <td className="py-3 px-2 text-right text-emerald-600 font-bold tabular-nums">
                               {formatCurrency(p.revenue)}
+                            </td>
+                            <td className="py-3 pl-2 text-right whitespace-nowrap">
+                              {p.abandoned && p.abandoned > 0 ? (
+                                <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-100 shadow-sm">
+                                  <Target className="w-3 h-3 mr-1" />{" "}
+                                  {p.abandoned}x (
+                                  {formatCurrency(p.abandoned_value || 0)})
+                                </span>
+                              ) : (
+                                <span className="text-slate-300">-</span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -2165,24 +2396,37 @@ export default function PublicReportPage({
                     <div className="space-y-1.5">
                       {filteredLeadSources.slice(0, 8).map((s) => {
                         const si = sourceIcon(s.source);
+                        const maxCount = Math.max(
+                          ...filteredLeadSources.map((x) => x.count),
+                        );
+                        const pct =
+                          maxCount > 0
+                            ? Math.round((s.count / maxCount) * 100)
+                            : 0;
                         return (
                           <div
                             key={s.source}
-                            className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                            className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <div
-                                className={`w-6 h-6 rounded-md flex items-center justify-center ${si.bg} ${si.color}`}
-                              >
-                                {si.icon}
+                            <div
+                              className="absolute top-0 bottom-0 left-0 bg-orange-100 opacity-50 -z-10 bar-fill"
+                              style={{ width: `${pct}%` }}
+                            />
+                            <div className="flex justify-between items-center text-[13px]">
+                              <div className="flex items-center truncate pr-2 w-3/4">
+                                <div
+                                  className={`w-6 h-6 rounded-md flex items-center justify-center mr-2.5 ${si.bg} ${si.color} shrink-0`}
+                                >
+                                  {si.icon}
+                                </div>
+                                <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                  {s.source}
+                                </span>
                               </div>
-                              <span className="text-xs font-medium text-slate-600">
-                                {s.source}
+                              <span className="font-bold text-slate-900 shrink-0">
+                                {s.count}
                               </span>
                             </div>
-                            <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                              {s.count}
-                            </span>
                           </div>
                         );
                       })}
@@ -2200,24 +2444,37 @@ export default function PublicReportPage({
                     <div className="space-y-1.5">
                       {filteredLeadMediums.slice(0, 8).map((md) => {
                         const mi = utmIcon(md.medium);
+                        const maxCount = Math.max(
+                          ...filteredLeadMediums.map((x) => x.count),
+                        );
+                        const pct =
+                          maxCount > 0
+                            ? Math.round((md.count / maxCount) * 100)
+                            : 0;
                         return (
                           <div
                             key={md.medium}
-                            className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                            className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <div
-                                className={`w-6 h-6 rounded-md flex items-center justify-center ${mi.bg} ${mi.color}`}
-                              >
-                                {mi.icon}
+                            <div
+                              className="absolute top-0 bottom-0 left-0 bg-pink-100 opacity-50 -z-10 bar-fill"
+                              style={{ width: `${pct}%` }}
+                            />
+                            <div className="flex justify-between items-center text-[13px]">
+                              <div className="flex items-center truncate pr-2 w-3/4">
+                                <div
+                                  className={`w-6 h-6 rounded-md flex items-center justify-center mr-2.5 ${mi.bg} ${mi.color} shrink-0`}
+                                >
+                                  {mi.icon}
+                                </div>
+                                <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                  {md.medium}
+                                </span>
                               </div>
-                              <span className="text-xs font-medium text-slate-600">
-                                {md.medium}
+                              <span className="font-bold text-slate-900 shrink-0">
+                                {md.count}
                               </span>
                             </div>
-                            <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                              {md.count}
-                            </span>
                           </div>
                         );
                       })}
@@ -2235,24 +2492,37 @@ export default function PublicReportPage({
                     <div className="space-y-1.5">
                       {filteredLeadCampaigns.slice(0, 8).map((c) => {
                         const ci = utmIcon(c.campaign);
+                        const maxCount = Math.max(
+                          ...filteredLeadCampaigns.map((x) => x.count),
+                        );
+                        const pct =
+                          maxCount > 0
+                            ? Math.round((c.count / maxCount) * 100)
+                            : 0;
                         return (
                           <div
                             key={c.campaign}
-                            className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+                            className="relative overflow-hidden rounded-lg p-2.5 border border-transparent hover:border-slate-200 group transition-colors"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <div
-                                className={`w-6 h-6 rounded-md flex items-center justify-center ${ci.bg} ${ci.color}`}
-                              >
-                                {ci.icon}
+                            <div
+                              className="absolute top-0 bottom-0 left-0 bg-sky-100 opacity-50 -z-10 bar-fill"
+                              style={{ width: `${pct}%` }}
+                            />
+                            <div className="flex justify-between items-center text-[13px]">
+                              <div className="flex items-center truncate pr-2 w-3/4">
+                                <div
+                                  className={`w-6 h-6 rounded-md flex items-center justify-center mr-2.5 ${ci.bg} ${ci.color} shrink-0`}
+                                >
+                                  {ci.icon}
+                                </div>
+                                <span className="font-semibold text-slate-700 truncate group-hover:text-slate-900 transition-colors">
+                                  {c.campaign}
+                                </span>
                               </div>
-                              <span className="text-xs font-medium text-slate-600">
-                                {c.campaign}
+                              <span className="font-bold text-slate-900 shrink-0">
+                                {c.count}
                               </span>
                             </div>
-                            <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                              {c.count}
-                            </span>
                           </div>
                         );
                       })}

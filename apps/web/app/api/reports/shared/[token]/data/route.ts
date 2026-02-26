@@ -297,7 +297,7 @@ export async function GET(
   const sessRows = await fetchAll((from, to) =>
     supabase
       .from("sessions")
-      .select("id, duration_ms, is_bounce")
+      .select("id, duration_ms, is_bounce, visitor_hash")
       .eq("site_id", report.site_id)
       .gte("started_at", fromDate.toISOString())
       .lte("started_at", toDate.toISOString())
@@ -318,6 +318,44 @@ export async function GET(
       ? Math.round(
           sessionDurations.reduce((a: number, b: number) => a + b, 0) /
             sessionDurations.length /
+            1000,
+        )
+      : 0;
+
+  // Retention (New vs Returning)
+  const visitorCounts: Record<string, number> = {};
+  sessRows.forEach((s) => {
+    visitorCounts[s.visitor_hash] = (visitorCounts[s.visitor_hash] || 0) + 1;
+  });
+  const returningVisitors = Object.values(visitorCounts).filter(
+    (count) => count > 1,
+  ).length;
+  const returningPercentage =
+    uniqueVisitors > 0
+      ? Math.round((returningVisitors / uniqueVisitors) * 1000) / 10
+      : 0;
+
+  // Scroll depth
+  const scrollEvents = events.filter(
+    (e) => e.event_type === "scroll_depth" && e.scroll_depth_pct,
+  );
+  const avgScrollDepth =
+    scrollEvents.length > 0
+      ? Math.round(
+          scrollEvents.reduce((sum, e) => sum + (e.scroll_depth_pct || 0), 0) /
+            scrollEvents.length,
+        )
+      : 0;
+
+  // Active time (engaged_time_ms)
+  const engagedEvents = events.filter(
+    (e) => e.engaged_time_ms && e.engaged_time_ms > 0,
+  );
+  const avgActiveTime =
+    engagedEvents.length > 0
+      ? Math.round(
+          engagedEvents.reduce((sum, e) => sum + (e.engaged_time_ms || 0), 0) /
+            engagedEvents.length /
             1000,
         )
       : 0;
@@ -349,6 +387,12 @@ export async function GET(
       avg_duration: avgDuration,
       total_revenue: totalRevenue,
       purchases: purchases,
+      ecommerce_conversion_rate:
+        sessions > 0 ? Math.round((purchases / sessions) * 1000) / 10 : 0,
+      avg_scroll_depth: avgScrollDepth,
+      avg_active_time: avgActiveTime,
+      returning_visitors: returningVisitors,
+      returning_percentage: returningPercentage,
     },
   };
 
@@ -462,9 +506,71 @@ export async function GET(
       string,
       { revenue: number; purchases: number }
     > = {};
-    const productMap: Record<string, { revenue: number; quantity: number }> =
-      {};
+    const productMap: Record<
+      string,
+      {
+        revenue: number;
+        quantity: number;
+        abandoned: number;
+        abandoned_value: number;
+      }
+    > = {};
     const revMap: Record<string, number> = {};
+
+    // Funnel metrics
+    const addToCartEvents = events.filter(
+      (e) => e.ecommerce_action === "add_to_cart",
+    );
+    const beginCheckoutEvents = events.filter(
+      (e) => e.ecommerce_action === "begin_checkout",
+    );
+
+    const sessionsWithAddToCart = new Set(
+      addToCartEvents.map((e) => e.session_id),
+    ).size;
+    const sessionsWithCheckout = new Set(
+      beginCheckoutEvents.map((e) => e.session_id),
+    ).size;
+    const sessionsWithPurchase = new Set(
+      purchaseEvents.map((e) => e.session_id),
+    ).size;
+
+    let totalAbandonedValue = 0;
+
+    // Calculate abandoned products
+    const sessionPurchasedProducts = new Map<string, Set<string>>();
+    purchaseEvents.forEach((e) => {
+      if (!sessionPurchasedProducts.has(e.session_id)) {
+        sessionPurchasedProducts.set(e.session_id, new Set());
+      }
+      const items = Array.isArray(e.ecommerce_items) ? e.ecommerce_items : [];
+      for (const item of items) {
+        const name = item.name || item.id || "Unknown";
+        sessionPurchasedProducts.get(e.session_id)!.add(name);
+      }
+    });
+
+    addToCartEvents.forEach((e) => {
+      const items = Array.isArray(e.ecommerce_items) ? e.ecommerce_items : [];
+      for (const item of items) {
+        const name = item.name || item.id || "Unknown";
+        if (!productMap[name])
+          productMap[name] = {
+            revenue: 0,
+            quantity: 0,
+            abandoned: 0,
+            abandoned_value: 0,
+          };
+
+        // If this product wasn't purchased in this session, it's abandoned
+        if (!sessionPurchasedProducts.get(e.session_id)?.has(name)) {
+          productMap[name].abandoned += item.quantity || 1;
+          const itemValue = (item.price || 0) * (item.quantity || 1);
+          productMap[name].abandoned_value += itemValue;
+          totalAbandonedValue += itemValue;
+        }
+      }
+    });
 
     purchaseEvents.forEach((e) => {
       const src = e.utm_source || e.referrer_hostname || "direct";
@@ -485,7 +591,13 @@ export async function GET(
       const items = Array.isArray(e.ecommerce_items) ? e.ecommerce_items : [];
       for (const item of items) {
         const name = item.name || item.id || "Unknown";
-        if (!productMap[name]) productMap[name] = { revenue: 0, quantity: 0 };
+        if (!productMap[name])
+          productMap[name] = {
+            revenue: 0,
+            quantity: 0,
+            abandoned: 0,
+            abandoned_value: 0,
+          };
         const itemTotal = (item.price || 0) * (item.quantity || 1);
         productMap[name].revenue += itemTotal;
         productMap[name].quantity += item.quantity || 1;
@@ -495,6 +607,22 @@ export async function GET(
       const day = new Date(e.timestamp).toISOString().slice(0, 10);
       revMap[day] = (revMap[day] || 0) + (e.revenue || 0);
     });
+
+    result.ecommerce_funnel = {
+      sessions: sessions,
+      add_to_cart: sessionsWithAddToCart,
+      begin_checkout: sessionsWithCheckout,
+      purchases: sessionsWithPurchase,
+      abandoned_rate:
+        sessionsWithAddToCart > 0
+          ? Math.round(
+              ((sessionsWithAddToCart - sessionsWithPurchase) /
+                sessionsWithAddToCart) *
+                1000,
+            ) / 10
+          : 0,
+      abandoned_value: totalAbandonedValue,
+    };
 
     result.ecommerce_sources = Object.entries(sourceRevenue)
       .map(([name, data]) => ({ name, ...data }))
