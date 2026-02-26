@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
     ...integration,
     credentials: resolvedCredentials,
     campaign_filter: integration.campaign_filter,
+    meta_result_actions: integration.meta_result_actions,
   };
 
   // Mark syncing

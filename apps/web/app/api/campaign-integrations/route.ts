@@ -103,6 +103,9 @@ export async function POST(request: NextRequest) {
   // Handle campaign_filter — keyword filter for campaign names
   const campaign_filter = body.campaign_filter !== undefined ? (body.campaign_filter || null) : (existing as Record<string, unknown>)?.campaign_filter || null;
 
+  // Handle meta_result_actions — custom conversion action types for Meta
+  const meta_result_actions = body.meta_result_actions !== undefined ? (body.meta_result_actions || null) : (existing as Record<string, unknown>)?.meta_result_actions || null;
+
   // Upsert by site_id + provider
   const { data, error } = await db
     .from('campaign_integrations')
@@ -114,6 +117,7 @@ export async function POST(request: NextRequest) {
         credentials: mergedCredentials,
         credential_set_id: credential_set_id || null,
         campaign_filter,
+        meta_result_actions,
         sync_frequency: sync_frequency || 'daily',
         updated_at: new Date().toISOString(),
       },

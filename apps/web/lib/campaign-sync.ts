@@ -19,6 +19,7 @@ interface Integration {
   provider: string;
   credentials: Record<string, string>;
   campaign_filter?: string | null;
+  meta_result_actions?: string | null;
 }
 
 /** Check if a campaign name matches the integration's keyword filter (case-insensitive contains) */
@@ -425,7 +426,12 @@ export async function syncMetaAds(
       )
     : allInsights;
 
-  return await upsertMetaInsights(db, integration, filteredInsights, currency, campaignMeta);
+  // Parse custom result action types if configured
+  const customResultActions = integration.meta_result_actions
+    ? integration.meta_result_actions.split(',').map((s) => s.trim()).filter(Boolean)
+    : null;
+
+  return await upsertMetaInsights(db, integration, filteredInsights, currency, campaignMeta, customResultActions);
 }
 
 // Helper: parse Meta insights and upsert to DB
@@ -435,6 +441,7 @@ async function upsertMetaInsights(
   insights: Record<string, unknown>[],
   currency: string,
   campaignMeta?: Map<string, Record<string, unknown>>,
+  customResultActions?: string[] | null,
 ): Promise<number> {
   // Map Meta campaign objectives to the action types Facebook uses for "Results"
   // IMPORTANT: These are PRIORITY ORDERED — use the FIRST match found.
@@ -483,13 +490,24 @@ async function upsertMetaInsights(
     const objective = String(meta.objective || '').toUpperCase();
 
     // Determine the action types that count as "results" for this campaign's objective
-    // Use PRIORITY ORDER: pick the FIRST action_type that exists in the actions array
-    const resultPriorityList = OBJECTIVE_RESULT_MAP[objective] || [];
+    // If custom result actions are configured, use those instead of the objective map.
+    // Custom actions SUM all matching types (they're explicitly chosen by the user, no double-counting risk).
+    // Auto-detected actions use PRIORITY ORDER: pick the FIRST match to avoid double-counting.
+    const resultPriorityList = customResultActions || OBJECTIVE_RESULT_MAP[objective] || [];
 
-    // Find the first action_type from the priority list that exists in this row's actions
+    // Find matching results
     let totalResults = 0;
     let matchedActionType = '';
-    if (resultPriorityList.length > 0) {
+    if (customResultActions && customResultActions.length > 0) {
+      // Custom mode: SUM all configured action types (user has explicitly chosen these)
+      for (const actionType of customResultActions) {
+        const match = actions.find((a) => a.action_type === actionType);
+        if (match) {
+          totalResults += Number(match.value) || 0;
+          if (!matchedActionType) matchedActionType = actionType; // For cost_per_result lookup
+        }
+      }
+    } else if (resultPriorityList.length > 0) {
       for (const actionType of resultPriorityList) {
         const match = actions.find((a) => a.action_type === actionType);
         if (match) {
@@ -554,7 +572,7 @@ async function upsertMetaInsights(
       ad_group_id: '_',
       date: row.date_start,
       impressions: Number(row.impressions) || 0,
-      clicks: Number(row.clicks) || 0,
+      clicks: linkClicks, // Use link clicks (clicks to website), not total clicks (includes likes, shares, profile taps etc.)
       cost: Number(row.spend) || 0,
       conversions,
       conversion_value: conversionValue,
@@ -572,7 +590,8 @@ async function upsertMetaInsights(
         cpm: Number(row.cpm) || 0,
         cpc: Number(row.cpc) || 0,
         ctr: Number(row.ctr) || 0,
-        link_clicks: linkClicks,
+        total_clicks: Number(row.clicks) || 0, // All click types (incl. likes, shares, profile taps)
+        link_clicks: linkClicks, // Clicks to website only
         cost_per_link_click: costPerLinkClick,
         link_click_ctr: Number(row.inline_link_click_ctr) || 0,
         unique_clicks: Number(row.unique_clicks) || 0,

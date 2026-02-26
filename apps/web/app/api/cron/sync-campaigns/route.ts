@@ -27,6 +27,7 @@ interface IntegrationRow {
   credentials: Record<string, string> | null;
   credential_set_id: string | null;
   campaign_filter: string | null;
+  meta_result_actions: string | null;
   sync_frequency: string;
   last_synced_at: string | null;
   enabled: boolean;
@@ -40,11 +41,8 @@ function shouldSync(integration: IntegrationRow, now: Date): boolean {
 
   if (freq === 'hourly') return true;
 
-  const currentHour = now.getUTCHours();
-  const currentDay = now.getUTCDay(); // 0 = Sunday, 1 = Monday
-
   if (freq === 'daily') {
-    if (currentHour > 1) return false;
+    // Sync once every ~20 hours (ensures at least one sync per day regardless of timezone)
     if (integration.last_synced_at) {
       const hours = (now.getTime() - new Date(integration.last_synced_at).getTime()) / 3_600_000;
       if (hours < 20) return false;
@@ -53,11 +51,12 @@ function shouldSync(integration: IntegrationRow, now: Date): boolean {
   }
 
   if (freq === 'weekly') {
-    if (currentDay !== 1 || currentHour > 1) return false;
+    // Sync once every ~6 days
     if (integration.last_synced_at) {
       const days = (now.getTime() - new Date(integration.last_synced_at).getTime()) / 86_400_000;
       if (days < 6) return false;
     }
+    // If never synced, go ahead
     return true;
   }
 
@@ -199,7 +198,7 @@ export async function GET(request: NextRequest) {
     groups.get(key)!.push(integration);
   }
 
-  console.log(`[sync-campaigns] ${groups.size} unique credential groups from ${integrations.length} integrations`);
+  console.log(`[sync-campaigns] ${groups.size} unique credential groups from ${integrations.length} integrations (${skipped} skipped — not due yet)`);
 
   // ── Process each group ──────────────────────────────────────
   for (const [groupKey, groupIntegrations] of groups) {
@@ -211,6 +210,7 @@ export async function GET(request: NextRequest) {
       ...primary,
       credentials: resolvedCredentials,
       campaign_filter: primary.campaign_filter,
+      meta_result_actions: primary.meta_result_actions,
     };
 
     const syncFn = syncFns[primary.provider];

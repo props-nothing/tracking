@@ -41,6 +41,10 @@ import {
   Target,
   Send,
   CircleDot,
+  DollarSign,
+  MousePointerClick,
+  BadgeEuro,
+  Crosshair,
 } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -72,6 +76,29 @@ interface LeadRow {
   created_at: string;
 }
 interface SourceCount { source: string; count: number }
+
+interface CampaignRow {
+  provider: string;
+  campaign_id: string;
+  campaign_name: string;
+  campaign_status: string;
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  conversion_value: number;
+  results: number;
+  currency: string;
+}
+
+interface ProviderSummary {
+  impressions: number;
+  clicks: number;
+  cost: number;
+  conversions: number;
+  conversion_value: number;
+  results: number;
+}
 
 interface AIAnalysisData {
   summary: string;
@@ -118,6 +145,8 @@ interface ReportData {
   lead_sources: SourceCount[];
   lead_mediums: { medium: string; count: number }[];
   lead_campaigns: { campaign: string; count: number }[];
+  campaign_data: CampaignRow[];
+  campaign_summary: Record<string, ProviderSummary>;
   ai_analysis?: AIAnalysisData;
 }
 
@@ -159,6 +188,10 @@ function formatDuration(sec: number) {
 
 function formatNumber(val: number) {
   return new Intl.NumberFormat('nl-NL').format(val);
+}
+
+function formatCurrency(val: number, currency = 'EUR') {
+  return new Intl.NumberFormat('nl-NL', { style: 'currency', currency, minimumFractionDigits: 2 }).format(val);
 }
 
 /** Convert ISO-2 country code to flag emoji */
@@ -405,6 +438,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
   const [activeTab, setActiveTab] = useState<'pages' | 'entry' | 'exit'>('pages');
   const [utmTab, setUtmTab] = useState<'sources' | 'mediums' | 'campaigns'>('sources');
   const [expandedLead, setExpandedLead] = useState<number | null>(null);
+  const [mainTab, setMainTab] = useState<'all' | 'website' | 'meta' | 'google'>('all');
 
   /* ---- Data fetching ---- */
   const fetchReport = useCallback((pw?: string) => {
@@ -439,6 +473,8 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           utm_mediums: d.utm_mediums ?? [], utm_campaigns: d.utm_campaigns ?? [],
           leads: d.leads ?? [], lead_sources: d.lead_sources ?? [],
           lead_mediums: d.lead_mediums ?? [], lead_campaigns: d.lead_campaigns ?? [],
+          campaign_data: d.campaign_data ?? [],
+          campaign_summary: d.campaign_summary ?? {},
           ai_analysis: d.ai_analysis ?? undefined,
         });
         setNeedsPassword(false);
@@ -506,6 +542,98 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
   const pagesData = activeTab === 'pages' ? data.top_pages : activeTab === 'entry' ? data.entry_pages : data.exit_pages;
   const utmData = utmTab === 'sources' ? data.utm_sources : utmTab === 'mediums' ? data.utm_mediums : data.utm_campaigns;
 
+  const metaCampaigns = data.campaign_data.filter((c) => c.provider === 'meta_ads');
+  const googleCampaigns = data.campaign_data.filter((c) => c.provider === 'google_ads');
+  const hasMetaCampaigns = metaCampaigns.length > 0;
+  const hasGoogleCampaigns = googleCampaigns.length > 0;
+  const hasAnyCampaigns = hasMetaCampaigns || hasGoogleCampaigns;
+  const metaSummary = data.campaign_summary?.meta_ads;
+  const googleSummary = data.campaign_summary?.google_ads;
+
+  // Which campaigns to show in the current tab
+  const tabCampaigns = mainTab === 'meta' ? metaCampaigns : mainTab === 'google' ? googleCampaigns : data.campaign_data;
+
+  // Show website sections? (all or website tab)
+  const showWebsite = mainTab === 'all' || mainTab === 'website';
+  // Show ads sections?
+  const showAds = mainTab === 'all' || mainTab === 'meta' || mainTab === 'google';
+
+  // Source matching helpers for filtering leads by tab
+  const isMetaSource = (s: string) => /facebook|\bfb\b|meta|instagram/i.test(s);
+  const isGoogleSource = (s: string) => /google/i.test(s);
+  const isPaidMedium = (m: string) => /cpc|paid|ppc|cpm|retargeting|social_paid/i.test(m);
+  const matchesTab = (lead: LeadRow) => {
+    const src = (lead.utm_source || lead.referrer_hostname || '').toLowerCase();
+    const medium = (lead.utm_medium || '').toLowerCase();
+    if (mainTab === 'meta') return isMetaSource(src) && isPaidMedium(medium);
+    if (mainTab === 'google') return isGoogleSource(src) && isPaidMedium(medium);
+    return true;
+  };
+
+  // Filtered leads & aggregations per tab
+  const filteredLeads = mainTab === 'all' || mainTab === 'website' ? data.leads : data.leads.filter(matchesTab);
+  const filteredLeadSources = (() => {
+    if (mainTab === 'all' || mainTab === 'website') return data.lead_sources;
+    // Re-aggregate from filteredLeads so the paid-medium filter is respected
+    const srcCounts: Record<string, number> = {};
+    filteredLeads.forEach((l) => { const s = l.utm_source || l.referrer_hostname || 'direct'; srcCounts[s] = (srcCounts[s] || 0) + 1; });
+    return Object.entries(srcCounts).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count);
+  })();
+  const filteredLeadMediums = (() => {
+    if (mainTab === 'all' || mainTab === 'website') return data.lead_mediums;
+    const mediumCounts: Record<string, number> = {};
+    filteredLeads.forEach((l) => { const m = l.utm_medium || 'direct'; mediumCounts[m] = (mediumCounts[m] || 0) + 1; });
+    return Object.entries(mediumCounts).map(([medium, count]) => ({ medium, count })).sort((a, b) => b.count - a.count);
+  })();
+  const filteredLeadCampaigns = (() => {
+    if (mainTab === 'all' || mainTab === 'website') return data.lead_campaigns;
+    const campCounts: Record<string, number> = {};
+    filteredLeads.forEach((l) => { const c = l.utm_campaign; if (c) campCounts[c] = (campCounts[c] || 0) + 1; });
+    return Object.entries(campCounts).map(([campaign, count]) => ({ campaign, count })).sort((a, b) => b.count - a.count);
+  })();
+
+  // Lead counts per provider (from our tracker — only paid traffic)
+  const metaLeads = data.leads.filter((l) => {
+    const src = (l.utm_source || l.referrer_hostname || '').toLowerCase();
+    return isMetaSource(src) && isPaidMedium((l.utm_medium || '').toLowerCase());
+  });
+  const googleLeads = data.leads.filter((l) => {
+    const src = (l.utm_source || l.referrer_hostname || '').toLowerCase();
+    return isGoogleSource(src) && isPaidMedium((l.utm_medium || '').toLowerCase());
+  });
+
+  // Map leads to campaigns (match utm_campaign to campaign_name or campaign_id, scoped by provider, paid only)
+  const leadCountByCampaign = (() => {
+    const map: Record<string, number> = {};
+    data.leads.forEach((l) => {
+      const utm = l.utm_campaign;
+      if (!utm) return;
+      const medium = (l.utm_medium || '').toLowerCase();
+      if (!isPaidMedium(medium)) return;
+      const src = (l.utm_source || l.referrer_hostname || '').toLowerCase();
+      const leadIsMeta = isMetaSource(src);
+      const leadIsGoogle = isGoogleSource(src);
+      data.campaign_data.forEach((c) => {
+        // Only count leads whose source matches the campaign provider
+        if (c.provider === 'meta_ads' && !leadIsMeta) return;
+        if (c.provider === 'google_ads' && !leadIsGoogle) return;
+        const key = `${c.provider}-${c.campaign_id}`;
+        if (c.campaign_id === utm || c.campaign_name.toLowerCase().includes(utm.toLowerCase())) {
+          map[key] = (map[key] || 0) + 1;
+        }
+      });
+    });
+    return map;
+  })();
+
+  // Available main tabs
+  const mainTabs: { key: typeof mainTab; label: string; icon: React.ReactNode }[] = [
+    { key: 'all', label: 'Overzicht', icon: <Layers className="w-3.5 h-3.5" /> },
+    { key: 'website', label: 'Website', icon: <Globe className="w-3.5 h-3.5" /> },
+    ...(hasMetaCampaigns ? [{ key: 'meta' as const, label: 'Meta Ads', icon: <FacebookIcon className="w-3.5 h-3.5" /> }] : []),
+    ...(hasGoogleCampaigns ? [{ key: 'google' as const, label: 'Google Ads', icon: <GoogleIcon className="w-3.5 h-3.5" /> }] : []),
+  ];
+
   /* ---- Dashboard ---- */
   return (
     <div className="rpt text-slate-800 antialiased min-h-screen relative overflow-x-hidden bg-[#f8fafc]">
@@ -562,7 +690,27 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           </div>
         )}
 
+        {/* ═══════════════════ Main Tabs ═══════════════════ */}
+        {hasAnyCampaigns && (
+          <div className="flex space-x-6 border-b border-slate-200 mb-8 overflow-x-auto anim-slide-up d100" style={{ scrollbarWidth: 'none' }}>
+            {mainTabs.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setMainTab(t.key)}
+                className={`pb-3 px-1 text-sm font-bold whitespace-nowrap transition-colors flex items-center gap-2 ${
+                  mainTab === t.key
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-slate-500 hover:text-slate-800 border-b-2 border-transparent'
+                }`}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* ═══════════════════ KPI Cards ═══════════════════ */}
+        {showWebsite && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-8">
           <KPICard label="Bezoekers" value={formatNumber(met.visitors)} icon={<Users className="w-5 h-5" />} iconBg="bg-violet-50" iconColor="text-violet-600" gradientFrom="from-violet-100" delay="d100" />
           <KPICard label="Paginaweergaven" value={formatNumber(met.pageviews)} icon={<Eye className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" gradientFrom="from-blue-100" delay="d150" />
@@ -571,8 +719,38 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
           <KPICard label="Weergaven / sessie" value={met.views_per_session.toString()} icon={<Layers className="w-5 h-5" />} iconBg="bg-cyan-50" iconColor="text-cyan-600" gradientFrom="from-cyan-100" delay="d300" />
           <KPICard label="Gem. duur" value={formatDuration(met.avg_duration)} icon={<Clock className="w-5 h-5" />} iconBg="bg-rose-50" iconColor="text-rose-600" gradientFrom="from-rose-100" delay="d400" />
         </div>
+        )}
+
+        {/* ═══════════════════ Ads KPIs (Meta/Google tab or Overzicht) ═══════════════════ */}
+        {showAds && hasAnyCampaigns && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mb-8">
+            {(mainTab === 'all' || mainTab === 'meta') && metaSummary && (
+              <>
+                <KPICard label="Meta Impressies" value={formatNumber(metaSummary.impressions)} icon={<FacebookIcon className="w-5 h-5" />} iconBg="bg-blue-50" iconColor="text-blue-600" gradientFrom="from-blue-100" delay="d100" />
+                <KPICard label="Meta Kliks" value={formatNumber(metaSummary.clicks)} icon={<MousePointerClick className="w-5 h-5" />} iconBg="bg-indigo-50" iconColor="text-indigo-600" gradientFrom="from-indigo-100" delay="d150" />
+                <KPICard label="Meta Uitgaven" value={formatCurrency(metaSummary.cost)} icon={<BadgeEuro className="w-5 h-5" />} iconBg="bg-rose-50" iconColor="text-rose-600" gradientFrom="from-rose-100" delay="d200" />
+                <KPICard label="Meta Resultaten" value={formatNumber(metaSummary.results)} icon={<UserPlus className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" gradientFrom="from-emerald-100" delay="d250" />
+                {metaSummary.results > 0 && metaSummary.cost > 0 && (
+                  <KPICard label="Meta CPR" value={formatCurrency(metaSummary.cost / metaSummary.results)} icon={<Target className="w-5 h-5" />} iconBg="bg-teal-50" iconColor="text-teal-600" gradientFrom="from-teal-100" delay="d300" />
+                )}
+              </>
+            )}
+            {(mainTab === 'all' || mainTab === 'google') && googleSummary && (
+              <>
+                <KPICard label="Google Impressies" value={formatNumber(googleSummary.impressions)} icon={<GoogleIcon className="w-5 h-5" />} iconBg="bg-white" iconColor="text-blue-600" gradientFrom="from-blue-100" delay="d100" />
+                <KPICard label="Google Kliks" value={formatNumber(googleSummary.clicks)} icon={<MousePointerClick className="w-5 h-5" />} iconBg="bg-sky-50" iconColor="text-sky-600" gradientFrom="from-sky-100" delay="d150" />
+                <KPICard label="Google Uitgaven" value={formatCurrency(googleSummary.cost)} icon={<BadgeEuro className="w-5 h-5" />} iconBg="bg-amber-50" iconColor="text-amber-600" gradientFrom="from-amber-100" delay="d200" />
+                <KPICard label="Google Resultaten" value={formatNumber(googleSummary.results)} icon={<UserPlus className="w-5 h-5" />} iconBg="bg-teal-50" iconColor="text-teal-600" gradientFrom="from-teal-100" delay="d250" />
+                {googleSummary.results > 0 && googleSummary.cost > 0 && (
+                  <KPICard label="Google CPR" value={formatCurrency(googleSummary.cost / googleSummary.results)} icon={<Target className="w-5 h-5" />} iconBg="bg-emerald-50" iconColor="text-emerald-600" gradientFrom="from-emerald-100" delay="d300" />
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* ═══════════════════ Chart + Sources ═══════════════════ */}
+        {showWebsite && (<>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {data.timeseries.length > 0 && (
             <GlassCard className="lg:col-span-2 flex flex-col" anim="anim-slide-up d300">
@@ -811,16 +989,79 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
             </div>
           </GlassCard>
         )}
+        </>)}
 
-        {/* ═══════════════════ Leads ═══════════════════ */}
-        {data.leads.length > 0 && (
+        {/* ═══════════════════ Ads Campaign Detail ═══════════════════ */}
+        {showAds && tabCampaigns.length > 0 && (
+          <GlassCard className="mb-6" anim="anim-slide-up d300">
+            <SectionHeader
+              icon={mainTab === 'meta' ? <span className="w-4 h-4"><FacebookIcon /></span> : mainTab === 'google' ? <span className="w-4 h-4"><GoogleIcon /></span> : <Crosshair className="w-4 h-4" />}
+              title={mainTab === 'meta' ? 'Meta Ads Campagnes' : mainTab === 'google' ? 'Google Ads Campagnes' : 'Alle Campagnes'}
+              iconBg={mainTab === 'meta' ? 'bg-blue-50' : mainTab === 'google' ? 'bg-amber-50' : 'bg-slate-50'}
+              iconColor={mainTab === 'meta' ? 'text-blue-600' : mainTab === 'google' ? 'text-amber-600' : 'text-slate-600'}
+            />
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    <th className="pb-2">Campagne</th>
+                    <th className="pb-2">Status</th>
+                    <th className="pb-2 text-right">Impressies</th>
+                    <th className="pb-2 text-right">Kliks</th>
+                    <th className="pb-2 text-right">CTR</th>
+                    <th className="pb-2 text-right">Kosten</th>
+                    <th className="pb-2 text-right">CPC</th>
+                    <th className="pb-2 text-right">Resultaten</th>
+                    <th className="pb-2 text-right">CPR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tabCampaigns.map((c, i) => {
+                    const ctr = c.impressions > 0 ? ((c.clicks / c.impressions) * 100).toFixed(1) : '0.0';
+                    const cpc = c.clicks > 0 ? (c.cost / c.clicks) : 0;
+                    const campResults = c.results || 0;
+                    const cpr = campResults > 0 ? (c.cost / campResults) : 0;
+                    const statusColor = c.campaign_status === 'ENABLED' || c.campaign_status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : c.campaign_status === 'PAUSED' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500';
+                    return (
+                      <tr key={`${c.provider}-${c.campaign_id}-${i}`} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td className="py-2.5 pr-4">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 flex-shrink-0">
+                              {c.provider === 'meta_ads' ? <FacebookIcon /> : <GoogleIcon />}
+                            </span>
+                            <span className="text-[13px] font-medium text-slate-700 truncate max-w-[200px]">{c.campaign_name}</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-4">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
+                            {c.campaign_status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-right text-[13px] text-slate-600">{formatNumber(c.impressions)}</td>
+                        <td className="py-2.5 text-right text-[13px] text-slate-600">{formatNumber(c.clicks)}</td>
+                        <td className="py-2.5 text-right text-[13px] text-slate-600">{ctr}%</td>
+                        <td className="py-2.5 text-right text-[13px] font-medium text-slate-700">{formatCurrency(c.cost, c.currency)}</td>
+                        <td className="py-2.5 text-right text-[13px] text-slate-600">{formatCurrency(cpc, c.currency)}</td>
+                        <td className="py-2.5 text-right text-[13px] font-bold text-emerald-600">{formatNumber(campResults)}</td>
+                        <td className="py-2.5 text-right text-[13px] font-bold text-slate-800">{campResults > 0 ? formatCurrency(cpr, c.currency) : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* ═══════════════════ Leads (only on Overzicht & Website tabs) ═══════════════════ */}
+        {showWebsite && filteredLeads.length > 0 && (
           <>
-            {(data.lead_sources.length > 0 || data.lead_mediums.length > 0 || data.lead_campaigns.length > 0) && (
+            {(filteredLeadSources.length > 0 || filteredLeadMediums.length > 0 || filteredLeadCampaigns.length > 0) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-                {data.lead_sources.length > 0 && (
+                {filteredLeadSources.length > 0 && (
                   <GlassCard anim="anim-slide-up d400">
                     <SectionHeader icon={<UserPlus className="w-4 h-4" />} title="Leadbronnen" iconBg="bg-orange-50" iconColor="text-orange-600" />
-                    <div className="space-y-1.5">{data.lead_sources.slice(0, 8).map((s) => {
+                    <div className="space-y-1.5">{filteredLeadSources.slice(0, 8).map((s) => {
                       const si = sourceIcon(s.source);
                       return (
                         <div key={s.source} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
@@ -834,10 +1075,10 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                     })}</div>
                   </GlassCard>
                 )}
-                {data.lead_mediums.length > 0 && (
+                {filteredLeadMediums.length > 0 && (
                   <GlassCard anim="anim-slide-up d500">
                     <SectionHeader icon={<Send className="w-4 h-4" />} title="Lead-media" iconBg="bg-pink-50" iconColor="text-pink-600" />
-                    <div className="space-y-1.5">{data.lead_mediums.slice(0, 8).map((md) => {
+                    <div className="space-y-1.5">{filteredLeadMediums.slice(0, 8).map((md) => {
                       const mi = utmIcon(md.medium);
                       return (
                         <div key={md.medium} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
@@ -851,10 +1092,10 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                     })}</div>
                   </GlassCard>
                 )}
-                {data.lead_campaigns.length > 0 && (
+                {filteredLeadCampaigns.length > 0 && (
                   <GlassCard anim="anim-slide-up d600">
                     <SectionHeader icon={<Megaphone className="w-4 h-4" />} title="Leadcampagnes" iconBg="bg-sky-50" iconColor="text-sky-600" />
-                    <div className="space-y-1.5">{data.lead_campaigns.slice(0, 8).map((c) => {
+                    <div className="space-y-1.5">{filteredLeadCampaigns.slice(0, 8).map((c) => {
                       const ci = utmIcon(c.campaign);
                       return (
                         <div key={c.campaign} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors">
@@ -873,7 +1114,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
 
             {/* Leads table */}
             <GlassCard className="mb-6" anim="anim-slide-up d500">
-              <SectionHeader icon={<Users className="w-4 h-4" />} title={`Alle leads (${data.leads.length})`} iconBg="bg-orange-50" iconColor="text-orange-600" />
+              <SectionHeader icon={<Users className="w-4 h-4" />} title={`Leads (${filteredLeads.length})`} iconBg="bg-orange-50" iconColor="text-orange-600" />
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -883,7 +1124,7 @@ export default function PublicReportPage({ params }: { params: Promise<{ token: 
                     </tr>
                   </thead>
                   <tbody className="text-xs">
-                    {data.leads.map((lead) => {
+                    {filteredLeads.map((lead) => {
                       const srcLbl = lead.utm_source ? [lead.utm_source, lead.utm_medium].filter(Boolean).join(' / ') : lead.referrer_hostname || 'Direct';
                       const sk = (lead.utm_source || lead.referrer_hostname || '').toLowerCase();
                       const srcBdg = sk.includes('google') ? 'bg-blue-50 text-blue-700 border-blue-100'

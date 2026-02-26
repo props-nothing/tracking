@@ -424,6 +424,7 @@ export interface CampaignIntegration {
   credential_set_id: string | null;
   credential_set?: CampaignCredentialSet | null;
   campaign_filter: string | null;
+  meta_result_actions: string | null;
   sync_frequency: 'hourly' | 'daily' | 'weekly' | 'manual';
   last_synced_at: string | null;
   last_sync_status: 'success' | 'error' | 'syncing' | null;

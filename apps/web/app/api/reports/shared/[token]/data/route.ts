@@ -371,6 +371,91 @@ export async function GET(
     });
   }
 
+  // --- Campaign Data (Google Ads, Meta Ads) ---
+  {
+    // Fetch campaign_filter per provider from integration settings
+    const { data: integrations } = await supabase
+      .from('campaign_integrations')
+      .select('provider, campaign_filter')
+      .eq('site_id', report.site_id);
+
+    const filterMap = new Map<string, string | null>();
+    for (const i of integrations || []) {
+      if (i.campaign_filter) filterMap.set(i.provider, i.campaign_filter);
+    }
+
+    const { data: campaignRows } = await supabase
+      .from('campaign_data')
+      .select('provider, campaign_id, campaign_name, campaign_status, date, impressions, clicks, cost, conversions, conversion_value, currency, extra_metrics')
+      .eq('site_id', report.site_id)
+      .gte('date', fromDate.toISOString().slice(0, 10))
+      .lte('date', toDate.toISOString().slice(0, 10))
+      .order('date', { ascending: false });
+
+    if (campaignRows && campaignRows.length > 0) {
+      // Apply campaign_filter per provider (case-insensitive name contains)
+      const filteredRows = campaignRows.filter((row) => {
+        const filter = filterMap.get(row.provider);
+        if (!filter || filter.trim().length === 0) return true;
+        return (row.campaign_name || '').toLowerCase().includes(filter.trim().toLowerCase());
+      });
+
+      // Aggregate per campaign
+      const campMap: Record<string, {
+        provider: string;
+        campaign_id: string;
+        campaign_name: string;
+        campaign_status: string;
+        impressions: number;
+        clicks: number;
+        cost: number;
+        conversions: number;
+        conversion_value: number;
+        results: number;
+        currency: string;
+      }> = {};
+
+      for (const r of filteredRows) {
+        const key = `${r.provider}::${r.campaign_id}`;
+        if (!campMap[key]) {
+          campMap[key] = {
+            provider: r.provider,
+            campaign_id: r.campaign_id,
+            campaign_name: r.campaign_name,
+            campaign_status: r.campaign_status || 'unknown',
+            impressions: 0, clicks: 0, cost: 0, conversions: 0, conversion_value: 0, results: 0,
+            currency: r.currency || 'EUR',
+          };
+        }
+        campMap[key].impressions += Number(r.impressions) || 0;
+        campMap[key].clicks += Number(r.clicks) || 0;
+        campMap[key].cost += Number(r.cost) || 0;
+        campMap[key].conversions += Number(r.conversions) || 0;
+        campMap[key].conversion_value += Number(r.conversion_value) || 0;
+        // Use extra_metrics.results (configurable action types) when available, fallback to conversions
+        const em = r.extra_metrics as Record<string, unknown> | null;
+        campMap[key].results += Number(em?.results) || Number(r.conversions) || 0;
+        // Keep latest status
+        if (r.campaign_status) campMap[key].campaign_status = r.campaign_status;
+      }
+
+      result.campaign_data = Object.values(campMap).sort((a, b) => b.cost - a.cost);
+
+      // Provider-level summaries
+      const providerSummary: Record<string, { impressions: number; clicks: number; cost: number; conversions: number; conversion_value: number; results: number }> = {};
+      for (const c of Object.values(campMap)) {
+        if (!providerSummary[c.provider]) providerSummary[c.provider] = { impressions: 0, clicks: 0, cost: 0, conversions: 0, conversion_value: 0, results: 0 };
+        providerSummary[c.provider].impressions += c.impressions;
+        providerSummary[c.provider].clicks += c.clicks;
+        providerSummary[c.provider].cost += c.cost;
+        providerSummary[c.provider].conversions += c.conversions;
+        providerSummary[c.provider].conversion_value += c.conversion_value;
+        providerSummary[c.provider].results += c.results;
+      }
+      result.campaign_summary = providerSummary;
+    }
+  }
+
   // --- AI Insights (if enabled for this shared report) ---
   if (report.show_ai_insights) {
     const { data: aiReport } = await supabase

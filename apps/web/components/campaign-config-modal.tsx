@@ -115,6 +115,7 @@ export function CampaignConfigModal({ siteId, open, onClose, oauthCredentialSetI
     meta_ads: '',
     mailchimp: '',
   });
+  const [editMetaResultActions, setEditMetaResultActions] = useState('');
 
   const fetchAll = useCallback(() => {
     if (!open || !siteId) return;
@@ -132,6 +133,7 @@ export function CampaignConfigModal({ siteId, open, onClose, oauthCredentialSetI
         const enabled: Record<string, boolean> = { google_ads: false, meta_ads: false, mailchimp: false };
         const freq: Record<string, string> = { google_ads: 'daily', meta_ads: 'daily', mailchimp: 'daily' };
         const filters: Record<string, string> = { google_ads: '', meta_ads: '', mailchimp: '' };
+        let metaResultActionsInit = '';
         const modes: Record<string, 'select' | 'new' | 'manual'> = { google_ads: 'select', meta_ads: 'select', mailchimp: 'select' };
         const selIds: Record<string, string> = { google_ads: '', meta_ads: '', mailchimp: '' };
 
@@ -139,6 +141,9 @@ export function CampaignConfigModal({ siteId, open, onClose, oauthCredentialSetI
           enabled[integration.provider] = integration.enabled;
           freq[integration.provider] = integration.sync_frequency;
           filters[integration.provider] = integration.campaign_filter || '';
+          if (integration.provider === 'meta_ads') {
+            metaResultActionsInit = integration.meta_result_actions || '';
+          }
           if (integration.credential_set_id) {
             modes[integration.provider] = 'select';
             selIds[integration.provider] = integration.credential_set_id;
@@ -173,6 +178,7 @@ export function CampaignConfigModal({ siteId, open, onClose, oauthCredentialSetI
         setEditEnabled(enabled as typeof editEnabled);
         setEditSyncFreq(freq as typeof editSyncFreq);
         setEditCampaignFilter(filters as typeof editCampaignFilter);
+        setEditMetaResultActions(metaResultActionsInit);
         setEditCredentials(creds as typeof editCredentials);
         setCredMode(modes as typeof credMode);
         setSelectedSetId(selIds as typeof selectedSetId);
@@ -237,6 +243,7 @@ export function CampaignConfigModal({ siteId, open, onClose, oauthCredentialSetI
         sync_frequency: editSyncFreq[provider],
         credential_set_id: credentialSetId,
         campaign_filter: editCampaignFilter[provider]?.trim() || null,
+        meta_result_actions: provider === 'meta_ads' ? (editMetaResultActions.trim() || null) : undefined,
       };
 
       // For manual mode or new set, include the credentials directly too
@@ -406,6 +413,24 @@ export function CampaignConfigModal({ siteId, open, onClose, oauthCredentialSetI
                   Optioneel: alleen campagnes tonen en synchroniseren waarvan de naam dit trefwoord bevat (hoofdletterongevoelig). Leeg = alle campagnes.
                 </p>
               </div>
+
+              {/* Meta result action types (only for Meta Ads) */}
+              {activeTab === 'meta_ads' && (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Conversie-actietypes</label>
+                  <input
+                    type="text"
+                    value={editMetaResultActions}
+                    onChange={(e) => setEditMetaResultActions(e.target.value)}
+                    placeholder="bijv. lead, offsite_conversion.fb_pixel_lead"
+                    className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Kommagescheiden lijst van Meta action_types die tellen als conversies/resultaten. Leeg = automatische detectie op basis van campagnedoel.
+                    Voorbeelden: <code className="text-xs bg-muted px-1 rounded">lead</code>, <code className="text-xs bg-muted px-1 rounded">offsite_conversion.fb_pixel_lead</code>, <code className="text-xs bg-muted px-1 rounded">onsite_conversion.lead_grouped</code>, <code className="text-xs bg-muted px-1 rounded">purchase</code>
+                  </p>
+                </div>
+              )}
 
               {/* Credential source selector */}
               <div className="space-y-3">
