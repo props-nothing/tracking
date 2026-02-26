@@ -41,13 +41,16 @@ export default function CampaignsPage({ params }: { params: Promise<{ siteId: st
   const [configOpen, setConfigOpen] = useState(false);
   const [providerFilter, setProviderFilter] = useState<CampaignProvider | 'all'>('all');
   const [oauthMessage, setOauthMessage] = useState('');
+  const [oauthCredentialSetId, setOauthCredentialSetId] = useState('');
 
   // Handle OAuth callback redirect params
   useEffect(() => {
     const connected = searchParams.get('google_ads_connected');
     const error = searchParams.get('error');
     if (connected === 'true') {
-      setOauthMessage('Google Ads account succesvol gekoppeld! Open de instellingen om je Klant-ID in te vullen en de synchronisatie te starten.');
+      const credSetId = searchParams.get('credential_set_id') || '';
+      setOauthCredentialSetId(credSetId);
+      setOauthMessage('Google Ads account succesvol gekoppeld! Selecteer hieronder een klantaccount en klik op Opslaan.');
       setConfigOpen(true);
       // Clean up URL params
       router.replace(`/dashboard/${siteId}/campaigns`);
@@ -377,7 +380,8 @@ export default function CampaignsPage({ params }: { params: Promise<{ siteId: st
       <CampaignConfigModal
         siteId={siteId}
         open={configOpen}
-        onClose={() => { setConfigOpen(false); fetchData(); }}
+        onClose={() => { setConfigOpen(false); setOauthCredentialSetId(''); fetchData(); }}
+        oauthCredentialSetId={oauthCredentialSetId}
       />
     </div>
   );

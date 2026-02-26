@@ -8,6 +8,8 @@ interface CampaignConfigModalProps {
   siteId: string;
   open: boolean;
   onClose: () => void;
+  /** Pre-select this credential set (e.g. after OAuth redirect) */
+  oauthCredentialSetId?: string;
 }
 
 const PROVIDERS: { key: CampaignProvider; label: string; icon: string; description: string; setupUrl: string; setupHelp: string }[] = [
@@ -62,7 +64,7 @@ const SYNC_OPTIONS = [
   { value: 'manual', label: 'Alleen handmatig' },
 ];
 
-export function CampaignConfigModal({ siteId, open, onClose }: CampaignConfigModalProps) {
+export function CampaignConfigModal({ siteId, open, onClose, oauthCredentialSetId }: CampaignConfigModalProps) {
   const [integrations, setIntegrations] = useState<CampaignIntegration[]>([]);
   const [credentialSets, setCredentialSets] = useState<CampaignCredentialSet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,6 +145,28 @@ export function CampaignConfigModal({ siteId, open, onClose }: CampaignConfigMod
           } else {
             // Has direct credentials stored
             modes[integration.provider] = 'manual';
+          }
+        }
+
+        // Auto-select credential set from OAuth redirect or auto-detect single set per provider
+        if (oauthCredentialSetId) {
+          const oauthSet = (setData.credential_sets || []).find((s) => s.id === oauthCredentialSetId);
+          if (oauthSet) {
+            selIds[oauthSet.provider] = oauthSet.id;
+            modes[oauthSet.provider] = 'select';
+            // Switch to the provider tab for the OAuth credential set
+            setActiveTab(oauthSet.provider);
+          }
+        }
+
+        // For providers with no integration yet, auto-select if there's exactly one credential set
+        for (const provider of ['google_ads', 'meta_ads', 'mailchimp'] as const) {
+          if (!selIds[provider]) {
+            const providerSets = (setData.credential_sets || []).filter((s) => s.provider === provider);
+            if (providerSets.length === 1) {
+              selIds[provider] = providerSets[0].id;
+              modes[provider] = 'select';
+            }
           }
         }
 
