@@ -79,9 +79,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${appUrl}/dashboard?error=google_ads_auth_token_exchange`);
   }
 
-  // Try to fetch the user's Google Ads customer accounts using the access token
-  // This lets us show helpful info but is not required for the flow to work
+  // Fetch user email and accessible Google Ads customer accounts
   let googleEmail = '';
+  interface CustomerAccount {
+    id: string;
+    name: string;
+    isManager: boolean;
+    loginCustomerId?: string; // the MCC account through which this client is accessed
+  }
+  let customerAccounts: CustomerAccount[] = [];
+  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
+
+  // 1. Get user email for naming the credential set
   try {
     const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
@@ -91,6 +100,105 @@ export async function GET(request: NextRequest) {
       googleEmail = userInfo.email || '';
     }
   } catch { /* optional — don't fail the flow */ }
+
+  // 2. Auto-detect accessible Google Ads customer accounts
+  if (developerToken) {
+    try {
+      const custRes = await fetch(
+        'https://googleads.googleapis.com/v23/customers:listAccessibleCustomers',
+        {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            'developer-token': developerToken,
+          },
+        },
+      );
+      if (custRes.ok) {
+        const custData = await custRes.json();
+        const accessibleIds: string[] = (custData.resourceNames || [])
+          .map((rn: string) => rn.replace('customers/', ''))
+          .filter((id: string) => /^\d+$/.test(id));
+
+        // 3. For each accessible account, check if it's a manager and collect client accounts
+        for (const accId of accessibleIds) {
+          try {
+            // Query the customer resource to check if it's a manager
+            const infoRes = await fetch(
+              `https://googleads.googleapis.com/v23/customers/${accId}/googleAds:search`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${tokenData.access_token}`,
+                  'developer-token': developerToken,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  query: 'SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1',
+                }),
+              },
+            );
+            if (!infoRes.ok) continue;
+            const infoData = await infoRes.json();
+            const cust = infoData.results?.[0]?.customer;
+            if (!cust) continue;
+
+            const isManager = cust.manager === true;
+
+            if (isManager) {
+              // This is an MCC — list its client (non-manager) accounts
+              try {
+                const clientsRes = await fetch(
+                  `https://googleads.googleapis.com/v23/customers/${accId}/googleAds:search`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${tokenData.access_token}`,
+                      'developer-token': developerToken,
+                      'login-customer-id': accId,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      query: `SELECT customer_client.id, customer_client.descriptive_name, customer_client.manager, customer_client.status
+                              FROM customer_client
+                              WHERE customer_client.status = 'ENABLED'`,
+                    }),
+                  },
+                );
+                if (clientsRes.ok) {
+                  const clientsData = await clientsRes.json();
+                  for (const row of clientsData.results || []) {
+                    const cc = row.customerClient;
+                    if (!cc) continue;
+                    // Skip manager sub-accounts, we only want actual client accounts
+                    if (cc.manager === true) continue;
+                    const clientId = String(cc.id);
+                    // Avoid duplicates
+                    if (!customerAccounts.some((a) => a.id === clientId)) {
+                      customerAccounts.push({
+                        id: clientId,
+                        name: cc.descriptiveName || clientId,
+                        isManager: false,
+                        loginCustomerId: accId,
+                      });
+                    }
+                  }
+                }
+              } catch { /* continue */ }
+            } else {
+              // Regular client account — add directly
+              if (!customerAccounts.some((a) => a.id === accId)) {
+                customerAccounts.push({
+                  id: accId,
+                  name: cust.descriptiveName || accId,
+                  isManager: false,
+                });
+              }
+            }
+          } catch { /* continue to next account */ }
+        }
+      }
+    } catch { /* optional — don't fail the flow */ }
+  }
 
   // Store as a credential set for this user
   const db = await createServiceClient();
@@ -113,10 +221,24 @@ export async function GET(request: NextRequest) {
 
   let credentialSetId: string;
 
-  const credentials = {
+  const credentials: Record<string, string | string[] | CustomerAccount[]> = {
     refresh_token: tokenData.refresh_token,
     // client_id and client_secret are server-side — not stored per user
   };
+
+  // If exactly one client account found, auto-set customer_id and login_customer_id
+  const clientAccounts = customerAccounts.filter((a) => !a.isManager);
+  if (clientAccounts.length === 1) {
+    credentials.customer_id = clientAccounts[0].id;
+    if (clientAccounts[0].loginCustomerId) {
+      credentials.login_customer_id = clientAccounts[0].loginCustomerId;
+    }
+  }
+  // Store all discovered accounts so the frontend can show a dropdown for selection
+  if (clientAccounts.length > 0) {
+    credentials.accessible_customer_ids = clientAccounts.map((a) => a.id);
+    credentials.accessible_accounts = clientAccounts;
+  }
 
   if (existingSet) {
     // Update existing set with new refresh token

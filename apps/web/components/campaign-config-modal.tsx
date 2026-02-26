@@ -163,6 +163,22 @@ export function CampaignConfigModal({ siteId, open, onClose }: CampaignConfigMod
     setSaving(true);
     setMessage('');
     try {
+      // Validate Google Ads customer_id format before saving
+      if (provider === 'google_ads') {
+        const custId = editCredentials[provider]?.customer_id;
+        if (custId && !/^[\d-]+$/.test(custId)) {
+          setMessage('Ongeldig Klant-ID. Het moet numeriek zijn (bijv. 123-456-7890).');
+          setSaving(false);
+          return;
+        }
+        const loginCustId = editCredentials[provider]?.login_customer_id;
+        if (loginCustId && !/^[\d-]+$/.test(loginCustId)) {
+          setMessage('Ongeldig MCC Klant-ID. Het moet numeriek zijn (bijv. 123-456-7890).');
+          setSaving(false);
+          return;
+        }
+      }
+
       const mode = credMode[provider];
 
       let credentialSetId: string | null = null;
@@ -456,23 +472,90 @@ export function CampaignConfigModal({ siteId, open, onClose }: CampaignConfigMod
                     {CREDENTIAL_FIELDS[activeTab].length > 0 && (
                       <div className="space-y-3 border-t pt-3 mt-2">
                         <p className="text-xs text-muted-foreground">Vul de onderstaande velden aan voor deze site:</p>
-                        {CREDENTIAL_FIELDS[activeTab].map((field) => (
-                          <div key={field.key}>
-                            <label className="mb-1 block text-xs text-muted-foreground">{field.label}</label>
-                            <input
-                              type={field.type || 'text'}
-                              value={editCredentials[activeTab][field.key] || ''}
-                              onChange={(e) =>
-                                setEditCredentials((prev) => ({
-                                  ...prev,
-                                  [activeTab]: { ...prev[activeTab], [field.key]: e.target.value },
-                                }))
-                              }
-                              placeholder={field.placeholder}
-                              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-                            />
-                          </div>
-                        ))}
+                        {CREDENTIAL_FIELDS[activeTab].map((field) => {
+                          // For Google Ads customer_id, show a dropdown if accessible accounts are available
+                          const selectedSet = credentialSets.find((s) => s.id === selectedSetId[activeTab]);
+                          const accessibleAccounts = selectedSet?.credentials?.accessible_accounts as Array<{ id: string; name: string; loginCustomerId?: string }> | undefined;
+                          const accessibleIds = selectedSet?.credentials?.accessible_customer_ids as string[] | undefined;
+                          const hasAccountDropdown = activeTab === 'google_ads' && field.key === 'customer_id' && Array.isArray(accessibleAccounts) && accessibleAccounts.length > 0;
+                          const hasIdDropdown = activeTab === 'google_ads' && field.key === 'customer_id' && !hasAccountDropdown && Array.isArray(accessibleIds) && accessibleIds.length > 0;
+                          // Hide login_customer_id field when using account dropdown (auto-filled from selected account)
+                          const hideField = activeTab === 'google_ads' && field.key === 'login_customer_id' && hasAccountDropdown;
+
+                          if (hideField) return null;
+
+                          return (
+                            <div key={field.key}>
+                              <label className="mb-1 block text-xs text-muted-foreground">{field.label}</label>
+                              {hasAccountDropdown ? (
+                                <select
+                                  value={editCredentials[activeTab][field.key] || ''}
+                                  onChange={(e) => {
+                                    const selectedId = e.target.value;
+                                    const account = accessibleAccounts!.find((a) => a.id === selectedId);
+                                    setEditCredentials((prev) => ({
+                                      ...prev,
+                                      [activeTab]: {
+                                        ...prev[activeTab],
+                                        [field.key]: selectedId,
+                                        // Auto-set login_customer_id when selecting a client under an MCC
+                                        login_customer_id: account?.loginCustomerId || '',
+                                      },
+                                    }));
+                                  }}
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                  <option value="">— Selecteer een klantaccount —</option>
+                                  {accessibleAccounts!.map((acc) => (
+                                    <option key={acc.id} value={acc.id}>
+                                      {acc.name} ({acc.id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')})
+                                      {acc.loginCustomerId ? ' — via MCC' : ''}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : hasIdDropdown ? (
+                                <select
+                                  value={editCredentials[activeTab][field.key] || ''}
+                                  onChange={(e) =>
+                                    setEditCredentials((prev) => ({
+                                      ...prev,
+                                      [activeTab]: { ...prev[activeTab], [field.key]: e.target.value },
+                                    }))
+                                  }
+                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                >
+                                  <option value="">— Selecteer een Klant-ID —</option>
+                                  {accessibleIds!.map((id: string) => (
+                                    <option key={id} value={id}>
+                                      {id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type={field.type || 'text'}
+                                  value={editCredentials[activeTab][field.key] || ''}
+                                  onChange={(e) => {
+                                    let val = e.target.value;
+                                    // Validate Google Ads customer_id format on input
+                                    if (activeTab === 'google_ads' && (field.key === 'customer_id' || field.key === 'login_customer_id')) {
+                                      val = val.replace(/[^0-9-]/g, '');
+                                    }
+                                    setEditCredentials((prev) => ({
+                                      ...prev,
+                                      [activeTab]: { ...prev[activeTab], [field.key]: val },
+                                    }));
+                                  }}
+                                  placeholder={field.placeholder}
+                                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                                />
+                              )}
+                              {activeTab === 'google_ads' && field.key === 'customer_id' && editCredentials[activeTab][field.key] && !/^[\d-]+$/.test(editCredentials[activeTab][field.key]) && (
+                                <p className="mt-1 text-xs text-red-500">Klant-ID moet numeriek zijn (bijv. 123-456-7890)</p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

@@ -410,7 +410,7 @@ export interface CampaignCredentialSet {
   user_id: string;
   provider: CampaignProvider;
   name: string;
-  credentials: Record<string, string>;
+  credentials: Record<string, string | string[] | Array<{ id: string; name: string; loginCustomerId?: string }>>;
   created_at: string;
   updated_at: string;
 }

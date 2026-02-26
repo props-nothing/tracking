@@ -3,10 +3,13 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 
 const VALID_PROVIDERS = ['google_ads', 'meta_ads', 'mailchimp'];
 
-function maskCredentials(creds: Record<string, string>): Record<string, string> {
-  const masked: Record<string, string> = {};
+function maskCredentials(creds: Record<string, unknown>): Record<string, unknown> {
+  const masked: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(creds || {})) {
-    if (typeof value === 'string' && value.length > 4) {
+    // Pass through non-sensitive metadata arrays (e.g. accessible_customer_ids, accessible_accounts)
+    if (Array.isArray(value)) {
+      masked[key] = value;
+    } else if (typeof value === 'string' && value.length > 4) {
       masked[key] = value.slice(0, 4) + '•'.repeat(Math.min(value.length - 4, 20));
     } else {
       masked[key] = value ? '••••' : '';

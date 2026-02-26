@@ -56,6 +56,12 @@ export async function syncGoogleAds(
     throw new Error('Ontbrekende Google Ads credentials. Vereist: refresh_token en customer_id. Gebruik de "Koppel Google Ads" knop om je account te verbinden.');
   }
 
+  // Validate customer_id format — must be numeric (optionally with dashes like 123-456-7890)
+  const strippedCustomerId = customer_id.replace(/-/g, '');
+  if (!/^\d{3,10}\d*$/.test(strippedCustomerId)) {
+    throw new Error(`Ongeldig Google Ads Klant-ID: "${customer_id}". Het Klant-ID moet numeriek zijn (bijv. 123-456-7890). Je vindt dit rechtsboven in Google Ads.`);
+  }
+
   const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
   if (!developerToken) {
     throw new Error('GOOGLE_ADS_DEVELOPER_TOKEN ontbreekt in de server environment variabelen. Voeg deze toe aan je .env.local bestand.');
@@ -92,6 +98,47 @@ export async function syncGoogleAds(
 
   // 2. Query campaign performance via Google Ads API
   const customerId = customer_id.replace(/-/g, '');
+
+  // Check if login_customer_id is needed — if not set, try to detect if customer_id is an MCC account
+  let effectiveLoginCustomerId = login_customer_id?.replace(/-/g, '') || '';
+
+  // First, verify the account is not a manager account (can't query metrics on managers)
+  try {
+    const checkHeaders: Record<string, string> = {
+      Authorization: `Bearer ${access_token}`,
+      'developer-token': developerToken,
+      'Content-Type': 'application/json',
+    };
+    if (effectiveLoginCustomerId) {
+      checkHeaders['login-customer-id'] = effectiveLoginCustomerId;
+    }
+    const checkRes = await fetch(
+      `https://googleads.googleapis.com/v23/customers/${customerId}/googleAds:search`,
+      {
+        method: 'POST',
+        headers: checkHeaders,
+        body: JSON.stringify({
+          query: 'SELECT customer.id, customer.descriptive_name, customer.manager FROM customer LIMIT 1',
+        }),
+      },
+    );
+    if (checkRes.ok) {
+      const checkData = await checkRes.json();
+      const isManager = checkData.results?.[0]?.customer?.manager === true;
+      if (isManager) {
+        throw new Error(
+          `Het Klant-ID ${customer_id} is een MCC (manager) account. Je kunt geen campagnedata ophalen voor een manager account. ` +
+          `Vul het Klant-ID van een specifiek klantaccount in (te vinden in Google Ads onder het MCC-account). ` +
+          `Het MCC Klant-ID (${customer_id}) hoort in het veld "MCC Klant-ID".`,
+        );
+      }
+    }
+  } catch (e) {
+    // Re-throw if it's our own manager-account error
+    if (e instanceof Error && e.message.includes('MCC (manager)')) throw e;
+    // Otherwise ignore — the actual query below will catch real API errors
+  }
+
   const query = `
     SELECT
       campaign.id,
