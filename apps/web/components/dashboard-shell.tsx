@@ -90,6 +90,18 @@ function DashboardShellInner({ userEmail, children }: DashboardShellProps) {
             <Link href="/dashboard" className="shrink-0 text-lg font-bold">
               Tracking
             </Link>
+            {!isOnSite && (
+              <Link
+                href="/dashboard/portals"
+                className={`text-sm transition-colors ${
+                  pathname === '/dashboard/portals'
+                    ? 'text-primary font-medium'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Client Portals
+              </Link>
+            )}
             {isOnSite && sites.length > 1 && (
               <div className="hidden sm:block">
                 <SiteSwitcher

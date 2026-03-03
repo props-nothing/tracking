@@ -16,6 +16,6 @@ export const config = {
      * - _next/image (image optimization)
      * - favicon.ico, t.js
      */
-    '/((?!api/collect|report|embed|_next/static|_next/image|favicon.ico|t.js).*)',
+    '/((?!api/collect|report|portal|embed|_next/static|_next/image|favicon.ico|t.js).*)',
   ],
 };

@@ -841,11 +841,13 @@ export async function GET(
           conversion_value: number;
           results: number;
           currency: string;
+          extra_metrics?: Record<string, unknown>;
         }
       > = {};
 
       for (const r of filteredRows) {
         const key = `${r.provider}::${r.campaign_id}`;
+        const em = r.extra_metrics as Record<string, unknown> | null;
         if (!campMap[key]) {
           campMap[key] = {
             provider: r.provider,
@@ -859,6 +861,19 @@ export async function GET(
             conversion_value: 0,
             results: 0,
             currency: r.currency || "EUR",
+            // For Mailchimp, aggregate extra_metrics across date rows
+            ...(r.provider === "mailchimp"
+              ? {
+                  extra_metrics: {
+                    sends: 0,
+                    unique_opens: 0,
+                    open_rate: 0,
+                    unique_clicks: 0,
+                    click_rate: 0,
+                    unsubscribes: 0,
+                  },
+                }
+              : {}),
           };
         }
         campMap[key].impressions += Number(r.impressions) || 0;
@@ -867,11 +882,30 @@ export async function GET(
         campMap[key].conversions += Number(r.conversions) || 0;
         campMap[key].conversion_value += Number(r.conversion_value) || 0;
         // Use extra_metrics.results (configurable action types) when available, fallback to conversions
-        const em = r.extra_metrics as Record<string, unknown> | null;
         campMap[key].results +=
           Number(em?.results) || Number(r.conversions) || 0;
+        // Aggregate Mailchimp extra_metrics
+        if (r.provider === "mailchimp" && em && campMap[key].extra_metrics) {
+          const agg = campMap[key].extra_metrics as Record<string, number>;
+          agg.sends += Number(em.sends) || 0;
+          agg.unique_opens += Number(em.unique_opens) || 0;
+          agg.unique_clicks += Number(em.unique_clicks) || 0;
+          agg.unsubscribes += Number(em.unsubscribes) || 0;
+          // open_rate and click_rate will be recalculated after aggregation
+        }
         // Keep latest status
         if (r.campaign_status) campMap[key].campaign_status = r.campaign_status;
+      }
+
+      // Recalculate Mailchimp rates after aggregation
+      for (const c of Object.values(campMap)) {
+        if (c.provider === "mailchimp" && c.extra_metrics) {
+          const agg = c.extra_metrics as Record<string, number>;
+          agg.open_rate =
+            agg.sends > 0 ? agg.unique_opens / agg.sends : 0;
+          agg.click_rate =
+            agg.sends > 0 ? agg.unique_clicks / agg.sends : 0;
+        }
       }
 
       result.campaign_data = Object.values(campMap).sort(
@@ -888,6 +922,12 @@ export async function GET(
           conversions: number;
           conversion_value: number;
           results: number;
+          sends?: number;
+          unique_opens?: number;
+          open_rate?: number;
+          unique_clicks?: number;
+          click_rate?: number;
+          unsubscribes?: number;
         }
       > = {};
       for (const c of Object.values(campMap)) {
@@ -899,6 +939,16 @@ export async function GET(
             conversions: 0,
             conversion_value: 0,
             results: 0,
+            ...(c.provider === "mailchimp"
+              ? {
+                  sends: 0,
+                  unique_opens: 0,
+                  open_rate: 0,
+                  unique_clicks: 0,
+                  click_rate: 0,
+                  unsubscribes: 0,
+                }
+              : {}),
           };
         providerSummary[c.provider].impressions += c.impressions;
         providerSummary[c.provider].clicks += c.clicks;
@@ -906,6 +956,33 @@ export async function GET(
         providerSummary[c.provider].conversions += c.conversions;
         providerSummary[c.provider].conversion_value += c.conversion_value;
         providerSummary[c.provider].results += c.results;
+        // Aggregate Mailchimp email metrics at provider level
+        if (c.provider === "mailchimp" && c.extra_metrics) {
+          const em = c.extra_metrics as Record<string, number>;
+          providerSummary[c.provider].sends =
+            (providerSummary[c.provider].sends || 0) + (em.sends || 0);
+          providerSummary[c.provider].unique_opens =
+            (providerSummary[c.provider].unique_opens || 0) +
+            (em.unique_opens || 0);
+          providerSummary[c.provider].unique_clicks =
+            (providerSummary[c.provider].unique_clicks || 0) +
+            (em.unique_clicks || 0);
+          providerSummary[c.provider].unsubscribes =
+            (providerSummary[c.provider].unsubscribes || 0) +
+            (em.unsubscribes || 0);
+        }
+      }
+      // Recalculate Mailchimp provider-level rates
+      if (providerSummary.mailchimp) {
+        const mc = providerSummary.mailchimp;
+        mc.open_rate =
+          (mc.sends || 0) > 0
+            ? (mc.unique_opens || 0) / (mc.sends || 1)
+            : 0;
+        mc.click_rate =
+          (mc.sends || 0) > 0
+            ? (mc.unique_clicks || 0) / (mc.sends || 1)
+            : 0;
       }
       result.campaign_summary = providerSummary;
     }

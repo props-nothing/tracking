@@ -127,9 +127,13 @@ export function SiteCard({ site }: SiteCardProps) {
     idle: 'border-l-border',
   }[activityLevel];
 
+  // Viewer/client members open the shared report; owners/admins open full dashboard
+  const isMemberViewer = (site.role === 'viewer' || site.role === 'client') && site.report_token;
+  const href = isMemberViewer ? `/report/${site.report_token}` : `/dashboard/${site.id}`;
+
   return (
     <Link
-      href={`/dashboard/${site.id}`}
+      href={href}
       className={`group relative rounded-lg border border-l-[3px] ${borderColor} bg-card p-5 transition-all hover:shadow-md hover:bg-accent/50`}
     >
       {/* ---- Header row: name + live badge ---- */}

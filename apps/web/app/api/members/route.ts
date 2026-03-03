@@ -1,6 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { memberInviteSchema } from '@/lib/validators';
+import { sendEmail } from '@/lib/email';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+/**
+ * Ensure a "member overview" shared report exists for a site.
+ * This is the report that viewer/client members see when they open the site.
+ */
+async function ensureMemberReport(db: Awaited<ReturnType<typeof createServiceClient>>, siteId: string, userId: string) {
+  // Check if a member overview report already exists
+  const { data: existing } = await db
+    .from('shared_reports')
+    .select('token')
+    .eq('site_id', siteId)
+    .eq('template', 'overview')
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) return existing.token;
+
+  // Create one
+  const { data: site } = await db
+    .from('sites')
+    .select('name, domain')
+    .eq('id', siteId)
+    .maybeSingle();
+
+  const { data: report } = await db
+    .from('shared_reports')
+    .insert({
+      site_id: siteId,
+      created_by: userId,
+      title: `${site?.name || site?.domain || 'Site'} — Overzicht`,
+      template: 'overview',
+      date_range_mode: 'last_30_days',
+    })
+    .select('token')
+    .single();
+
+  return report?.token ?? null;
+}
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -35,7 +76,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const { data, error } = await db
+  // Fetch active members and resolve their emails
+  const { data: membersData, error } = await db
     .from('site_members')
     .select('id, site_id, user_id, role, invited_at, accepted_at')
     .eq('site_id', siteId);
@@ -44,14 +86,35 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // Map DB fields to frontend-expected fields
-  const members = (data || []).map((m: Record<string, unknown>) => ({
-    ...m,
-    email: m.user_id, // user_id is what we have; frontend displays it
-    joined_at: m.accepted_at || m.invited_at,
+  // Resolve emails for each member via the helper function
+  const members = await Promise.all(
+    (membersData || []).map(async (m: Record<string, unknown>) => {
+      const { data: email } = await db.rpc('get_email_by_user_id', {
+        p_user_id: m.user_id,
+      });
+      return {
+        ...m,
+        email: email || 'unknown',
+        status: 'active' as const,
+        joined_at: m.accepted_at || m.invited_at,
+      };
+    })
+  );
+
+  // Also fetch pending invitations
+  const { data: invitations } = await db
+    .from('site_invitations')
+    .select('id, site_id, email, role, invited_at, accepted_at')
+    .eq('site_id', siteId)
+    .is('accepted_at', null);
+
+  const pendingMembers = (invitations || []).map((inv: Record<string, unknown>) => ({
+    ...inv,
+    status: 'pending' as const,
+    joined_at: inv.invited_at,
   }));
 
-  return NextResponse.json({ members });
+  return NextResponse.json({ members: [...members, ...pendingMembers] });
 }
 
 export async function POST(request: NextRequest) {
@@ -69,33 +132,117 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid data', details: parsed.error.flatten() }, { status: 400 });
   }
 
-  // Look up user by email — note: in real implementation, you'd send an invite email
-  // For now, attempt to add them directly if they have an account
   const db = await createServiceClient();
-  const { data: existingUser } = await db.rpc('get_user_by_email', { email: parsed.data.email });
 
-  if (!existingUser) {
-    return NextResponse.json({
-      message: 'Invitation would be sent. User not yet registered.',
-    }, { status: 202 });
+  // Get site name for the email
+  const { data: site } = await db
+    .from('sites')
+    .select('name, domain')
+    .eq('id', parsed.data.site_id)
+    .maybeSingle();
+
+  const siteName = site?.name || site?.domain || 'a site';
+
+  // Get inviter email
+  const { data: inviterEmail } = await db.rpc('get_email_by_user_id', {
+    p_user_id: user.id,
+  });
+
+  // Look up user by email
+  const { data: existingUserId } = await db.rpc('get_user_by_email', {
+    p_email: parsed.data.email,
+  });
+
+  if (existingUserId) {
+    // User exists — add them directly as a site member
+    const { data, error } = await db
+      .from('site_members')
+      .insert({
+        site_id: parsed.data.site_id,
+        user_id: existingUserId,
+        role: parsed.data.role,
+        invited_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Ensure a member report exists for this site
+    await ensureMemberReport(db, parsed.data.site_id, user.id);
+
+    // Send notification email
+    await sendEmail({
+      to: parsed.data.email,
+      subject: `Je bent toegevoegd aan ${siteName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1f2937;">Je bent toegevoegd aan ${siteName}</h2>
+          <p>${inviterEmail || 'Een beheerder'} heeft je toegevoegd als <strong>${parsed.data.role}</strong> aan <strong>${siteName}</strong>.</p>
+          <p>
+            <a href="${APP_URL}/dashboard" style="display: inline-block; padding: 12px 24px; background: #6366f1; color: white; text-decoration: none; border-radius: 6px;">
+              Ga naar dashboard →
+            </a>
+          </p>
+          <hr style="border-color: #e5e7eb; margin: 24px 0;" />
+          <p style="color: #6b7280; font-size: 12px;">Verzonden door Tracking Analytics</p>
+        </div>
+      `,
+    });
+
+    return NextResponse.json(data, { status: 201 });
   }
 
-  const { data, error } = await db
-    .from('site_members')
+  // User does NOT exist yet — store invitation and send invite email
+  const { data: invitation, error: invError } = await db
+    .from('site_invitations')
     .insert({
       site_id: parsed.data.site_id,
-      user_id: existingUser,
+      email: parsed.data.email.toLowerCase(),
       role: parsed.data.role,
       invited_by: user.id,
     })
     .select()
     .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (invError) {
+    // Duplicate check
+    if (invError.code === '23505') {
+      return NextResponse.json({ error: 'Deze gebruiker is al uitgenodigd.' }, { status: 409 });
+    }
+    return NextResponse.json({ error: invError.message }, { status: 400 });
   }
 
-  return NextResponse.json(data, { status: 201 });
+  // Ensure a member report exists for this site
+  await ensureMemberReport(db, parsed.data.site_id, user.id);
+
+  // Send invitation email
+  await sendEmail({
+    to: parsed.data.email,
+    subject: `Uitnodiging voor ${siteName}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1f2937;">Je bent uitgenodigd voor ${siteName}</h2>
+        <p>${inviterEmail || 'Een beheerder'} heeft je uitgenodigd als <strong>${parsed.data.role}</strong> voor <strong>${siteName}</strong> op Tracking Analytics.</p>
+        <p>Maak een account aan om toegang te krijgen:</p>
+        <p>
+          <a href="${APP_URL}/auth/signup" style="display: inline-block; padding: 12px 24px; background: #6366f1; color: white; text-decoration: none; border-radius: 6px;">
+            Account aanmaken →
+          </a>
+        </p>
+        <hr style="border-color: #e5e7eb; margin: 24px 0;" />
+        <p style="color: #6b7280; font-size: 12px;">Verzonden door Tracking Analytics</p>
+      </div>
+    `,
+  });
+
+  return NextResponse.json({
+    ...invitation,
+    status: 'pending',
+    message: 'Uitnodiging verzonden per e-mail.',
+  }, { status: 201 });
 }
 
 export async function DELETE(request: NextRequest) {

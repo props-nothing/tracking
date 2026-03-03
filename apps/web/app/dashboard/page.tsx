@@ -14,6 +14,12 @@ export default function DashboardPage() {
   const [creating, setCreating] = useState(false);
   const router = useRouter();
 
+  // Separate owned/admin sites from viewer/client member sites
+  const ownedSites = sites.filter((s) => s.role === 'owner' || s.role === 'admin');
+  const memberSites = sites.filter((s) => s.role === 'viewer' || s.role === 'client');
+  // Show "add site" for owners, admins, OR fresh users with no sites at all
+  const canCreateSite = ownedSites.length > 0 || memberSites.length === 0;
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
@@ -42,14 +48,20 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Selecteer een site om analyses te bekijken</p>
+          <p className="text-sm text-muted-foreground">
+            {canCreateSite
+              ? 'Selecteer een site om analyses te bekijken'
+              : 'Bekijk de rapporten van sites waarvoor je bent uitgenodigd'}
+          </p>
         </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          Site toevoegen
-        </button>
+        {canCreateSite && (
+          <button
+            onClick={() => setShowCreate(!showCreate)}
+            className="inline-flex h-9 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Site toevoegen
+          </button>
+        )}
       </div>
 
       {showCreate && (
@@ -98,15 +110,41 @@ export default function DashboardPage() {
         <div className="rounded-lg border bg-card p-12 text-center">
           <h2 className="text-lg font-semibold">Nog geen sites</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Voeg je eerste site toe om bezoekers te volgen.
+            {canCreateSite
+              ? 'Voeg je eerste site toe om bezoekers te volgen.'
+              : 'Je bent nog niet uitgenodigd voor een site. Neem contact op met een beheerder.'}
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sites.map((site) => (
-            <SiteCard key={site.id} site={site} />
-          ))}
-        </div>
+        <>
+          {/* Owned / admin sites */}
+          {ownedSites.length > 0 && (
+            <div className="space-y-3">
+              {memberSites.length > 0 && (
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Mijn sites</h2>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {ownedSites.map((site) => (
+                  <SiteCard key={site.id} site={site} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Member (viewer/client) sites */}
+          {memberSites.length > 0 && (
+            <div className="space-y-3">
+              {ownedSites.length > 0 && (
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Gedeelde sites</h2>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {memberSites.map((site) => (
+                  <SiteCard key={site.id} site={site} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -11,28 +11,39 @@ const roleColors: Record<string, string> = {
   viewer: 'bg-gray-100 text-gray-800',
 };
 
+const statusColors: Record<string, string> = {
+  active: 'bg-green-100 text-green-800',
+  pending: 'bg-yellow-100 text-yellow-800',
+};
+
 export default function TeamPage({ params }: { params: Promise<{ siteId: string }> }) {
   const { siteId } = use(params);
-  const { items: members, loading, createItem, deleteItem } = useCrud<Member>('/api/members', siteId, 'members');
+  const { items: members, loading, createItem, fetchItems } = useCrud<Member>('/api/members', siteId, 'members');
 
   const [showInvite, setShowInvite] = useState(false);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'viewer'>('viewer');
   const [inviting, setInviting] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleInvite = async () => {
     setInviting(true);
-    await createItem({ email, role });
-    setEmail('');
-    setShowInvite(false);
+    setInviteMessage(null);
+    try {
+      await createItem({ email, role });
+      setEmail('');
+      setShowInvite(false);
+      setInviteMessage({ type: 'success', text: `Uitnodiging verzonden naar ${email}` });
+    } catch {
+      setInviteMessage({ type: 'error', text: 'Er ging iets mis bij het uitnodigen. Probeer het opnieuw.' });
+    }
     setInviting(false);
   };
 
-  const handleRemove = async (memberId: string) => {
-    // Team uses a different delete URL pattern
-    await fetch(`/api/members?site_id=${siteId}&member_id=${memberId}`, { method: 'DELETE' });
-    // Re-fetch by triggering the crud hook
-    window.location.reload();
+  const handleRemove = async (member: Member) => {
+    const endpoint = member.status === 'pending' ? 'invitations' : 'members';
+    await fetch(`/api/${endpoint}?site_id=${siteId}&member_id=${member.id}`, { method: 'DELETE' });
+    fetchItems();
   };
 
   return (
@@ -46,6 +57,16 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
           </PrimaryButton>
         }
       />
+
+      {inviteMessage && (
+        <div className={`rounded-lg border p-4 text-sm ${
+          inviteMessage.type === 'success'
+            ? 'border-green-200 bg-green-50 text-green-800'
+            : 'border-red-200 bg-red-50 text-red-800'
+        }`}>
+          {inviteMessage.text}
+        </div>
+      )}
 
       {showInvite && (
         <div className="rounded-lg border bg-card p-6 space-y-4">
@@ -83,26 +104,39 @@ export default function TeamPage({ params }: { params: Promise<{ siteId: string 
         <LoadingState />
       ) : (
         <div className="space-y-3">
+          {members.length === 0 && (
+            <p className="text-sm text-muted-foreground">Nog geen teamleden. Nodig iemand uit om te beginnen.</p>
+          )}
           {members.map((m) => (
             <div key={m.id} className="flex items-center justify-between rounded-lg border bg-card p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                  {m.email[0].toUpperCase()}
+                <div className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold ${
+                  m.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-primary/10 text-primary'
+                }`}>
+                  {m.email?.[0]?.toUpperCase() || '?'}
                 </div>
                 <div>
                   <p className="text-sm font-medium">{m.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    Lid sinds {new Date(m.joined_at).toLocaleDateString()}
+                    {m.status === 'pending'
+                      ? `Uitgenodigd op ${new Date(m.joined_at).toLocaleDateString()}`
+                      : `Lid sinds ${new Date(m.joined_at).toLocaleDateString()}`
+                    }
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${roleColors[m.role]}`}>
+                {m.status === 'pending' && (
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors.pending}`}>
+                    Uitgenodigd
+                  </span>
+                )}
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${roleColors[m.role] || roleColors.viewer}`}>
                   {m.role}
                 </span>
                 {m.role !== 'owner' && (
                   <button
-                    onClick={() => handleRemove(m.id)}
+                    onClick={() => handleRemove(m)}
                     className="rounded-md border px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
                   >
                     Verwijderen

@@ -23,9 +23,31 @@ export async function GET() {
     .select('site_id, role, sites(*)')
     .eq('user_id', user.id);
 
+  // For member sites, look up report tokens so members open the report view
+  const memberSiteIds = (memberSites || []).map((m: any) => m.site_id);
+  const reportTokenMap: Record<string, string> = {};
+
+  if (memberSiteIds.length > 0) {
+    const { data: reports } = await db
+      .from('shared_reports')
+      .select('site_id, token')
+      .in('site_id', memberSiteIds)
+      .eq('template', 'overview');
+
+    (reports || []).forEach((r: any) => {
+      if (!reportTokenMap[r.site_id]) {
+        reportTokenMap[r.site_id] = r.token;
+      }
+    });
+  }
+
   const allSites = [
     ...(ownedSites || []).map((s) => ({ ...s, role: 'owner' as const })),
-    ...(memberSites || []).map((m: any) => ({ ...m.sites, role: m.role })),
+    ...(memberSites || []).map((m: any) => ({
+      ...m.sites,
+      role: m.role,
+      report_token: reportTokenMap[m.site_id] || null,
+    })),
   ];
 
   return NextResponse.json(allSites);

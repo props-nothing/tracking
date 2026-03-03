@@ -62,6 +62,7 @@ export interface CampaignRow {
   conversion_value: number;
   results: number;
   currency: string;
+  extra_metrics?: Record<string, unknown>;
 }
 
 export interface ProviderSummary {
@@ -71,6 +72,13 @@ export interface ProviderSummary {
   conversions: number;
   conversion_value: number;
   results: number;
+  // Mailchimp email-specific aggregates
+  sends?: number;
+  unique_opens?: number;
+  open_rate?: number;
+  unique_clicks?: number;
+  click_rate?: number;
+  unsubscribes?: number;
 }
 
 export interface AIAnalysisData {

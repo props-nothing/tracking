@@ -2,7 +2,7 @@ import React from "react";
 import { ReportData } from "@/types/report";
 import { KPICard } from "@/components/report/ui";
 import { FacebookIcon, GoogleIcon } from "@/components/report/icons";
-import { MousePointerClick, BadgeEuro, UserPlus, Target } from "lucide-react";
+import { MousePointerClick, BadgeEuro, UserPlus, Target, Mail, MailOpen, MousePointer, UserMinus } from "lucide-react";
 
 function formatNumber(val: number) {
   return new Intl.NumberFormat("nl-NL").format(val);
@@ -21,10 +21,11 @@ export function AdsKPIs({
   mainTab,
 }: {
   data: ReportData;
-  mainTab: "all" | "website" | "meta" | "google" | "ecommerce";
+  mainTab: "all" | "website" | "meta" | "google" | "mailchimp" | "ecommerce";
 }) {
   const metaSummary = data.campaign_summary?.meta_ads;
   const googleSummary = data.campaign_summary?.google_ads;
+  const mailchimpSummary = data.campaign_summary?.mailchimp;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 mb-8">
@@ -128,6 +129,48 @@ export function AdsKPIs({
               delay="d300"
             />
           )}
+        </>
+      )}
+      {(mainTab === "all" || mainTab === "mailchimp") && mailchimpSummary && (
+        <>
+          <KPICard
+            label="E-mails Verzonden"
+            value={formatNumber(mailchimpSummary.sends || 0)}
+            icon={<Mail className="w-5 h-5" />}
+            iconBg="bg-amber-50"
+            iconColor="text-amber-600"
+            gradientFrom="from-amber-100"
+            delay="d100"
+          />
+          <KPICard
+            label="Geopend"
+            value={formatNumber(mailchimpSummary.unique_opens || 0)}
+            subtitle={`${((mailchimpSummary.open_rate || 0) * 100).toFixed(1)}% open rate`}
+            icon={<MailOpen className="w-5 h-5" />}
+            iconBg="bg-emerald-50"
+            iconColor="text-emerald-600"
+            gradientFrom="from-emerald-100"
+            delay="d150"
+          />
+          <KPICard
+            label="Kliks"
+            value={formatNumber(mailchimpSummary.unique_clicks || 0)}
+            subtitle={`${((mailchimpSummary.click_rate || 0) * 100).toFixed(1)}% click rate`}
+            icon={<MousePointer className="w-5 h-5" />}
+            iconBg="bg-blue-50"
+            iconColor="text-blue-600"
+            gradientFrom="from-blue-100"
+            delay="d200"
+          />
+          <KPICard
+            label="Uitschrijvingen"
+            value={formatNumber(mailchimpSummary.unsubscribes || 0)}
+            icon={<UserMinus className="w-5 h-5" />}
+            iconBg="bg-rose-50"
+            iconColor="text-rose-600"
+            gradientFrom="from-rose-100"
+            delay="d250"
+          />
         </>
       )}
     </div>

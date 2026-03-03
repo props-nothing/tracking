@@ -22,6 +22,7 @@ export interface Site {
   logo_url: string | null;
   brand_color: string;
   role: string;
+  report_token?: string | null;
   created_at: string;
 }
 
@@ -318,6 +319,7 @@ export interface Member {
   id: string;
   email: string;
   role: 'owner' | 'admin' | 'viewer';
+  status?: 'active' | 'pending';
   joined_at: string;
 }
 

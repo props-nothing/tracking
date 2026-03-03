@@ -47,6 +47,7 @@ export function SectionHeader({
 export function KPICard({
   label,
   value,
+  subtitle,
   icon,
   iconBg,
   iconColor,
@@ -55,6 +56,7 @@ export function KPICard({
 }: {
   label: string;
   value: string;
+  subtitle?: string;
   icon: React.ReactNode;
   iconBg: string;
   iconColor: string;
@@ -74,6 +76,11 @@ export function KPICard({
             {label}
           </p>
           <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+          {subtitle && (
+            <p className="text-slate-400 text-[11px] font-medium mt-0.5">
+              {subtitle}
+            </p>
+          )}
         </div>
         <div
           className={`w-10 h-10 rounded-xl ${iconBg} ${iconColor} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300`}

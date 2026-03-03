@@ -1,6 +1,6 @@
 import React from "react";
 import { GlassCard, SectionHeader } from "@/components/report/ui";
-import { FacebookIcon, GoogleIcon } from "@/components/report/icons";
+import { FacebookIcon, GoogleIcon, MailchimpIcon } from "@/components/report/icons";
 import { Crosshair } from "lucide-react";
 
 function formatNumber(val: number) {
@@ -108,6 +108,8 @@ export function AdsCampaignDetail({
                       <span className="w-5 h-5 flex-shrink-0">
                         {c.provider === "meta_ads" ? (
                           <FacebookIcon />
+                        ) : c.provider === "mailchimp" ? (
+                          <MailchimpIcon />
                         ) : (
                           <GoogleIcon />
                         )}

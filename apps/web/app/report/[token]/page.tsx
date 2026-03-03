@@ -12,6 +12,7 @@ import {
   X,
   Calendar,
   DollarSign,
+  Mail,
 } from "lucide-react";
 
 import { LeadRow } from "@/types/report";
@@ -129,6 +130,7 @@ import { EcommerceKPIs } from "@/components/report/sections/ecommerce-kpis";
 import { DevicesSection } from "@/components/report/sections/devices-section";
 import { UTMCampaigns } from "@/components/report/sections/utm-campaigns";
 import { AdsCampaignDetail } from "@/components/report/sections/ads-campaign-detail";
+import { MailchimpCampaignDetail } from "@/components/report/sections/mailchimp-campaign-detail";
 import { EcommerceDetail } from "@/components/report/sections/ecommerce-detail";
 import { LeadsSection } from "@/components/report/sections/leads-section";
 
@@ -163,7 +165,7 @@ export default function PublicReportPage({
     "pages",
   );
   const [mainTab, setMainTab] = useState<
-    "all" | "website" | "meta" | "google" | "ecommerce"
+    "all" | "website" | "meta" | "google" | "mailchimp" | "ecommerce"
   >("all");
 
   /* ---- Loading state ---- */
@@ -240,9 +242,13 @@ export default function PublicReportPage({
   const googleCampaigns = data.campaign_data.filter(
     (c) => c.provider === "google_ads",
   );
+  const mailchimpCampaigns = data.campaign_data.filter(
+    (c) => c.provider === "mailchimp",
+  );
   const hasMetaCampaigns = metaCampaigns.length > 0;
   const hasGoogleCampaigns = googleCampaigns.length > 0;
-  const hasAnyCampaigns = hasMetaCampaigns || hasGoogleCampaigns;
+  const hasMailchimpCampaigns = mailchimpCampaigns.length > 0;
+  const hasAnyCampaigns = hasMetaCampaigns || hasGoogleCampaigns || hasMailchimpCampaigns;
 
   // Which campaigns to show in the current tab
   const tabCampaigns =
@@ -250,27 +256,35 @@ export default function PublicReportPage({
       ? metaCampaigns
       : mainTab === "google"
         ? googleCampaigns
-        : data.campaign_data;
+        : mainTab === "mailchimp"
+          ? mailchimpCampaigns
+          : data.campaign_data;
 
   // Show website sections? (all or website tab)
   const showWebsite = mainTab === "all" || mainTab === "website";
   // Show ads sections?
   const showAds =
     mainTab === "all" || mainTab === "meta" || mainTab === "google";
+  // Show mailchimp sections?
+  const showMailchimp = mainTab === "all" || mainTab === "mailchimp";
   // Show ecommerce sections?
   const showEcommerce = mainTab === "all" || mainTab === "ecommerce";
 
   // Source matching helpers for filtering leads by tab
   const isMetaSource = (s: string) => /facebook|\bfb\b|meta|instagram/i.test(s);
   const isGoogleSource = (s: string) => /google/i.test(s);
+  const isMailchimpSource = (s: string) => /mailchimp|email|newsletter/i.test(s);
   const isPaidMedium = (m: string) =>
     /cpc|paid|ppc|cpm|retargeting|social_paid/i.test(m);
+  const isEmailMedium = (m: string) => /email|newsletter/i.test(m);
   const matchesTab = (lead: LeadRow) => {
     const src = (lead.utm_source || lead.referrer_hostname || "").toLowerCase();
     const medium = (lead.utm_medium || "").toLowerCase();
     if (mainTab === "meta") return isMetaSource(src) && isPaidMedium(medium);
     if (mainTab === "google")
       return isGoogleSource(src) && isPaidMedium(medium);
+    if (mainTab === "mailchimp")
+      return isMailchimpSource(src) || isEmailMedium(medium);
     return true;
   };
 
@@ -345,6 +359,15 @@ export default function PublicReportPage({
             key: "google" as const,
             label: "Google Ads",
             icon: <GoogleIcon className="w-3.5 h-3.5" />,
+          },
+        ]
+      : []),
+    ...(hasMailchimpCampaigns
+      ? [
+          {
+            key: "mailchimp" as const,
+            label: "Mailchimp",
+            icon: <Mail className="w-3.5 h-3.5" />,
           },
         ]
       : []),
@@ -470,8 +493,8 @@ export default function PublicReportPage({
         {/* ═══════════════════ KPI Cards ═══════════════════ */}
         {showWebsite && <WebsiteKPIs data={data} />}
 
-        {/* ═══════════════════ Ads KPIs (Meta/Google tab or Overzicht) ═══════════════════ */}
-        {showAds && hasAnyCampaigns && (
+        {/* ═══════════════════ Ads KPIs (Meta/Google/Mailchimp tab or Overzicht) ═══════════════════ */}
+        {(showAds || showMailchimp) && hasAnyCampaigns && (
           <AdsKPIs data={data} mainTab={mainTab} />
         )}
 
@@ -677,8 +700,14 @@ export default function PublicReportPage({
         {/* ═══════════════════ Ads Campaign Detail ═══════════════════ */}
         <AdsCampaignDetail
           showAds={showAds}
-          tabCampaigns={tabCampaigns}
+          tabCampaigns={tabCampaigns.filter((c) => c.provider !== "mailchimp")}
           mainTab={mainTab}
+        />
+
+        {/* ═══════════════════ Mailchimp Campaign Detail ═══════════════════ */}
+        <MailchimpCampaignDetail
+          showMailchimp={showMailchimp}
+          campaigns={mailchimpCampaigns}
         />
 
         {/* ═══════════════════ E-commerce Detail ═══════════════════ */}
